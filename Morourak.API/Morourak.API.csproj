@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Morourak.Application\Morourak.Application.csproj" />
+    <ProjectReference Include="..\Morourak.Infrastructure\Morourak.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Uploads\EducationalCertificates\" />
+    <Folder Include="Uploads\IDCards\" />
+    <Folder Include="Uploads\MedicalCertificates\" />
+    <Folder Include="Uploads\PersonalPhotos\" />
+    <Folder Include="Uploads\ResidenceProof\" />
+    <Folder Include="Uploads\VehicleLicenses\CustomClearance\" />
+    <Folder Include="Uploads\VehicleLicenses\IdCards\" />
+    <Folder Include="Uploads\VehicleLicenses\InsuranceCertificate\" />
+    <Folder Include="Uploads\VehicleLicenses\OwnershipProof\" />
+    <Folder Include="Uploads\VehicleLicenses\TechnicalInspectionReceipt\" />
+    <Folder Include="Uploads\VehicleLicenses\VehicleDataCertificate\" />
+  </ItemGroup>
+
+  <!-- Copy seed JSON to API output so seeders find them at runtime -->
+
+
+</Project>

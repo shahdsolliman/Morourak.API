@@ -1,0 +1,19 @@
+# Visual Studio temporary files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build folders
+bin/
+obj/
+
+# Rider IDE
+.idea/
+
+# Logs
+*.log
+
+# Node modules (لو في frontend)
+node_modules/

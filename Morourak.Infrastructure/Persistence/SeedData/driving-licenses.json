@@ -1,0 +1,202 @@
+[
+  {
+    "LicenseNumber": "DL-100001",
+    "CitizenNationalId": "29801012345678",
+    "Category": "Private",
+    "IssueDate": "2021-01-15T00:00:00",
+    "ExpiryDate": "2026-01-15T00:00:00",
+    "Status": "Active",
+    "Governorate": "القاهرة",
+    "LicensingUnit": "وحدة مرور العاشر"
+  },
+  {
+    "LicenseNumber": "DL-100002",
+    "CitizenNationalId": "29902012345678",
+    "Category": "ProfessionalFirstDegree",
+    "IssueDate": "2020-06-10T00:00:00",
+    "ExpiryDate": "2025-06-10T00:00:00",
+    "Status": "Active",
+    "Governorate": "الجيزة",
+    "LicensingUnit": "وحدة مرور الدقي"
+  },
+  {
+    "LicenseNumber": "DL-100003",
+    "CitizenNationalId": "30003012345678",
+    "Category": "Motorcycle",
+    "IssueDate": "2019-03-01T00:00:00",
+    "ExpiryDate": "2024-03-01T00:00:00",
+    "Status": "Expired",
+    "Governorate": "الإسكندرية",
+    "LicensingUnit": "وحدة مرور سيدي جابر"
+  },
+  {
+    "LicenseNumber": "DL-100004",
+    "CitizenNationalId": "29705011234567",
+    "Category": "Private",
+    "IssueDate": "2022-09-20T00:00:00",
+    "ExpiryDate": "2027-09-20T00:00:00",
+    "Status": "Active",
+    "Governorate": "القليوبية",
+    "LicensingUnit": "وحدة مرور شبين القناطر"
+  },
+  {
+    "LicenseNumber": "DL-100005",
+    "CitizenNationalId": "29606022345678",
+    "Category": "ProfessionalSecondDegree",
+    "IssueDate": "2018-11-05T00:00:00",
+    "ExpiryDate": "2023-11-05T00:00:00",
+    "Status": "Expired",
+    "Governorate": "السويس",
+    "LicensingUnit": "وحدة مرور السويس"
+  },
+  {
+    "LicenseNumber": "DL-100006",
+    "CitizenNationalId": "29507033456789",
+    "Category": "HeavyEquipment",
+    "IssueDate": "2021-02-18T00:00:00",
+    "ExpiryDate": "2026-02-18T00:00:00",
+    "Status": "Active",
+    "Governorate": "أسوان",
+    "LicensingUnit": "وحدة مرور أسوان"
+  },
+  {
+    "LicenseNumber": "DL-100007",
+    "CitizenNationalId": "29908044567891",
+    "Category": "Private",
+    "IssueDate": "2020-12-01T00:00:00",
+    "ExpiryDate": "2025-12-01T00:00:00",
+    "Status": "Active",
+    "Governorate": "المنيا",
+    "LicensingUnit": "وحدة مرور المنيا"
+  },
+  {
+    "LicenseNumber": "DL-100008",
+    "CitizenNationalId": "30009055678912",
+    "Category": "ProfessionalThirdDegree",
+    "IssueDate": "2019-08-12T00:00:00",
+    "ExpiryDate": "2024-08-12T00:00:00",
+    "Status": "Expired",
+    "Governorate": "الفيوم",
+    "LicensingUnit": "وحدة مرور الفيوم"
+  },
+  {
+    "LicenseNumber": "DL-100009",
+    "CitizenNationalId": "30110066789123",
+    "Category": "Private",
+    "IssueDate": "2020-04-12T00:00:00",
+    "ExpiryDate": "2025-04-12T00:00:00",
+    "Status": "Active",
+    "Governorate": "شرم الشيخ",
+    "LicensingUnit": "وحدة مرور جنوب سيناء"
+  },
+  {
+    "LicenseNumber": "DL-100010",
+    "CitizenNationalId": "30211077891234",
+    "Category": "ProfessionalFirstDegree",
+    "IssueDate": "2019-11-20T00:00:00",
+    "ExpiryDate": "2024-11-20T00:00:00",
+    "Status": "Expired",
+    "Governorate": "السويس",
+    "LicensingUnit": "وحدة مرور السويس"
+  },
+  {
+    "LicenseNumber": "DL-100011",
+    "CitizenNationalId": "30312088912345",
+    "Category": "Motorcycle",
+    "IssueDate": "2021-01-05T00:00:00",
+    "ExpiryDate": "2026-01-05T00:00:00",
+    "Status": "Active",
+    "Governorate": "الإسكندرية",
+    "LicensingUnit": "وحدة مرور سيدي جابر"
+  },
+  {
+    "LicenseNumber": "DL-100012",
+    "CitizenNationalId": "30413099023456",
+    "Category": "Private",
+    "IssueDate": "2020-07-15T00:00:00",
+    "ExpiryDate": "2025-07-15T00:00:00",
+    "Status": "Active",
+    "Governorate": "القاهرة",
+    "LicensingUnit": "وحدة مرور العاشر"
+  },
+  {
+    "LicenseNumber": "DL-100013",
+    "CitizenNationalId": "30514110134567",
+    "Category": "ProfessionalSecondDegree",
+    "IssueDate": "2018-10-10T00:00:00",
+    "ExpiryDate": "2023-10-10T00:00:00",
+    "Status": "Expired",
+    "Governorate": "المنيا",
+    "LicensingUnit": "وحدة مرور المنيا"
+  },
+  {
+    "LicenseNumber": "DL-100014",
+    "CitizenNationalId": "30615121245678",
+    "Category": "HeavyEquipment",
+    "IssueDate": "2021-03-22T00:00:00",
+    "ExpiryDate": "2026-03-22T00:00:00",
+    "Status": "Active",
+    "Governorate": "أسوان",
+    "LicensingUnit": "وحدة مرور أسوان"
+  },
+  {
+    "LicenseNumber": "DL-100015",
+    "CitizenNationalId": "30716132356789",
+    "Category": "Private",
+    "IssueDate": "2020-08-30T00:00:00",
+    "ExpiryDate": "2025-08-30T00:00:00",
+    "Status": "Active",
+    "Governorate": "الجيزة",
+    "LicensingUnit": "وحدة مرور الدقي"
+  },
+  {
+    "LicenseNumber": "DL-100016",
+    "CitizenNationalId": "30817143467890",
+    "Category": "ProfessionalThirdDegree",
+    "IssueDate": "2019-05-12T00:00:00",
+    "ExpiryDate": "2024-05-12T00:00:00",
+    "Status": "Expired",
+    "Governorate": "الإسكندرية",
+    "LicensingUnit": "وحدة مرور سيدي جابر"
+  },
+  {
+    "LicenseNumber": "DL-100017",
+    "CitizenNationalId": "30918154578901",
+    "Category": "Motorcycle",
+    "IssueDate": "2020-09-01T00:00:00",
+    "ExpiryDate": "2025-09-01T00:00:00",
+    "Status": "Active",
+    "Governorate": "السويس",
+    "LicensingUnit": "وحدة مرور السويس"
+  },
+  {
+    "LicenseNumber": "DL-100018",
+    "CitizenNationalId": "31019165689012",
+    "Category": "Private",
+    "IssueDate": "2021-02-20T00:00:00",
+    "ExpiryDate": "2026-02-20T00:00:00",
+    "Status": "Active",
+    "Governorate": "القليوبية",
+    "LicensingUnit": "وحدة مرور شبين القناطر"
+  },
+  {
+    "LicenseNumber": "DL-100019",
+    "CitizenNationalId": "31120176790123",
+    "Category": "ProfessionalFirstDegree",
+    "IssueDate": "2019-07-15T00:00:00",
+    "ExpiryDate": "2024-07-15T00:00:00",
+    "Status": "Expired",
+    "Governorate": "المنيا",
+    "LicensingUnit": "وحدة مرور المنيا"
+  },
+  {
+    "LicenseNumber": "DL-100020",
+    "CitizenNationalId": "31221187801234",
+    "Category": "Private",
+    "IssueDate": "2020-10-10T00:00:00",
+    "ExpiryDate": "2025-10-10T00:00:00",
+    "Status": "Active",
+    "Governorate": "الفيوم",
+    "LicensingUnit": "وحدة مرور الفيوم"
+  }
+]

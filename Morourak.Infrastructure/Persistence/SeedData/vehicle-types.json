@@ -1,0 +1,164 @@
+﻿[
+  {
+    "VehicleType": "PrivateCar",
+    "VehicleTypeAr": "سيارة ملاكي",
+    "Brands": [
+      {
+        "Name": "Toyota",
+        "NameAr": "تويوتا",
+        "Models": [
+          { "Name": "Corolla", "NameAr": "كورولا" },
+          { "Name": "Camry", "NameAr": "كامري" },
+          { "Name": "Yaris", "NameAr": "ياريس" }
+        ]
+      },
+      {
+        "Name": "Honda",
+        "NameAr": "هوندا",
+        "Models": [
+          { "Name": "Civic", "NameAr": "سيفيك" },
+          { "Name": "Accord", "NameAr": "أكورد" },
+          { "Name": "City", "NameAr": "سيتي" }
+        ]
+      },
+      {
+        "Name": "Kia",
+        "NameAr": "كيا",
+        "Models": [
+          { "Name": "Cerato", "NameAr": "سيراتو" },
+          { "Name": "Sportage", "NameAr": "سبورتاج" }
+        ]
+      }
+    ]
+  },
+  {
+    "VehicleType": "Truck",
+    "VehicleTypeAr": "نقل",
+    "Brands": [
+      {
+        "Name": "Isuzu",
+        "NameAr": "إيسوزو",
+        "Models": [
+          { "Name": "NQR", "NameAr": "أن كيو آر" },
+          { "Name": "FVR", "NameAr": "أف في آر" }
+        ]
+      },
+      {
+        "Name": "Volvo",
+        "NameAr": "فولفو",
+        "Models": [
+          { "Name": "FMX", "NameAr": "أف أم أكس" },
+          { "Name": "FH", "NameAr": "أف أتش" }
+        ]
+      }
+    ]
+  },
+  {
+    "VehicleType": "Taxi",
+    "VehicleTypeAr": "تاكسي",
+    "Brands": [
+      {
+        "Name": "Hyundai",
+        "NameAr": "هيونداي",
+        "Models": [
+          { "Name": "Elantra", "NameAr": "إلنترا" },
+          { "Name": "Accent", "NameAr": "أكسنت" }
+        ]
+      },
+      {
+        "Name": "Toyota",
+        "NameAr": "تويوتا",
+        "Models": [
+          { "Name": "Corolla", "NameAr": "كورولا" }
+        ]
+      }
+    ]
+  },
+  {
+    "VehicleType": "Motorcycle",
+    "VehicleTypeAr": "دراجة نارية",
+    "Brands": [
+      {
+        "Name": "Honda",
+        "NameAr": "هوندا",
+        "Models": [
+          { "Name": "CBR", "NameAr": "سي بي آر" },
+          { "Name": "CB500", "NameAr": "سي بي 500" }
+        ]
+      },
+      {
+        "Name": "Yamaha",
+        "NameAr": "ياماها",
+        "Models": [
+          { "Name": "YZF-R3", "NameAr": "واي زد أف" },
+          { "Name": "MT-07", "NameAr": "أم تي 07" }
+        ]
+      }
+    ]
+  },
+  {
+    "VehicleType": "Bus",
+    "VehicleTypeAr": "أتوبيس",
+    "Brands": [
+      {
+        "Name": "Mercedes",
+        "NameAr": "مرسيدس",
+        "Models": [
+          { "Name": "Sprinter", "NameAr": "سبرينتر" },
+          { "Name": "Tourismo", "NameAr": "توريزمو" }
+        ]
+      },
+      {
+        "Name": "Volvo",
+        "NameAr": "فولفو",
+        "Models": [
+          { "Name": "9700", "NameAr": "9700" },
+          { "Name": "9900", "NameAr": "9900" }
+        ]
+      }
+    ]
+  },
+  {
+    "VehicleType": "PrivateBus",
+    "VehicleTypeAr": "أتوبيس خاص",
+    "Brands": [
+      {
+        "Name": "Volvo",
+        "NameAr": "فولفو",
+        "Models": [
+          { "Name": "B8R", "NameAr": "بي 8 آر" },
+          { "Name": "B11R", "NameAr": "بي 11 آر" }
+        ]
+      },
+      {
+        "Name": "Mercedes",
+        "NameAr": "مرسيدس",
+        "Models": [
+          { "Name": "Intouro", "NameAr": "إنتورو" }
+        ]
+      }
+    ]
+  },
+  {
+    "VehicleType": "Trailer",
+    "VehicleTypeAr": "مقطورة",
+    "Brands": [
+      {
+        "Name": "MAN",
+        "NameAr": "مان",
+        "Models": [
+          { "Name": "TGS", "NameAr": "تي جي أس" },
+          { "Name": "TGX", "NameAr": "تي جي أكس" }
+        ]
+      },
+      {
+        "Name": "Scania",
+        "NameAr": "سكانيا",
+        "Models": [
+          { "Name": "R-series", "NameAr": "فئة آر" },
+          { "Name": "S-series", "NameAr": "فئة أس" }
+        ]
+      }
+    ]
+  }
+]
