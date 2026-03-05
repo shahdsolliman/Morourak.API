@@ -9,15 +9,18 @@ namespace Morourak.Application.DTOs.Appointments
         public int ApplicationId { get; set; }
         public AppointmentType Type { get; set; }
         public string TypeName { get; set; } = string.Empty;
+        public string ServiceName { get; set; } = string.Empty;
         public DateOnly Date { get; set; }
         public string DateFormatted { get; set; } = string.Empty;
         public TimeOnly StartTime { get; set; }
         public string TimeFormatted { get; set; } = string.Empty;
         public TimeOnly? EndTime { get; set; }
         public AppointmentStatus Status { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? CompletedAt { get; set; }
-        public string? RequestNumber { get; set; }
+        public string CreatedAt { get; set; } = string.Empty;
+        public string? CompletedAt { get; set; }
+        public string? RequestNumberRelated { get; set; }
+        public string RequestNumber { get; set; } = string.Empty;
+        public string AssignedToUserId { get; set; } = string.Empty;
 
         // Location info
         [JsonIgnore]
@@ -28,8 +31,5 @@ namespace Morourak.Application.DTOs.Appointments
 
         public string GovernorateName { get; set; } = string.Empty;
         public string TrafficUnitName { get; set; } = string.Empty;
-
-        public string? Notes { get; set; }
-        public string? AssignedToUserId { get; set; }
     }
 }

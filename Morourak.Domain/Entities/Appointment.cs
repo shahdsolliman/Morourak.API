@@ -29,10 +29,7 @@ namespace Morourak.Domain.Entities
         public virtual Governorate? Governorate { get; set; }
         public virtual TrafficUnit? TrafficUnit { get; set; }
 
-        // Assigned doctor or examinator
-        public string? AssignedToUserId { get; set; }
-
-        // Result notes
-        public string? Notes { get; set; }
+        
+   
     }
 }

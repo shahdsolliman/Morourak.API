@@ -31,11 +31,6 @@ public class ExaminationAppointmentConfiguration
                .IsRequired()
                .HasMaxLength(14);
 
-        builder.Property(e => e.AssignedToUserId)
-               .HasMaxLength(450); // Matches standard Identity UserId length
-
-        builder.Property(e => e.Notes)
-               .HasMaxLength(1000);
 
         // ── Location FK relations (added in refactor) ──────────────────────
         builder.Property(e => e.GovernorateId)

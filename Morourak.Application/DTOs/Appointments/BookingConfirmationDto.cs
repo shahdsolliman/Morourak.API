@@ -21,8 +21,7 @@ namespace Morourak.Application.DTOs.Appointments
         public string TrafficUnitAddress { get; set; } = string.Empty;
         public string GovernorateName { get; set; } = string.Empty;
         public string WorkingHours { get; set; } = string.Empty;
-        public string Notes { get; set; } = string.Empty;
-        public string? AssignedToUserId { get; set; }
+        public string AssignedToUserId { get; set; } = string.Empty;
     }
 
     public class BookingServiceRequestDto

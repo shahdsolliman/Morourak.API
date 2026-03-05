@@ -52,8 +52,6 @@ namespace Morourak.Application.Services
                 ServiceType.DrivingLicenseRenewal => ("DR", 800),
                 ServiceType.DrivingLicenseReplacementLost => ("EL", 900),
                 ServiceType.DrivingLicenseReplacementDamaged => ("ED", 1000),
-                ServiceType.ExaminationTechnical => ("ET", 1100),
-                ServiceType.ExaminationDriving => ("EDR", 1200),
                 _ => ("SR", 1)
             };
         }
