@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Enums.Appointments;
@@ -74,7 +74,7 @@ namespace Morourak.API.Controllers
             var staffUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             await _service.UpdateStatusAsync(
-                dto.ApplicationId,
+                dto.RequestNumber,
                 appointmentType,
                 dto.Passed,
                 dto.Notes,
@@ -85,7 +85,7 @@ namespace Morourak.API.Controllers
             {
                 IsSuccess = true,
                 Message = dto.Passed ? "Examination marked as PASSED." : "Examination marked as FAILED.",
-                ApplicationId = dto.ApplicationId
+                RequestNumber = dto.RequestNumber
             });
         }
     }
@@ -93,7 +93,7 @@ namespace Morourak.API.Controllers
     // ================= DTO =================
     public class SubmitResultDto
     {
-        public int ApplicationId { get; set; }
+        public string RequestNumber { get; set; } = string.Empty;
         public bool Passed { get; set; }
         public string? Notes { get; set; }
     }

@@ -19,7 +19,6 @@ namespace Morourak.Application.DTOs.Appointments
         public string CreatedAt { get; set; } = string.Empty;
         public string? CompletedAt { get; set; }
         public string? RequestNumberRelated { get; set; }
-        public string RequestNumber { get; set; } = string.Empty;
         public string AssignedToUserId { get; set; } = string.Empty;
 
         // Location info

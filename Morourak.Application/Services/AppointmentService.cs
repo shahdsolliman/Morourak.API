@@ -407,16 +407,26 @@ namespace Morourak.Application.Services
         }
 
         public async Task UpdateStatusAsync(
-            int applicationId,
+            string requestNumber,
             AppointmentType type,
             bool passed,
             string? notes,
             string staffUserId)
         {
-            var repo = _unitOfWork.Repository<Appointment>();
+            if (string.IsNullOrWhiteSpace(requestNumber))
+                throw new AppEx.ValidationException("Request number is required.", "REQUEST_NUMBER_REQUIRED");
 
-            var appointment = (await repo.FindAsync(a =>
-                    a.ApplicationId == applicationId &&
+            if (string.IsNullOrWhiteSpace(staffUserId))
+                throw new AppEx.ValidationException("Staff user id is required.", "STAFF_USER_REQUIRED");
+
+            // Notes are accepted for auditing/extension, even if not persisted yet.
+            _ = notes;
+
+            var appointmentRepo = _unitOfWork.Repository<Appointment>();
+            var now = DateTime.UtcNow;
+
+            var appointment = (await appointmentRepo.FindAsync(a =>
+                    a.RequestNumber == requestNumber &&
                     a.Type == type &&
                     a.Status == AppointmentStatus.Scheduled))
                 .OrderByDescending(a => a.Date)
@@ -425,56 +435,198 @@ namespace Morourak.Application.Services
 
             if (appointment == null)
                 throw new AppEx.ValidationException(
-                    $"No scheduled {type} appointment found for application {applicationId}.",
+                    $"No scheduled {type} appointment found for request number {requestNumber}.",
                     "APPOINTMENT_NOT_FOUND");
 
-            appointment.Status = passed ? AppointmentStatus.Passed : AppointmentStatus.Failed;
-            appointment.UpdatedAt = DateTime.UtcNow;
-
-            repo.Update(appointment);
-
-            var drivingRepo = _unitOfWork.Repository<DrivingLicenseApplication>();
-            var drivingApp = await drivingRepo.GetByIdAsync(applicationId);
-
-            if (drivingApp != null)
-            {
-                if (type == AppointmentType.Medical) drivingApp.MedicalExaminationPassed = passed;
-                if (type == AppointmentType.Driving) drivingApp.DrivingTestPassed = passed;
-                drivingRepo.Update(drivingApp);
-            }
-            else
-            {
-                var renewalRepo = _unitOfWork.Repository<RenewalApplication>();
-                var renewal = await renewalRepo.GetByIdAsync(applicationId);
-
-                if (renewal != null && type == AppointmentType.Medical)
-                {
-                    renewal.MedicalExaminationPassed = passed;
-                    renewalRepo.Update(renewal);
-                }
-            }
-
             var serviceRequestRepo = _unitOfWork.Repository<ServiceRequest>();
-            var serviceRequest = (await serviceRequestRepo
-                .FindAsync(sr => sr.RequestNumber == appointment.RequestNumber))
-                .FirstOrDefault();
+            var serviceRequest = await serviceRequestRepo.GetAsync(sr => sr.RequestNumber == requestNumber);
 
-            if (serviceRequest != null)
-            {
-                var relatedAppointments = await repo.FindAsync(a => a.ApplicationId == applicationId);
+            if (serviceRequest == null)
+                throw new AppEx.ValidationException(
+                    $"Service request '{requestNumber}' was not found.",
+                    "SERVICE_REQUEST_NOT_FOUND");
 
-                bool medicalPassed = relatedAppointments.Any(a => a.Type == AppointmentType.Medical && a.Status == AppointmentStatus.Passed);
-                bool drivingPassed = relatedAppointments.Any(a => a.Type == AppointmentType.Driving && a.Status == AppointmentStatus.Passed);
-                bool technicalPassed = relatedAppointments.Any(a => a.Type == AppointmentType.Technical && a.Status == AppointmentStatus.Passed);
+            if (serviceRequest.ReferenceId <= 0)
+                throw new AppEx.ValidationException(
+                    $"Service request '{requestNumber}' is not linked to a valid reference.",
+                    "INVALID_SERVICE_REQUEST_REFERENCE");
 
-                bool allPassed = medicalPassed && drivingPassed && technicalPassed;
+            appointment.Status = passed ? AppointmentStatus.Passed : AppointmentStatus.Failed;
+            appointment.UpdatedAt = now;
+            appointmentRepo.Update(appointment);
 
-                serviceRequest.Status = allPassed ? RequestStatus.Passed : RequestStatus.Pending;
-                serviceRequest.LastUpdatedAt = DateTime.UtcNow;
-                serviceRequestRepo.Update(serviceRequest);
-            }
+            await UpdateApplicationAppointmentResultAsync(serviceRequest, type, passed);
+
+            var requiredTypes = await GetRequiredAppointmentTypesAsync(serviceRequest);
+            var requestAppointments = await appointmentRepo.FindAsync(a => a.RequestNumber == requestNumber);
+
+            var allRequiredPassed = requiredTypes.All(requiredType =>
+                requestAppointments.Any(a =>
+                    a.Type == requiredType &&
+                    a.Status == AppointmentStatus.Passed));
+
+            var anyRequiredFailed = requiredTypes.Any(requiredType =>
+                requestAppointments.Any(a =>
+                    a.Type == requiredType &&
+                    a.Status == AppointmentStatus.Failed));
+
+            serviceRequest.Status = allRequiredPassed
+                ? RequestStatus.Passed
+                : anyRequiredFailed
+                    ? RequestStatus.Failed
+                    : RequestStatus.Pending;
+
+            serviceRequest.LastUpdatedAt = now;
+            serviceRequestRepo.Update(serviceRequest);
 
             await _unitOfWork.CommitAsync();
+        }
+
+        private async Task UpdateApplicationAppointmentResultAsync(
+            ServiceRequest serviceRequest,
+            AppointmentType appointmentType,
+            bool passed)
+        {
+            switch (serviceRequest.ServiceType)
+            {
+                case ServiceType.DrivingLicenseIssue:
+                    await UpdateDrivingLicenseApplicationExamFlagsAsync(serviceRequest.ReferenceId, appointmentType, passed);
+                    return;
+
+                case ServiceType.DrivingLicenseRenewal:
+                case ServiceType.DrivingLicenseUpgrade:
+                    await UpdateDrivingRenewalApplicationExamFlagsAsync(serviceRequest.ReferenceId, appointmentType, passed);
+                    return;
+
+                case ServiceType.VehicleLicenseIssue:
+                case ServiceType.VehicleLicenseRenewal:
+                    await UpdateVehicleLicenseApplicationExamFlagsAsync(serviceRequest.ReferenceId, appointmentType, passed);
+                    return;
+
+                default:
+                    throw new AppEx.ValidationException(
+                        $"Service type '{serviceRequest.ServiceType}' is not supported for appointment updates.",
+                        "UNSUPPORTED_SERVICE_TYPE");
+            }
+        }
+
+        private async Task UpdateDrivingLicenseApplicationExamFlagsAsync(
+            int referenceId,
+            AppointmentType appointmentType,
+            bool passed)
+        {
+            var repo = _unitOfWork.Repository<DrivingLicenseApplication>();
+            var application = await repo.GetByIdAsync(referenceId);
+
+            if (application == null)
+                throw new AppEx.ValidationException("Driving license application not found.", "APPLICATION_NOT_FOUND");
+
+            switch (appointmentType)
+            {
+                case AppointmentType.Medical:
+                    application.MedicalExaminationPassed = passed;
+                    break;
+                case AppointmentType.Driving:
+                    application.DrivingTestPassed = passed;
+                    break;
+                default:
+                    throw new AppEx.ValidationException(
+                        $"Appointment type '{appointmentType}' is not valid for driving license issue.",
+                        "INVALID_APPOINTMENT_TYPE");
+            }
+
+            repo.Update(application);
+        }
+
+        private async Task UpdateDrivingRenewalApplicationExamFlagsAsync(
+            int referenceId,
+            AppointmentType appointmentType,
+            bool passed)
+        {
+            var repo = _unitOfWork.Repository<RenewalApplication>();
+            var application = await repo.GetByIdAsync(referenceId);
+
+            if (application == null)
+                throw new AppEx.ValidationException("Driving license renewal application not found.", "APPLICATION_NOT_FOUND");
+
+            if (appointmentType == AppointmentType.Medical)
+            {
+                application.MedicalExaminationPassed = passed;
+                repo.Update(application);
+                return;
+            }
+
+            if (appointmentType != AppointmentType.Driving)
+            {
+                throw new AppEx.ValidationException(
+                    $"Appointment type '{appointmentType}' is not valid for driving license renewal.",
+                    "INVALID_APPOINTMENT_TYPE");
+            }
+
+            // RenewalApplication currently stores only the medical flag.
+            repo.Update(application);
+        }
+
+        private async Task UpdateVehicleLicenseApplicationExamFlagsAsync(
+            int referenceId,
+            AppointmentType appointmentType,
+            bool passed)
+        {
+            if (appointmentType != AppointmentType.Technical)
+                throw new AppEx.ValidationException(
+                    $"Appointment type '{appointmentType}' is not valid for vehicle license services.",
+                    "INVALID_APPOINTMENT_TYPE");
+
+            var repo = _unitOfWork.Repository<VehicleLicenseApplication>();
+            var application = await repo.GetByIdAsync(referenceId);
+
+            if (application == null)
+                throw new AppEx.ValidationException("Vehicle license application not found.", "APPLICATION_NOT_FOUND");
+
+            application.TechnicalInspectionPassed = passed;
+            repo.Update(application);
+        }
+
+        private async Task<HashSet<AppointmentType>> GetRequiredAppointmentTypesAsync(ServiceRequest serviceRequest)
+        {
+            switch (serviceRequest.ServiceType)
+            {
+                case ServiceType.DrivingLicenseIssue:
+                    return [AppointmentType.Medical, AppointmentType.Driving];
+
+                case ServiceType.DrivingLicenseRenewal:
+                {
+                    var renewalRepo = _unitOfWork.Repository<RenewalApplication>();
+                    var renewal = await renewalRepo.GetByIdAsync(serviceRequest.ReferenceId);
+
+                    if (renewal == null)
+                        throw new AppEx.ValidationException("Driving renewal application not found.", "APPLICATION_NOT_FOUND");
+
+                    var required = new HashSet<AppointmentType> { AppointmentType.Medical };
+                    if (renewal.RequestedCategory != renewal.CurrentCategory)
+                        required.Add(AppointmentType.Driving);
+
+                    return required;
+                }
+
+                case ServiceType.DrivingLicenseUpgrade:
+                    return [AppointmentType.Medical, AppointmentType.Driving];
+
+                case ServiceType.VehicleLicenseIssue:
+                case ServiceType.VehicleLicenseRenewal:
+                    return [AppointmentType.Technical];
+
+                default:
+                {
+                    var appointments = await _unitOfWork.Repository<Appointment>()
+                        .FindAsync(a => a.RequestNumber == serviceRequest.RequestNumber);
+
+                    return appointments
+                        .Where(a => a.Status != AppointmentStatus.Cancelled)
+                        .Select(a => a.Type)
+                        .ToHashSet();
+                }
+            }
         }
 
         private AppointmentDto MapToDto(Appointment appointment)
@@ -493,7 +645,6 @@ namespace Morourak.Application.Services
             return new AppointmentDto
             {
                 RequestNumberRelated = appointment.RequestNumber,
-                RequestNumber = appointment.RequestNumber,
                 ApplicationId = appointment.ApplicationId,
                 Type = appointment.Type,
                 TypeName = typeName,
@@ -584,3 +735,5 @@ namespace Morourak.Application.Services
 
     }
 }
+
+
