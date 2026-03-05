@@ -8,14 +8,16 @@ namespace Morourak.Domain.Entities
     {
         public DrivingLicenseCategory Category { get; set; }
 
-        public string Governorate { get; set; } = null!;
-        public string LicensingUnit { get; set; } = null!;
+        public string Governorate { get; set; } = string.Empty;
+        public string LicensingUnit { get; set; } = string.Empty;
 
         public string PersonalPhotoPath { get; set; } = null!;
         public string EducationalCertificatePath { get; set; } = null!;
         public string IdCardPath { get; set; } = null!;
         public string ResidenceProofPath { get; set; } = null!;
-        public string MedicalCertificatePath { get; set; } = null!;
+
+        public bool MedicalExaminationPassed { get; set; } = false;
+        public bool DrivingTestPassed { get; set; } = false;
 
         public int? DrivingLicenseId { get; set; }
         public DrivingLicense? DrivingLicense { get; set; }
@@ -25,9 +27,5 @@ namespace Morourak.Domain.Entities
 
         public int CitizenRegistryId { get; set; }   
         public CitizenRegistry? Citizen { get; set; }
-
-        public bool DrivingTestPassed { get; set; } = false;
-
-
     }
 }

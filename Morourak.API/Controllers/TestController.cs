@@ -27,12 +27,12 @@ namespace Morourak.API.Controllers
             return Ok("Citizen endpoint accessed");
         }
 
-        // Officer only
-        [Authorize(Roles = "OFFICER")]
-        [HttpGet("officer")]
-        public IActionResult OfficerOnly()
+        // Examinator only
+        [Authorize(Roles = "EXAMINATOR")]
+        [HttpGet("examinator")]
+        public IActionResult ExaminatorOnly()
         {
-            return Ok("Officer endpoint accessed");
+            return Ok("Examinator endpoint accessed");
         }
 
 

@@ -1,5 +1,4 @@
 ﻿using Morourak.Domain.Enums.Appointments;
-using Morourak.Infrastructure.Identity.Seed;
 
 namespace Morourak.Infrastructure.Identity.Constants
 {
@@ -8,9 +7,9 @@ namespace Morourak.Infrastructure.Identity.Constants
         public static readonly Dictionary<string, AppointmentType> Map =
             new()
             {
-            { IdentityRoles.Inspector, AppointmentType.Technical },
-            { IdentityRoles.Officer, AppointmentType.Driving }
+                { AppIdentityConstants.Roles.Inspector, AppointmentType.Technical },
+                { AppIdentityConstants.Roles.Examinator, AppointmentType.Driving },
+                { AppIdentityConstants.Roles.Doctor, AppointmentType.Medical }
             };
     }
-
 }

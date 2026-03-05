@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Morourak.Application.Exceptions;
 using System.Net;
 using System.Net.Mail;
 using System.Threading.Tasks;
@@ -26,11 +27,11 @@ public class TestEmailController : ControllerBase
 
             await client.SendMailAsync(mail);
 
-            return Ok("Email sent successfully!");
+            return Ok(new { IsSuccess = true, Message = "Email sent successfully!" });
         }
         catch (System.Exception ex)
         {
-            return BadRequest($"Error: {ex.Message}");
+            throw new ValidationException(ex.Message);
         }
     }
 }

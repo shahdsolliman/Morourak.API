@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Morourak.Infrastructure.Identity.Constants;
 
 namespace Morourak.Infrastructure.Identity.Seed
 {
@@ -6,12 +7,13 @@ namespace Morourak.Infrastructure.Identity.Seed
     {
         public static async Task SeedAsync(RoleManager<IdentityRole> roleManager)
         {
-            string[] roles =
+            var roles = new[]
             {
-                IdentityRoles.Citizen,
-                IdentityRoles.Doctor,
-                IdentityRoles.Inspector,
-                IdentityRoles.Officer
+                AppIdentityConstants.Roles.Citizen,
+                AppIdentityConstants.Roles.Inspector,
+                AppIdentityConstants.Roles.Examinator,
+                AppIdentityConstants.Roles.Admin,
+                AppIdentityConstants.Roles.Doctor
             };
 
             foreach (var role in roles)

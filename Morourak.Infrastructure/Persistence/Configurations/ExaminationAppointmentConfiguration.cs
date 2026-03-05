@@ -26,5 +26,32 @@ public class ExaminationAppointmentConfiguration
 
         builder.Property(e => e.Status)
                .IsRequired();
+
+        builder.Property(e => e.CitizenNationalId)
+               .IsRequired()
+               .HasMaxLength(14);
+
+        builder.Property(e => e.AssignedToUserId)
+               .HasMaxLength(450); // Matches standard Identity UserId length
+
+        builder.Property(e => e.Notes)
+               .HasMaxLength(1000);
+
+        // ── Location FK relations (added in refactor) ──────────────────────
+        builder.Property(e => e.GovernorateId)
+               .IsRequired();
+
+        builder.Property(e => e.TrafficUnitId)
+               .IsRequired();
+
+        builder.HasOne(e => e.Governorate)
+               .WithMany()
+               .HasForeignKey(e => e.GovernorateId)
+               .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.TrafficUnit)
+               .WithMany()
+               .HasForeignKey(e => e.TrafficUnitId)
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

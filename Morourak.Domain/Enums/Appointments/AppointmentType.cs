@@ -4,8 +4,8 @@ namespace Morourak.Domain.Enums.Appointments
 {
     public enum AppointmentType
     {
-        //[Display(Name = "كشف طبي")]
-        //Medical = 1,
+        [Display(Name = "كشف طبي")]
+        Medical = 1,
 
         [Display(Name = "فحص فني")]
         Technical = 2,

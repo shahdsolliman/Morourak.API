@@ -44,8 +44,8 @@ namespace Morourak.Infrastructure.Persistence.SeedData
                 {
                     NationalId = c.NationalId,
                     MobileNumber = c.MobileNumber,
-                    NameAr = c.NameAr,
-                    FatherFirstNameAr = c.FatherFirstNameAr
+                    FirstName = c.FirstName,
+                    LastName = c.LastName
                 })
                 .ToList();
 

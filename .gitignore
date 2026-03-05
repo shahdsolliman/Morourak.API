@@ -1,4 +1,4 @@
-# Visual Studio temporary files
+# Visual Studio
 .vs/
 *.user
 *.suo
@@ -8,6 +8,7 @@
 # Build folders
 bin/
 obj/
+publish/
 
 # Rider IDE
 .idea/
@@ -17,3 +18,21 @@ obj/
 
 # Node modules (لو في frontend)
 node_modules/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+
+# VS Code
+.vscode/
+
+# Secrets / user-specific config
+appsettings.*.json
+secrets.json
+
+# Runtime / uploads
+wwwroot/uploads/
+
+# EF Core Migrations (لو حابة ما تضيفيش الميجريشن للـ Git)
+Migrations/

@@ -3,6 +3,7 @@ using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Violations;
+using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services
 {
@@ -17,62 +18,90 @@ namespace Morourak.Application.Services
 
         #region Query Operations
 
-        public async Task<ViolationListResponseDto> GetViolationsByLicenseAsync(int licenseId, LicenseType licenseType)
+        public async Task<ViolationListResponseDto> GetViolationsByLicenseNumberAsync(string licenseNumber, LicenseType licenseType)
         {
-            var repo = _unitOfWork.Repository<TrafficViolation>();
+            if (string.IsNullOrWhiteSpace(licenseNumber))
+                throw new AppEx.ValidationException("رقم الرخصة مطلوب.", "LICENSE_NUMBER_REQUIRED");
 
-            var violations = await repo.FindAsync(
-                v => v.RelatedLicenseId == licenseId && v.LicenseType == licenseType,
-                v => v.Citizen);
+            int licenseId;
+            if (licenseType == LicenseType.Vehicle)
+            {
+                var license = await _unitOfWork.Repository<VehicleLicense>()
+                    .FindAsync(l => l.VehicleLicenseNumber == licenseNumber);
+                var first = license.FirstOrDefault();
+                if (first == null)
+                    throw new AppEx.ValidationException("رخصة المركبة غير موجودة.", "VEHICLE_LICENSE_NOT_FOUND");
+                licenseId = first.Id;
+            }
+            else // Driving
+            {
+                var license = await _unitOfWork.Repository<DrivingLicense>()
+                    .FindAsync(l => l.LicenseNumber == licenseNumber);
+                var first = license.FirstOrDefault();
+                if (first == null)
+                    throw new AppEx.ValidationException("رخصة القيادة غير موجودة.", "DRIVING_LICENSE_NOT_FOUND");
+                licenseId = first.Id;
+            }
+
+            var repo = _unitOfWork.Repository<TrafficViolation>();
+            var violations = await repo.FindAsync(v => v.RelatedLicenseId == licenseId && v.LicenseType == licenseType, v => v.Citizen);
 
             var violationDtos = violations
                 .OrderByDescending(v => v.ViolationDateTime)
                 .Select(MapToDto)
                 .ToList();
 
-            var unpaidViolations = violations
-                .Where(v => v.Status != ViolationStatus.Paid && v.IsPayable)
-                .ToList();
+            var unpaid = violations.Where(v => v.Status != ViolationStatus.Paid && v.IsPayable).ToList();
+            var totalPayable = unpaid.Sum(v => v.FineAmount - v.PaidAmount);
 
-            var totalPayable = unpaidViolations.Sum(v => v.FineAmount - v.PaidAmount);
-            var unpaidCount = unpaidViolations.Count;
-
-            string message, messageAr;
-            if (!violations.Any())
-            {
-                message = "No violations found for this license.";
-                messageAr = "لا توجد مخالفات مرورية لهذه الرخصة.";
-            }
-            else if (unpaidCount == 0)
-            {
-                message = "All violations have been paid.";
-                messageAr = "تم سداد جميع المخالفات المرورية.";
-            }
-            else
-            {
-                message = $"{unpaidCount} unpaid violation(s) found. Total payable: {totalPayable:F2} EGP.";
-                messageAr = $"يوجد {unpaidCount} مخالفة غير مدفوعة. إجمالي المبلغ المستحق: {totalPayable:F2} جنيه مصري.";
-            }
+            string messageAr = !violations.Any()
+                ? "لا توجد مخالفات لهذه الرخصة."
+                : unpaid.Count == 0
+                    ? "تم سداد جميع المخالفات."
+                    : $"يوجد {unpaid.Count} مخالفة غير مدفوعة. إجمالي المبلغ المستحق: {totalPayable:F2} جنيه مصري.";
 
             return new ViolationListResponseDto
             {
                 Violations = violationDtos,
                 TotalCount = violations.Count,
-                UnpaidCount = unpaidCount,
+                UnpaidCount = unpaid.Count,
                 TotalPayableAmount = totalPayable,
-                Message = message,
                 MessageAr = messageAr
             };
         }
 
-        public async Task<ViolationDetailsDto> GetViolationDetailsAsync(int violationId)
+        public async Task<ViolationDetailsDto> GetViolationDetailsAsync(string licenseNumber, LicenseType licenseType)
         {
-            var repo = _unitOfWork.Repository<TrafficViolation>();
+            if (string.IsNullOrWhiteSpace(licenseNumber))
+                throw new AppEx.ValidationException("رقم الرخصة مطلوب.", "LICENSE_NUMBER_REQUIRED");
 
-            var violation = await repo.GetByIdAsync(violationId, v => v.Citizen);
+            int licenseId;
+            if (licenseType == LicenseType.Vehicle)
+            {
+                var license = await _unitOfWork.Repository<VehicleLicense>()
+                    .FindAsync(l => l.VehicleLicenseNumber == licenseNumber);
+                var first = license.FirstOrDefault();
+                if (first == null)
+                    throw new AppEx.ValidationException("رخصة المركبة غير موجودة.", "VEHICLE_LICENSE_NOT_FOUND");
+                licenseId = first.Id;
+            }
+            else // Driving
+            {
+                var license = await _unitOfWork.Repository<DrivingLicense>()
+                    .FindAsync(l => l.LicenseNumber == licenseNumber);
+                var first = license.FirstOrDefault();
+                if (first == null)
+                    throw new AppEx.ValidationException("رخصة القيادة غير موجودة.", "DRIVING_LICENSE_NOT_FOUND");
+                licenseId = first.Id;
+            }
+
+            var repo = _unitOfWork.Repository<TrafficViolation>();
+            var violation = (await repo.FindAsync(v => v.RelatedLicenseId == licenseId && v.LicenseType == licenseType, v => v.Citizen))
+                            .OrderByDescending(v => v.ViolationDateTime)
+                            .FirstOrDefault();
 
             if (violation == null)
-                throw new KeyNotFoundException($"Violation with ID {violationId} not found.");
+                throw new AppEx.ValidationException("لا توجد مخالفات لهذه الرخصة.", "VIOLATION_NOT_FOUND");
 
             return MapToDetailsDto(violation);
         }
@@ -87,19 +116,15 @@ namespace Morourak.Application.Services
             var violation = await repo.GetByIdAsync(violationId);
 
             if (violation == null)
-                throw new KeyNotFoundException($"Violation with ID {violationId} not found.");
-
+                throw new AppEx.ValidationException("المخالفة غير موجودة.", "VIOLATION_NOT_FOUND");
             if (!violation.IsPayable)
-                throw new InvalidOperationException("This violation is not payable online.");
-
+                throw new AppEx.ValidationException("هذه المخالفة لا يمكن سدادها عبر الإنترنت.", "VIOLATION_NOT_PAYABLE");
             if (violation.Status == ViolationStatus.Paid)
-                throw new InvalidOperationException("This violation has already been paid.");
+                throw new AppEx.ValidationException("تم سداد هذه المخالفة بالفعل.", "VIOLATION_ALREADY_PAID");
 
             var remaining = violation.FineAmount - violation.PaidAmount;
-
             if (amount > remaining)
-                throw new InvalidOperationException(
-                    $"Payment amount ({amount:F2}) exceeds remaining balance ({remaining:F2}).");
+                throw new AppEx.ValidationException($"المبلغ المدفوع ({amount:F2}) أكبر من المتبقي ({remaining:F2}).", "PAYMENT_EXCEEDS_BALANCE");
 
             violation.PaidAmount += amount;
             violation.Status = violation.PaidAmount >= violation.FineAmount
@@ -115,9 +140,6 @@ namespace Morourak.Application.Services
             return new PaymentResultDto
             {
                 Success = true,
-                Message = violation.Status == ViolationStatus.Paid
-                    ? "Violation paid in full."
-                    : $"Partial payment recorded. Remaining: {newRemaining:F2} EGP.",
                 MessageAr = violation.Status == ViolationStatus.Paid
                     ? "تم سداد المخالفة بالكامل."
                     : $"تم تسجيل دفعة جزئية. المتبقي: {newRemaining:F2} جنيه مصري.",
@@ -136,15 +158,9 @@ namespace Morourak.Application.Services
             foreach (var id in violationIds)
             {
                 var violation = await repo.GetByIdAsync(id);
-
-                if (violation == null)
-                    throw new KeyNotFoundException($"Violation with ID {id} not found.");
-
-                if (!violation.IsPayable)
-                    continue;
-
-                if (violation.Status == ViolationStatus.Paid)
-                    continue;
+                if (violation == null) continue;
+                if (!violation.IsPayable) continue;
+                if (violation.Status == ViolationStatus.Paid) continue;
 
                 var remaining = violation.FineAmount - violation.PaidAmount;
                 violation.PaidAmount = violation.FineAmount;
@@ -161,7 +177,6 @@ namespace Morourak.Application.Services
             return new PaymentResultDto
             {
                 Success = true,
-                Message = $"{paidCount} violation(s) paid. Total: {totalPaid:F2} EGP.",
                 MessageAr = $"تم سداد {paidCount} مخالفة. الإجمالي: {totalPaid:F2} جنيه مصري.",
                 ViolationsPaid = paidCount,
                 TotalAmountPaid = totalPaid,
@@ -169,39 +184,53 @@ namespace Morourak.Application.Services
             };
         }
 
-        public async Task<PaymentResultDto> PayAllViolationsAsync(int licenseId, LicenseType licenseType)
+        public async Task<PaymentResultDto> PayAllViolationsAsync(string licenseNumber, LicenseType licenseType)
         {
-            var repo = _unitOfWork.Repository<TrafficViolation>();
+            if (string.IsNullOrWhiteSpace(licenseNumber))
+                throw new AppEx.ValidationException("رقم الرخصة مطلوب.", "LICENSE_NUMBER_REQUIRED");
 
-            var violations = await repo.FindAsync(
-                v => v.RelatedLicenseId == licenseId
-                     && v.LicenseType == licenseType
-                     && v.Status != ViolationStatus.Paid
-                     && v.IsPayable);
+            int licenseId;
+            if (licenseType == LicenseType.Vehicle)
+            {
+                var license = await _unitOfWork.Repository<VehicleLicense>()
+                    .FindAsync(l => l.VehicleLicenseNumber == licenseNumber);
+                var first = license.FirstOrDefault();
+                if (first == null)
+                    throw new AppEx.ValidationException("رخصة المركبة غير موجودة.", "VEHICLE_LICENSE_NOT_FOUND");
+                licenseId = first.Id;
+            }
+            else
+            {
+                var license = await _unitOfWork.Repository<DrivingLicense>()
+                    .FindAsync(l => l.LicenseNumber == licenseNumber);
+                var first = license.FirstOrDefault();
+                if (first == null)
+                    throw new AppEx.ValidationException("رخصة القيادة غير موجودة.", "DRIVING_LICENSE_NOT_FOUND");
+                licenseId = first.Id;
+            }
+
+            var repo = _unitOfWork.Repository<TrafficViolation>();
+            var violations = await repo.FindAsync(v => v.RelatedLicenseId == licenseId && v.LicenseType == licenseType && v.Status != ViolationStatus.Paid && v.IsPayable);
 
             if (!violations.Any())
-            {
                 return new PaymentResultDto
                 {
                     Success = true,
-                    Message = "No unpaid violations to pay.",
                     MessageAr = "لا توجد مخالفات غير مدفوعة.",
                     ViolationsPaid = 0,
                     TotalAmountPaid = 0,
                     RemainingBalance = 0
                 };
-            }
 
             decimal totalPaid = 0;
-
-            foreach (var violation in violations)
+            foreach (var v in violations)
             {
-                var remaining = violation.FineAmount - violation.PaidAmount;
-                violation.PaidAmount = violation.FineAmount;
-                violation.Status = ViolationStatus.Paid;
-                violation.UpdatedAt = DateTime.UtcNow;
+                var remaining = v.FineAmount - v.PaidAmount;
+                v.PaidAmount = v.FineAmount;
+                v.Status = ViolationStatus.Paid;
+                v.UpdatedAt = DateTime.UtcNow;
 
-                repo.Update(violation);
+                repo.Update(v);
                 totalPaid += remaining;
             }
 
@@ -210,7 +239,6 @@ namespace Morourak.Application.Services
             return new PaymentResultDto
             {
                 Success = true,
-                Message = $"All {violations.Count} violation(s) paid. Total: {totalPaid:F2} EGP.",
                 MessageAr = $"تم سداد جميع المخالفات ({violations.Count} مخالفة). الإجمالي: {totalPaid:F2} جنيه مصري.",
                 ViolationsPaid = violations.Count,
                 TotalAmountPaid = totalPaid,
@@ -247,7 +275,7 @@ namespace Morourak.Application.Services
             {
                 ViolationId = v.Id,
                 ViolationNumber = v.ViolationNumber,
-                CitizenName = v.Citizen?.NameAr ?? "غير معروف",
+                CitizenName = v.Citizen?.FirstName ?? "غير معروف",
                 NationalId = v.Citizen?.NationalId ?? "غير معروف",
                 LicenseType = v.LicenseType.ToString(),
                 LicenseTypeAr = v.LicenseType == LicenseType.Driving ? "رخصة قيادة" : "رخصة مركبة",
@@ -266,32 +294,26 @@ namespace Morourak.Application.Services
             };
         }
 
-        private static string GetStatusArabic(ViolationStatus status)
+        private static string GetStatusArabic(ViolationStatus status) => status switch
         {
-            return status switch
-            {
-                ViolationStatus.Unpaid => "غير مدفوعة",
-                ViolationStatus.PartiallyPaid => "مدفوعة جزئياً",
-                ViolationStatus.Paid => "مدفوعة",
-                _ => "غير معروف"
-            };
-        }
+            ViolationStatus.Unpaid => "غير مدفوعة",
+            ViolationStatus.PartiallyPaid => "مدفوعة جزئياً",
+            ViolationStatus.Paid => "مدفوعة",
+            _ => "غير معروف"
+        };
 
-        private static string GetViolationTypeArabic(Domain.Enums.Violations.ViolationType type)
+        private static string GetViolationTypeArabic(ViolationType type) => type switch
         {
-            return type switch
-            {
-                Domain.Enums.Violations.ViolationType.SpeedLimitExceeded => "تجاوز السرعة القصوى",
-                Domain.Enums.Violations.ViolationType.RedLightViolation => "تجاوز الإشارة الحمراء",
-                Domain.Enums.Violations.ViolationType.SeatBeltViolation => "عدم ربط حزام الأمان",
-                Domain.Enums.Violations.ViolationType.IllegalParking => "وقوف غير قانوني",
-                Domain.Enums.Violations.ViolationType.MobilePhoneUsage => "استخدام الهاتف أثناء القيادة",
-                Domain.Enums.Violations.ViolationType.DrivingWithoutLicense => "القيادة بدون رخصة",
-                Domain.Enums.Violations.ViolationType.ExpiredLicense => "القيادة برخصة منتهية",
-                Domain.Enums.Violations.ViolationType.UnauthorizedModification => "تعديلات غير مصرح بها على المركبة",
-                _ => "مخالفة مرورية"
-            };
-        }
+            ViolationType.SpeedLimitExceeded => "تجاوز السرعة القصوى",
+            ViolationType.RedLightViolation => "تجاوز الإشارة الحمراء",
+            ViolationType.SeatBeltViolation => "عدم ربط حزام الأمان",
+            ViolationType.IllegalParking => "وقوف غير قانوني",
+            ViolationType.MobilePhoneUsage => "استخدام الهاتف أثناء القيادة",
+            ViolationType.DrivingWithoutLicense => "القيادة بدون رخصة",
+            ViolationType.ExpiredLicense => "القيادة برخصة منتهية",
+            ViolationType.UnauthorizedModification => "تعديلات غير مصرح بها على المركبة",
+            _ => "مخالفة مرورية"
+        };
 
         #endregion
     }

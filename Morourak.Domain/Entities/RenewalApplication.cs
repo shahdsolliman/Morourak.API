@@ -17,7 +17,7 @@ namespace Morourak.Domain.Entities
         public DrivingLicenseCategory CurrentCategory { get; set; }
         public DrivingLicenseCategory RequestedCategory { get; set; }
 
-        public string MedicalCertificatePath { get; set; }
+        public bool MedicalExaminationPassed { get; set; } = false;
 
         public LicenseStatus Status { get; set; }
 

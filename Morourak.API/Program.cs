@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Morourak.API.Errors;
 using Morourak.API.Extensions;
 using Morourak.API.Middleware;
+using Morourak.Application.Exceptions;
 using Morourak.Infrastructure.Settings;
 using System.Text.Json.Serialization;
 
@@ -30,8 +33,33 @@ namespace Morourak.API
                     // Support TimeOnly
                     options.JsonSerializerOptions.Converters.Add(
                         new TimeOnlyJsonConverter());
+                })
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    options.InvalidModelStateResponseFactory = context =>
+                    {
+                        var details = context.ModelState
+                            .Where(e => e.Value.Errors.Count > 0)
+                            .SelectMany(x => x.Value.Errors.Select(error => new ErrorDetail
+                            {
+                                Field = x.Key,
+                                Error = error.ErrorMessage
+                            })).ToList();
+
+                        var response = new ApiErrorResponse
+                        {
+                            IsSuccess = false,
+                            ErrorCode = "VALIDATION_ERROR",
+                            Message = "One or more validation errors occurred.",
+                            Details = details,
+                            TraceId = context.HttpContext.TraceIdentifier
+                        };
+
+                        return new BadRequestObjectResult(response);
+                    };
                 });
 
+            builder.Services.AddMemoryCache();
             builder.Services.AddApplicationServices(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddSwaggerServices();

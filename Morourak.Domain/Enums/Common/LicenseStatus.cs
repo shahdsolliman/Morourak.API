@@ -28,5 +28,10 @@ namespace Morourak.Domain.Enums
 
         [Display(Name = " تجديد جاري")]
         PendingRenewal =8,
+
+        [Display(Name = "مسحوبة")]
+        Withdrawn = 9,
+        [Display(Name = "موقوفة")]
+        Suspended = 10
     }
 }

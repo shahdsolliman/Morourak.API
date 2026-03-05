@@ -11,7 +11,6 @@ namespace Morourak.API.DTOs.DrivingLicenses
         public IFormFile PersonalPhoto { get; set; } = null!;
         public IFormFile IdCard { get; set; } = null!;
         public IFormFile ResidenceProof { get; set; } = null!;
-        public IFormFile MedicalCertificate { get; set; } = null!; 
 
         public string Governorate { get; set; } = null!;
         public string LicensingUnit { get; set; } = null!;

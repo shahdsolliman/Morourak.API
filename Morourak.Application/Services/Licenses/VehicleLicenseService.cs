@@ -7,13 +7,18 @@ using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Appointments;
 using Morourak.Domain.Enums.Request;
 using Morourak.Domain.Enums.Vehicles;
+using Morourak.Domain.Enums.Violations;
 using Morourak.Domain.Extensions;
+using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services.Licenses
 {
-    public class VehicleLicenseService : LicenseProcessingService<VehicleLicense, VehicleLicenseApplication>, IVehicleLicenseService
+    public class VehicleLicenseService
+        : LicenseProcessingService<VehicleLicense, VehicleLicenseApplication>,
+          IVehicleLicenseService
     {
         private readonly IRequestNumberGenerator _generator;
+        private readonly IUnitOfWork _unitOfWork;
 
         public VehicleLicenseService(
             IUnitOfWork unitOfWork,
@@ -21,19 +26,31 @@ namespace Morourak.Application.Services.Licenses
             IRequestNumberGenerator generator)
             : base(unitOfWork, serviceRequestService)
         {
+            _unitOfWork = unitOfWork;
             _generator = generator;
         }
 
-        public async Task<VehicleLicenseApplicationDto> UploadInitialDocumentsAsync(string nationalId, UploadVehicleDocsDto dto)
+        #region ================= License Issuance =================
+
+        public async Task<VehicleLicenseApplicationDto> UploadInitialDocumentsAsync(
+            string nationalId,
+            UploadVehicleDocsDto dto)
         {
             var citizen = await GetCitizenAsync(nationalId);
 
             var repo = _unitOfWork.Repository<VehicleLicenseApplication>();
-            var pendingApplication = (await repo.FindAsync(a => a.CitizenRegistryId == citizen.Id && a.Status == LicenseStatus.Pending)).FirstOrDefault();
+
+            // تحقق من وجود طلب معلق لنفس المواطن
+            var pendingApplication = (await repo.FindAsync(a =>
+                a.CitizenRegistryId == citizen.Id &&
+                a.Status == LicenseStatus.Pending)).FirstOrDefault();
 
             if (pendingApplication != null)
-                throw new InvalidOperationException("Citizen already has a pending vehicle license application.");
+                throw new AppEx.ValidationException(
+                    "Citizen already has a pending vehicle license application.",
+                    "APPLICATION_PENDING");
 
+            // إنشاء التطبيق الجديد
             var application = new VehicleLicenseApplication
             {
                 CitizenRegistryId = citizen.Id,
@@ -46,7 +63,9 @@ namespace Morourak.Application.Services.Licenses
                 VehicleDataCertificatePath = await SaveFileAsync(dto.VehicleDataCertificate, "VehicleDataCertificates"),
                 IdCardPath = await SaveFileAsync(dto.IdCard, "IDCards"),
                 InsuranceCertificatePath = await SaveFileAsync(dto.InsuranceCertificate, "InsuranceCertificates"),
-                CustomClearancePath = dto.CustomClearance != null ? await SaveFileAsync(dto.CustomClearance, "CustomClearances") : null,
+                CustomClearancePath = dto.CustomClearance != null
+                    ? await SaveFileAsync(dto.CustomClearance, "CustomClearances")
+                    : null,
                 Status = LicenseStatus.Pending,
                 SubmittedAt = DateTime.UtcNow
             };
@@ -54,6 +73,7 @@ namespace Morourak.Application.Services.Licenses
             await repo.AddAsync(application);
             await _unitOfWork.CommitAsync();
 
+            // إنشاء طلب الخدمة
             var serviceRequest = new ServiceRequest
             {
                 ReferenceId = application.Id,
@@ -81,36 +101,44 @@ namespace Morourak.Application.Services.Licenses
             };
         }
 
-        public async Task<VehicleLicenseApplicationDto> RenewLicenseAsync(string nationalId, UploadVehicleDocsDto dto)
+        #endregion
+
+        #region ================= License Renewal =================
+
+        public async Task<VehicleLicenseApplicationDto> RenewLicenseAsync(
+            string nationalId,
+            UploadVehicleDocsDto dto)
         {
             var citizen = await GetCitizenAsync(nationalId);
 
             var license = await _licenseRepo.GetAsync(
-                l => l.CitizenRegistryId == citizen.Id && 
+                l => l.CitizenRegistryId == citizen.Id &&
                      l.VehicleLicenseNumber == dto.VehicleLicenseNumber);
 
             if (license == null)
-                throw new KeyNotFoundException("Active vehicle license not found for renewal.");
+                throw new AppEx.ValidationException(
+                    "Active vehicle license not found for renewal.",
+                    "LICENSE_NOT_FOUND");
 
-            if (license.Status != LicenseStatus.Active && license.Status != LicenseStatus.Expired)
-                throw new InvalidOperationException("This license is not eligible for renewal.");
-
-            // Check for unpaid violations
-            var unpaidViolations = await _unitOfWork.Repository<VehicleViolation>().FindAsync(v => v.VehicleLicenseId == license.Id && !v.IsPaid);
-            if (unpaidViolations.Any())
-            {
-                throw new InvalidOperationException("يجب سداد جميع المخالفات المرورية قبل إتمام عملية التجديد. برجاء التوجه لخطوة السداد أولاً.");
-            }
+            if (license.Status != LicenseStatus.Active &&
+                license.Status != LicenseStatus.Expired)
+                throw new AppEx.ValidationException(
+                    "This license is not eligible for renewal.",
+                    "LICENSE_NOT_ELIGIBLE");
 
             var repo = _unitOfWork.Repository<VehicleLicenseApplication>();
-            var pendingRenewal = (await repo.FindAsync(a => 
-                a.CitizenRegistryId == citizen.Id && 
+
+            var pendingRenewal = (await repo.FindAsync(a =>
+                a.CitizenRegistryId == citizen.Id &&
                 a.VehicleLicenseId == license.Id &&
                 a.Status == LicenseStatus.Pending)).FirstOrDefault();
 
             if (pendingRenewal != null)
-                throw new InvalidOperationException("A renewal application is already pending for this vehicle.");
+                throw new AppEx.ValidationException(
+                    "There is already a pending renewal request for this vehicle.",
+                    "RENEWAL_PENDING");
 
+            // إنشاء طلب التجديد
             var application = new VehicleLicenseApplication
             {
                 CitizenRegistryId = citizen.Id,
@@ -120,32 +148,18 @@ namespace Morourak.Application.Services.Licenses
                 Model = license.Model,
                 ManufactureYear = license.ManufactureYear,
                 Governorate = dto.Governorate,
-                OwnershipProofPath = license.PlateNumber, // Keep as ref if needed or set null
                 Status = LicenseStatus.Pending,
                 SubmittedAt = DateTime.UtcNow
             };
 
-            // Only save files if they are provided (for first-time issuance or optional renewal docs)
-            if (dto.VehicleDataCertificate != null)
-                application.VehicleDataCertificatePath = await SaveFileAsync(dto.VehicleDataCertificate, "VehicleDataCertificates");
-            
-            if (dto.IdCard != null)
-                application.IdCardPath = await SaveFileAsync(dto.IdCard, "IDCards");
-
-            if (dto.InsuranceCertificate != null)
-                application.InsuranceCertificatePath = await SaveFileAsync(dto.InsuranceCertificate, "InsuranceCertificates");
-
-            if (dto.OwnershipProof != null)
-                application.OwnershipProofPath = await SaveFileAsync(dto.OwnershipProof, "OwnershipProofs");
-
             await repo.AddAsync(application);
-            
-            // Mark license as pending renewal
+
+            // تحديث حالة الرخصة بأنها في تجديد
             license.IsPendingRenewal = true;
             _licenseRepo.Update(license);
-
             await _unitOfWork.CommitAsync();
 
+            // إنشاء طلب الخدمة
             var serviceRequest = new ServiceRequest
             {
                 ReferenceId = application.Id,
@@ -173,83 +187,80 @@ namespace Morourak.Application.Services.Licenses
             };
         }
 
-        public async Task<VehicleLicenseResponseDto> FinalizeRenewalAsync(string requestNumber, string nationalId, DeliveryInfoDto delivery)
+        #endregion
+
+        #region ================= Finalize License / Renewal =================
+
+        public async Task<VehicleLicenseResponseDto> FinalizeLicenseAsync(
+            string requestNumber,
+            string nationalId,
+            DeliveryInfoDto delivery)
         {
-             var citizen = await GetCitizenAsync(nationalId);
-            
-            var serviceRequest = (await _unitOfWork.Repository<ServiceRequest>()
-                .FindAsync(r => r.RequestNumber == requestNumber && r.CitizenNationalId == nationalId && r.ServiceType == ServiceType.VehicleLicenseRenewal))
-                .FirstOrDefault();
-
-            if (serviceRequest == null)
-                throw new InvalidOperationException("Renewal service request not found.");
-
-            var application = await _unitOfWork.Repository<VehicleLicenseApplication>().GetAsync(a => a.Id == serviceRequest.ReferenceId);
-            if (application == null) throw new KeyNotFoundException("Application not found.");
-
-            var license = await _licenseRepo.GetAsync(l => l.Id == application.VehicleLicenseId);
-            if (license == null) throw new KeyNotFoundException("License not found for renewal.");
-
-            // Final check for unpaid violations before completing renewal
-            var unpaidViolations = await _unitOfWork.Repository<VehicleViolation>().FindAsync(v => v.VehicleLicenseId == license.Id && !v.IsPaid);
-            if (unpaidViolations.Any())
-            {
-                throw new InvalidOperationException("يجب سداد جميع المخالفات المرورية قبل إتمام عملية التجديد.");
-            }
-
-            // Check Technical Inspection
-            var appointments = await _examRepo.FindAsync(a => a.ApplicationId == application.Id);
-            var techInspection = appointments.FirstOrDefault(a => a.Type == AppointmentType.Technical);
-
-            if (techInspection == null)
-                throw new InvalidOperationException("Technical inspection appointment has not been scheduled for renewal.");
-            if (techInspection.Status != AppointmentStatus.Passed)
-                throw new InvalidOperationException("Technical inspection must be passed before finalizing renewal.");
-
-            // Update License
-            license.IssueDate = DateTime.UtcNow;
-            license.ExpiryDate = DateTime.UtcNow.AddYears(1); // Renew for 1 year
-            license.IsPendingRenewal = false;
-            license.Governorate = application.Governorate;
-            license.DeliveryMethod = delivery.Method;
-
-            DeliveryFactory.ApplyDelivery(license, delivery);
-
-            _licenseRepo.Update(license);
-            
-            application.Status = LicenseStatus.Completed;
-            serviceRequest.Status = RequestStatus.Completed;
-            serviceRequest.LastUpdatedAt = DateTime.UtcNow;
-            
-            await _unitOfWork.CommitAsync();
-
-            return await MapToDtoAsync(license);
+            return await FinalizeVehicleLicenseInternal(requestNumber, nationalId, delivery, isRenewal: false);
         }
 
-        public async Task<VehicleLicenseResponseDto> FinalizeLicenseAsync(string requestNumber, string nationalId, DeliveryInfoDto delivery)
+        public async Task<VehicleLicenseResponseDto> FinalizeRenewalAsync(
+            string requestNumber,
+            string nationalId,
+            DeliveryInfoDto delivery)
+        {
+            return await FinalizeVehicleLicenseInternal(requestNumber, nationalId, delivery, isRenewal: true);
+        }
+
+        private async Task<VehicleLicenseResponseDto> FinalizeVehicleLicenseInternal(
+            string requestNumber,
+            string nationalId,
+            DeliveryInfoDto delivery,
+            bool isRenewal)
         {
             var citizen = await GetCitizenAsync(nationalId);
-            
+
             var serviceRequest = (await _unitOfWork.Repository<ServiceRequest>()
                 .FindAsync(r => r.RequestNumber == requestNumber && r.CitizenNationalId == nationalId))
                 .FirstOrDefault();
 
             if (serviceRequest == null)
-                throw new InvalidOperationException("Service request not found.");
+                throw new AppEx.ValidationException(
+                    "Service request not found.",
+                    "REQUEST_NOT_FOUND");
 
-            var application = await _unitOfWork.Repository<VehicleLicenseApplication>().GetAsync(a => a.Id == serviceRequest.ReferenceId);
-            if (application == null) throw new KeyNotFoundException("Application not found.");
+            var application = await _unitOfWork.Repository<VehicleLicenseApplication>()
+                .GetAsync(a => a.Id == serviceRequest.ReferenceId);
+            if (application == null)
+                throw new AppEx.ValidationException(
+                    "Vehicle license application not found.",
+                    "APPLICATION_NOT_FOUND");
 
-            // Check Technical Inspection
+            // التحقق من المخالفات
+            var violationService = new TrafficViolationService(_unitOfWork);
+            var licenseNumber = application.VehicleLicenseId != null
+                ? (await _licenseRepo.GetAsync(l => l.Id == application.VehicleLicenseId.Value)).VehicleLicenseNumber
+                : "";
+
+            var unpaidViolations = (await violationService.GetViolationsByLicenseNumberAsync(
+                    licenseNumber, LicenseType.Vehicle))
+                .Violations
+                .Where(v => v.Status != "مدفوعة")
+                .ToList();
+
+            if (unpaidViolations.Any())
+                throw new AppEx.ValidationException(
+                    $"All traffic violations must be paid before finalizing {(isRenewal ? "renewal" : "issuance")} of license. Unpaid violations: {unpaidViolations.Count}",
+                    "UNPAID_VIOLATIONS");
+
+            // التحقق من الفحص الفني
             var appointments = await _examRepo.FindAsync(a => a.ApplicationId == application.Id);
             var techInspection = appointments.FirstOrDefault(a => a.Type == AppointmentType.Technical);
 
             if (techInspection == null)
-                throw new InvalidOperationException("Technical inspection appointment has not been scheduled.");
+                throw new AppEx.ValidationException(
+                    "Technical inspection not scheduled.",
+                    "INSPECTION_NOT_SCHEDULED");
             if (techInspection.Status != AppointmentStatus.Passed)
-                throw new InvalidOperationException("Technical inspection must be passed before finalizing license.");
+                throw new AppEx.ValidationException(
+                    "Technical inspection must be passed before finalizing license.",
+                    "INSPECTION_NOT_PASSED");
 
-            // Generate License
             var newLicenseNumber = await GenerateVehicleLicenseNumberAsync();
             var plateNumber = await GeneratePlateNumberAsync();
 
@@ -265,27 +276,174 @@ namespace Morourak.Application.Services.Licenses
                 Governorate = application.Governorate,
                 IssueDate = DateTime.UtcNow,
                 ExpiryDate = DateTime.UtcNow.AddYears(1),
-                ChassisNumber = "CH-" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper(),
-                EngineNumber = "EN-" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper(),
-                DeliveryMethod = delivery.Method,
-                Citizen = citizen // Link for tracking
+                DeliveryMethod = delivery.Method
             };
 
             DeliveryFactory.ApplyDelivery(newLicense, delivery);
-
             await _licenseRepo.AddAsync(newLicense);
-            
+
             application.Status = LicenseStatus.Completed;
             serviceRequest.Status = RequestStatus.Completed;
-            
+
             await _unitOfWork.CommitAsync();
 
             return await MapToDtoAsync(newLicense);
         }
 
+        #endregion
+
+        #region ================= Replacement =================
+
+        public async Task<VehicleLicenseResponseDto> IssueReplacementAsync(
+            string nationalId,
+            string vehicleLicenseNumber,
+            string replacementType,
+            DeliveryInfoDto delivery)
+        {
+            var citizen = await GetCitizenAsync(nationalId);
+
+            var oldLicense = await _licenseRepo.GetAsync(
+                l => l.CitizenRegistryId == citizen.Id &&
+                     l.VehicleLicenseNumber == vehicleLicenseNumber);
+
+            if (oldLicense == null)
+                throw new AppEx.ValidationException("Vehicle license not found.", "LICENSE_NOT_FOUND");
+
+            if (oldLicense.Status != LicenseStatus.Active)
+                throw new AppEx.ValidationException("Only active licenses can be replaced.", "LICENSE_NOT_ELIGIBLE");
+
+            var normalizedType = replacementType.Trim().ToLower();
+            var serviceType = normalizedType switch
+            {
+                "lost" => ServiceType.VehicleLicenseReplacementLost,
+                "damaged" => ServiceType.VehicleLicenseReplacementDamaged,
+                _ => throw new AppEx.ValidationException(
+                    "Replacement type must be 'lost' or 'damaged'.",
+                    "INVALID_REPLACEMENT_TYPE")
+            };
+
+            oldLicense.IsReplaced = true;
+            _licenseRepo.Update(oldLicense);
+
+            var allVL = await _licenseRepo.FindAsync(l => l.VehicleLicenseNumber.StartsWith("VL"));
+            var lastLicense = allVL
+                .OrderByDescending(l => l.VehicleLicenseNumber)
+                .FirstOrDefault();
+
+            long nextNumber = 200001;
+            if (lastLicense != null)
+            {
+                var parts = lastLicense.VehicleLicenseNumber.Split('-');
+                if (parts.Length == 2 && long.TryParse(parts[1], out long lastNum))
+                    nextNumber = lastNum + 1;
+            }
+
+            var newLicense = new VehicleLicense
+            {
+                CitizenRegistryId = citizen.Id,
+                VehicleLicenseNumber = $"VL-{nextNumber}",
+                VehicleType = oldLicense.VehicleType,
+                Brand = oldLicense.Brand,
+                Model = oldLicense.Model,
+                ManufactureYear = oldLicense.ManufactureYear,
+                Governorate = oldLicense.Governorate,
+                IssueDate = DateTime.UtcNow,
+                ExpiryDate = oldLicense.ExpiryDate,
+                DeliveryMethod = delivery.Method,
+                IsReplaced = false
+            };
+
+            DeliveryFactory.ApplyDelivery(newLicense, delivery);
+
+            var violations = await _unitOfWork.Repository<TrafficViolation>()
+                .FindAsync(v => v.RelatedLicenseId == oldLicense.Id);
+            foreach (var v in violations)
+                v.RelatedLicenseId = newLicense.Id;
+
+            await _licenseRepo.AddAsync(newLicense);
+            await _unitOfWork.CommitAsync();
+
+            var serviceRequest = new ServiceRequest
+            {
+                ReferenceId = newLicense.Id,
+                ServiceType = serviceType,
+                Status = RequestStatus.Completed,
+                CitizenNationalId = citizen.NationalId,
+                RequestNumber = await _generator.GenerateAsync(serviceType),
+                SubmittedAt = DateTime.UtcNow,
+                LastUpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<ServiceRequest>().AddAsync(serviceRequest);
+            await _unitOfWork.CommitAsync();
+
+            return await MapToDtoAsync(newLicense);
+        }
+
+        #endregion
+
+        #region ================= Helpers =================
+
+        private async Task<string> GenerateVehicleLicenseNumberAsync()
+        {
+            var lastLicense = (await _licenseRepo.GetAllAsync())
+                .OrderByDescending(l => l.Id)
+                .FirstOrDefault();
+
+            long nextNumber = 200001;
+            if (lastLicense != null && !string.IsNullOrEmpty(lastLicense.VehicleLicenseNumber))
+            {
+                var parts = lastLicense.VehicleLicenseNumber.Split('-');
+                if (parts.Length > 1 && long.TryParse(parts.Last(), out var parsed))
+                    nextNumber = parsed + 1;
+            }
+
+            return $"VL-{nextNumber}";
+        }
+
+        private async Task<string> GeneratePlateNumberAsync()
+        {
+            return await Task.FromResult("ABC-" + new Random().Next(1000, 9999));
+        }
+
+        private async Task<VehicleLicenseResponseDto> MapToDtoAsync(VehicleLicense license)
+        {
+            var citizen = license.Citizen ?? await _citizenRepo.GetAsync(c => c.Id == license.CitizenRegistryId);
+
+            return new VehicleLicenseResponseDto
+            {
+                Id = license.Id,
+                VehicleLicenseNumber = license.VehicleLicenseNumber,
+                PlateNumber = license.PlateNumber,
+                VehicleType = license.VehicleType.GetDisplayName(),
+                Brand = license.Brand,
+                Model = license.Model,
+                ManufactureYear = license.ManufactureYear,
+                Status = license.Status.GetDisplayName(),
+                Governorate = license.Governorate,
+                IssueDate = license.IssueDate,
+                ExpiryDate = license.ExpiryDate,
+                CitizenNationalId = citizen?.NationalId ?? "",
+                CitizenName = citizen != null ? $"{citizen.FirstName} {citizen.LastName}".Trim() : ""
+            };
+        }
+
+        #endregion
+
+        #region Interface Implementations
+
+        public async Task<VehicleLicenseApplication?> GetApplicationByIdAsync(int id, string nationalId)
+        {
+            var citizen = await GetCitizenAsync(nationalId);
+
+            return await _unitOfWork.Repository<VehicleLicenseApplication>()
+                .GetAsync(a => a.Id == id && a.CitizenRegistryId == citizen.Id);
+        }
+
         public async Task<IEnumerable<VehicleLicenseDto>> GetAllLicensesByCitizenAsync(string nationalId)
         {
             var citizen = await GetCitizenAsync(nationalId);
+
             var licenses = await _licenseRepo.FindAsync(l => l.CitizenRegistryId == citizen.Id);
 
             return licenses.Select(l => new VehicleLicenseDto
@@ -293,7 +451,7 @@ namespace Morourak.Application.Services.Licenses
                 Id = l.Id,
                 VehicleLicenseNumber = l.VehicleLicenseNumber,
                 PlateNumber = l.PlateNumber,
-                VehicleType = l.VehicleType.ToString(),
+                VehicleType = l.VehicleType.GetDisplayName(),
                 Brand = l.Brand,
                 Model = l.Model,
                 ManufactureYear = l.ManufactureYear,
@@ -301,14 +459,14 @@ namespace Morourak.Application.Services.Licenses
                 Governorate = l.Governorate,
                 IssueDate = l.IssueDate,
                 ExpiryDate = l.ExpiryDate,
-                CitizenNationalId = nationalId
+                CitizenNationalId = citizen.NationalId
             });
         }
 
         public async Task<IEnumerable<VehicleTypeDetailDto>> GetVehicleTypesAsync()
         {
             var entities = await _unitOfWork.Repository<VehicleTypeEntity>().GetAllAsync();
-            
+
             return entities.GroupBy(e => e.VehicleType)
                 .Select(typeGroup => new VehicleTypeDetailDto
                 {
@@ -327,146 +485,6 @@ namespace Morourak.Application.Services.Licenses
                             }).ToList()
                         }).ToList()
                 });
-        }
-
-        public async Task<IEnumerable<VehicleViolationDto>> GetVehicleViolationsAsync(int vehicleLicenseId)
-        {
-            var violations = await _unitOfWork.Repository<VehicleViolation>().FindAsync(v => v.VehicleLicenseId == vehicleLicenseId);
-            return violations.Select(v => new VehicleViolationDto
-            {
-                Id = v.Id,
-                ViolationDate = v.ViolationDate,
-                ViolationType = v.ViolationType,
-                Amount = v.Amount,
-                Description = v.Description,
-                IsPaid = v.IsPaid
-            });
-        }
-
-        public async Task<VehicleLicenseApplication?> GetApplicationByIdAsync(int id, string nationalId)
-        {
-            var citizen = await GetCitizenAsync(nationalId);
-            return await _unitOfWork.Repository<VehicleLicenseApplication>().GetAsync(a => a.Id == id && a.CitizenRegistryId == citizen.Id);
-        }
-
-        public async Task<VehicleLicenseResponseDto> IssueReplacementAsync(
-            string nationalId,
-            string vehicleLicenseNumber,
-            string replacementType,
-            DeliveryInfoDto delivery)
-        {
-            var citizen = await GetCitizenAsync(nationalId);
-
-            var oldLicense = await _licenseRepo.GetAsync(
-                l => l.CitizenRegistryId == citizen.Id &&
-                     l.VehicleLicenseNumber == vehicleLicenseNumber);
-
-            if (oldLicense == null)
-                throw new KeyNotFoundException("Vehicle license not found");
-
-            if (oldLicense.Status != LicenseStatus.Active)
-                throw new InvalidOperationException("Only active vehicle licenses can be replaced.");
-
-            // Determine Service Type
-            var normalizedType = replacementType.Trim().ToLower();
-            var serviceType = normalizedType switch
-            {
-                "lost" => ServiceType.VehicleLicenseReplacementLost,
-                "damaged" => ServiceType.VehicleLicenseReplacementDamaged,
-                _ => throw new InvalidOperationException("Replacement type must be 'lost' or 'damaged'")
-            };
-
-            // Update Old License
-            oldLicense.IsReplaced = true;
-            _licenseRepo.Update(oldLicense);
-
-            // Create New License
-            var newLicenseNumber = await GenerateVehicleLicenseNumberAsync();
-            var plateNumber = await GeneratePlateNumberAsync();
-
-            var newLicense = new VehicleLicense
-            {
-                CitizenRegistryId = citizen.Id,
-                VehicleLicenseNumber = newLicenseNumber,
-                PlateNumber = plateNumber,
-                VehicleType = oldLicense.VehicleType,
-                Brand = oldLicense.Brand,
-                Model = oldLicense.Model,
-                ManufactureYear = oldLicense.ManufactureYear,
-                Governorate = oldLicense.Governorate,
-                IssueDate = DateTime.UtcNow,
-                ExpiryDate = oldLicense.ExpiryDate,
-                ChassisNumber = oldLicense.ChassisNumber,
-                EngineNumber = oldLicense.EngineNumber,
-                DeliveryMethod = delivery.Method,
-                Citizen = citizen
-            };
-
-            DeliveryFactory.ApplyDelivery(newLicense, delivery);
-
-            await _licenseRepo.AddAsync(newLicense);
-            await _unitOfWork.CommitAsync();
-
-            // Create Service Request
-            await CreateServiceRequestAsync(
-                newLicense.Id,
-                serviceType,
-                RequestStatus.Completed,
-                nationalId
-            );
-
-            return await MapToDtoAsync(newLicense);
-        }
-
-        #region Helpers
-
-        private async Task<string> GenerateVehicleLicenseNumberAsync()
-        {
-             var lastLicenseList = (await _licenseRepo.GetAllAsync());
-             var lastLicense = lastLicenseList
-                .OrderByDescending(l => l.Id)
-                .FirstOrDefault();
-
-            long nextNumber = 200001;
-            if (lastLicense != null && !string.IsNullOrEmpty(lastLicense.VehicleLicenseNumber))
-            {
-                var parts = lastLicense.VehicleLicenseNumber.Split('-');
-                if (parts.Length > 1 && long.TryParse(parts.Last(), out var parsed))
-                {
-                    nextNumber = parsed + 1;
-                }
-            }
-            return $"VL-{nextNumber}";
-        }
-
-        private async Task<string> GeneratePlateNumberAsync()
-        {
-            // Just for demonstration, making it async-compliant for future expansions
-            return await Task.FromResult("ABC-" + new Random().Next(1000, 9999));
-        }
-
-        private async Task<VehicleLicenseResponseDto> MapToDtoAsync(VehicleLicense license)
-        {
-            var citizen = license.Citizen ?? await _citizenRepo.GetAsync(c => c.Id == license.CitizenRegistryId);
-            var violations = await GetVehicleViolationsAsync(license.Id);
-
-            return new VehicleLicenseResponseDto
-            {
-                Id = license.Id,
-                VehicleLicenseNumber = license.VehicleLicenseNumber,
-                PlateNumber = license.PlateNumber,
-                VehicleType = license.VehicleType.GetDisplayName(),
-                Brand = license.Brand,
-                Model = license.Model,
-                ManufactureYear = license.ManufactureYear,
-                Status = license.Status.GetDisplayName(),
-                Governorate = license.Governorate,
-                IssueDate = license.IssueDate,
-                ExpiryDate = license.ExpiryDate,
-                CitizenNationalId = citizen?.NationalId ?? "",
-                CitizenName = citizen != null ? $"{citizen.NameAr} {citizen.FatherFirstNameAr}".Trim() : "",
-                Violations = violations.ToList()
-            };
         }
 
         #endregion

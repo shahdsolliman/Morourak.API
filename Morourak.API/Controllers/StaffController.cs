@@ -1,62 +1,100 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Morourak.Application.DTOs.Appointments;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Enums.Appointments;
-using Morourak.Infrastructure.Identity.Seed;
+using Morourak.Infrastructure.Identity.Constants;
+using System;
 using System.Security.Claims;
+using AppEx = Morourak.Application.Exceptions;
 
-[Authorize(Roles = $"{IdentityRoles.Inspector},{IdentityRoles.Officer}")]
-[ApiController]
-[Route("api/staff/examinations")]
-public class StaffController : ControllerBase
+namespace Morourak.API.Controllers
 {
-    private readonly IAppointmentService _service;
-
-    private static readonly Dictionary<string, AppointmentType> RoleTypeMap = new()
+    [Authorize(Roles = $"{AppIdentityConstants.Roles.Inspector},{AppIdentityConstants.Roles.Examinator},{AppIdentityConstants.Roles.Doctor}")]
+    [ApiController]
+    [Route("api/staff/examinations")]
+    public class StaffController : ControllerBase
     {
-        { IdentityRoles.Inspector, AppointmentType.Technical },
-        { IdentityRoles.Officer, AppointmentType.Driving }
-    };
+        private readonly IAppointmentService _service;
 
-    public StaffController(IAppointmentService service)
-    {
-        _service = service;
+        private static readonly Dictionary<string, AppointmentType> RoleTypeMap = new()
+        {
+            { AppIdentityConstants.Roles.Inspector, AppointmentType.Technical },
+            { AppIdentityConstants.Roles.Examinator, AppointmentType.Driving },
+            { AppIdentityConstants.Roles.Doctor, AppointmentType.Medical }
+        };
+
+        public StaffController(IAppointmentService service)
+        {
+            _service = service;
+        }
+
+        // ================= Get Appointments For Logged-in Staff =================
+        [HttpGet]
+        public async Task<IActionResult> Get()
+        {
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(role) || !RoleTypeMap.ContainsKey(role))
+                throw new AppEx.ValidationException(
+                    "You are not authorized to access staff examinations.",
+                    "AUTHZ_ERROR"
+                );
+            role = role.ToUpperInvariant();
+
+
+            var appointments = await _service.GetByRoleAsync(role, userId);
+
+            return Ok(new
+            {
+                IsSuccess = true,
+                Count = appointments.Count(),
+                Data = appointments
+            });
+        }
+
+        // ================= Submit Examination Result =================
+        [HttpPost("submit")]
+        public async Task<IActionResult> Submit([FromBody] SubmitResultDto dto)
+        {
+            if (dto == null)
+                throw new AppEx.ValidationException("Request body is required.", "BODY_MISSING");
+
+            var role = User.FindFirstValue(ClaimTypes.Role);
+
+            if (string.IsNullOrEmpty(role) || !RoleTypeMap.ContainsKey(role))
+                throw new AppEx.ValidationException(
+                    "You are not authorized to submit examination results.",
+                    "AUTHZ_ERROR"
+                );
+
+            // Role determines appointment type (cannot be overridden by client)
+            var appointmentType = RoleTypeMap[role];
+
+            var staffUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            await _service.UpdateStatusAsync(
+                dto.ApplicationId,
+                appointmentType,
+                dto.Passed,
+                dto.Notes,
+                staffUserId
+            );
+
+            return Ok(new
+            {
+                IsSuccess = true,
+                Message = dto.Passed ? "Examination marked as PASSED." : "Examination marked as FAILED.",
+                ApplicationId = dto.ApplicationId
+            });
+        }
     }
 
-    [HttpGet]
-    public async Task<IActionResult> Get()
+    // ================= DTO =================
+    public class SubmitResultDto
     {
-        var roleClaim = User.FindFirst(ClaimTypes.Role);
-        if (roleClaim == null)
-            return Unauthorized(new { message = "User role is missing." });
-
-        if (!RoleTypeMap.TryGetValue(roleClaim.Value, out var type))
-            return Forbid();
-
-        var appointments = await _service.GetAppointmentsByTypeAsync(type);
-
-        return Ok(appointments ?? new List<AppointmentDto>());
-    }
-
-    [HttpPut("{requestNumber}/status")]
-    public async Task<IActionResult> UpdateStatus(string requestNumber, [FromBody] UpdateExaminationStatusDto dto)
-    {
-        if (dto == null) return BadRequest(new { message = "Request body is required." });
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
-
-        try
-        {
-            await _service.UpdateStatusAsync(requestNumber, dto.NewStatus);
-            return Ok(new { message = "Appointment status updated successfully.", requestNumber, newStatus = dto.NewStatus.ToString() });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An unexpected error occurred while updating appointment status." });
-        }
+        public int ApplicationId { get; set; }
+        public bool Passed { get; set; }
+        public string? Notes { get; set; }
     }
 }

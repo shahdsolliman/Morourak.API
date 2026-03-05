@@ -1,10 +1,18 @@
-﻿
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-public class ResetPasswordDto
+namespace Morourak.Application.DTOs.Auth
 {
-    [Required] public string Email { get; set; } = null!;
-    [Required] public string Code { get; set; } = null!;
-    [Required] public string NewPassword { get; set; } = null!;
-    [Required] public string ConfirmPassword { get; set; } = null!;
+    public class ResetPasswordDto
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = null!;
+
+        [Required]
+        public string Code { get; set; } = null!;
+
+        [Required]
+        [MinLength(6)]
+        public string NewPassword { get; set; } = null!;
+    }
 }

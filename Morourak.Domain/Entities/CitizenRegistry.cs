@@ -32,13 +32,13 @@
         /// Citizen full name in Arabic.
         /// Used for display and demo purposes.
         /// </summary>
-        public string NameAr { get; set; } = null!;
+        public string FirstName { get; set; } = null!;
 
         /// <summary>
         /// Father's first name in Arabic.
         /// Often used for governmental identity verification.
         /// </summary>
-        public string FatherFirstNameAr { get; set; } = null!;
+        public string LastName { get; set; } = null!;
 
         /// <summary>
         /// Navigation property: All vehicle licenses of this citizen.

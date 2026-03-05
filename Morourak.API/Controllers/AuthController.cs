@@ -1,12 +1,14 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Morourak.Application.DTOs.Auth;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Infrastructure.Identity;
-using Morourak.Infrastructure.Identity.Seed;
+using Morourak.Infrastructure.Identity.Constants;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Morourak.API.Controllers
@@ -32,34 +34,43 @@ namespace Morourak.API.Controllers
             _otpService = otpService;
         }
 
-        // =========================
-        // REGISTER (CREATE USER + SEND OTP)
-        // =========================
+        // ================= REGISTER =================
+
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Invalid registration data." });
+            var matchResult = await _citizenRegistryService.ValidateFullMatchAsync(
+                request.NationalId,
+                request.FirstName,
+                request.LastName,
+                request.MobileNumber);
 
-            // Validate citizen registry
-            var validationResult = await _citizenRegistryService.ValidateAsync(request.NationalId, request.MobileNumber);
-            if (!validationResult.IsValid)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = validationResult.Message });
+            if (!matchResult.IsMatch)
+                return BadRequest(new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = matchResult.Message
+                });
 
-            // Check email uniqueness
             if (await _userManager.FindByEmailAsync(request.Email) != null)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Email already exists." });
+                return Conflict(new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "Email already exists."
+                });
 
-            // Check National ID uniqueness
             if (_userManager.Users.Any(u => u.NationalId == request.NationalId))
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "An account already exists for this National ID." });
+                return Conflict(new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "An account already exists for this National ID."
+                });
 
-            // Create user directly with IsVerified = false
             var user = new ApplicationUser
             {
                 UserName = request.Username,
                 Email = request.Email,
-                PhoneNumber = request.MobileNumber,
+                PhoneNumber = NormalizePhoneNumber(request.MobileNumber),
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 NationalId = request.NationalId,
@@ -67,136 +78,194 @@ namespace Morourak.API.Controllers
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
+
             if (!result.Succeeded)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) });
+                return BadRequest(new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "User creation failed."
+                });
 
-            await _userManager.AddToRoleAsync(user, IdentityRoles.Citizen);
+            await _userManager.AddToRoleAsync(user, AppIdentityConstants.Roles.Citizen);
+            await _otpService.GenerateAndSendAsync(user.Email!, OtpType.Register);
 
-            // Generate OTP and send email
-
-            await _otpService.GenerateAndSendAsync(user.Email, OtpType.Register);
-
-
-            return Ok(new AuthResponseDto { IsSuccess = true, Message = "Verification code sent to your email." });
+            return Ok(new AuthResponseDto
+            {
+                IsSuccess = true,
+                Message = "Verification code sent to your email."
+            });
         }
 
-        // =========================
-        // VERIFY OTP (ACTIVATE ACCOUNT)
-        // =========================
+        // ================= VERIFY OTP =================
+
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "User not found." });
+            if (user == null) return Unauthorized();
 
             var isValid = await _otpService.ValidateAsync(dto.Email, dto.Code);
-
-            if (!isValid)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Invalid or expired verification code." });
+            if (!isValid) return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Invalid code" });
 
             user.IsVerified = true;
             await _userManager.UpdateAsync(user);
 
-            return Ok(new AuthResponseDto { IsSuccess = true, Message = "User verified successfully." });
+            return Ok(new AuthResponseDto { IsSuccess = true, Message = "Account verified successfully." });
         }
 
+        // ================= LOGIN =================
 
-        // =========================
-        // LOGIN
-        // =========================
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new LoginResponseDto { IsSuccess = false, Message = "Invalid login data." });
+            var mobileNumber = NormalizePhoneNumber(request.MobileNumber);
 
-            var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == request.PhoneNumber);
+            var user = _userManager.Users.FirstOrDefault(u => u.PhoneNumber == mobileNumber);
 
-            if (user == null || !user.IsVerified)
-                return Unauthorized(new LoginResponseDto { IsSuccess = false, Message = "Invalid phone number or account not verified." });
+            if (user == null || user.IsDeleted)
+                return Unauthorized(new AuthResponseDto { IsSuccess = false, Message = "Invalid credentials" });
 
-            var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-            if (!passwordValid)
-                return Unauthorized(new LoginResponseDto { IsSuccess = false, Message = "Invalid phone number or password." });
+            if (!await _userManager.CheckPasswordAsync(user, request.Password))
+                return Unauthorized(new AuthResponseDto { IsSuccess = false, Message = "Invalid credentials" });
 
+            if (!user.IsVerified)
+                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Account not verified" });
+
+            var response = await CreateTokenResponse(user);
+            response.Message = "Login successful";
+
+            return Ok(response);
+        }
+
+        // ================= REFRESH TOKEN =================
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto dto)
+        {
+            var user = _userManager.Users.FirstOrDefault(u => u.RefreshToken == dto.RefreshToken);
+
+            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                return Unauthorized(new AuthResponseDto { IsSuccess = false, Message = "Invalid refresh token" });
+
+            var response = await CreateTokenResponse(user);
+            return Ok(response);
+        }
+
+        // ================= FORGOT PASSWORD (FROM TOKEN) =================
+
+        [Authorize]
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword()
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (email == null) return Unauthorized();
+
+            await _otpService.GenerateAndSendAsync(email, OtpType.ResetPassword);
+
+            return Ok(new AuthResponseDto
+            {
+                IsSuccess = true,
+                Message = "Password reset code sent to your email."
+            });
+        }
+
+        // ================= RESET PASSWORD (FROM TOKEN) =================
+
+        [Authorize]
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (email == null) return Unauthorized();
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return Unauthorized();
+
+            var isValid = await _otpService.ValidateAsync(email, request.Code);
+            if (!isValid) return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Invalid code" });
+
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
+
+            if (!result.Succeeded)
+                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Password reset failed" });
+
+            return Ok(new AuthResponseDto { IsSuccess = true, Message = "Password reset successful." });
+        }
+
+        // ================= HELPERS =================
+
+        private async Task<AuthResponseDto> CreateTokenResponse(ApplicationUser user)
+        {
             var roles = await _userManager.GetRolesAsync(user);
-            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
 
+            var accessToken = GenerateJwtToken(user, roles);
+            var refreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+            await _userManager.UpdateAsync(user);
+
+            return new AuthResponseDto
+            {
+                IsSuccess = true,
+                Token = accessToken,
+                RefreshToken = refreshToken,
+                Roles = roles.ToList()
+            };
+        }
+
+        private string GenerateJwtToken(ApplicationUser user, IList<string> roles)
+        {
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Name, user.UserName!),
-                new Claim("NationalId", user.NationalId)
+                new Claim(ClaimTypes.Email, user.Email!),
+                new Claim("NationalId", user.NationalId),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             foreach (var role in roles)
                 claims.Add(new Claim(ClaimTypes.Role, role));
 
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:DurationInMinutes"]!)),
-                Issuer = _configuration["Jwt:Issuer"],
-                Audience = _configuration["Jwt:Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var expires = DateTime.UtcNow.AddMinutes(
+                Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])
+            );
 
-            return Ok(new LoginResponseDto
-            {
-                IsSuccess = true,
-                Message = "Login successful.",
-                Token = tokenHandler.WriteToken(token),
-                ExpiresAt = tokenDescriptor.Expires
-            });
+            var token = new JwtSecurityToken(
+                _configuration["Jwt:Issuer"],
+                _configuration["Jwt:Audience"],
+                claims,
+                expires: expires,
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        // =========================
-        // FORGOT PASSWORD (SEND OTP)
-        // =========================
-        [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto dto)
+        private static string GenerateRefreshToken()
         {
-            var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null)
-                return NotFound(new AuthResponseDto { IsSuccess = false, Message = "User not found." });
-
-            // Generate OTP and send email
-
-            await _otpService.GenerateAndSendAsync(user.Email, OtpType.ResetPassword);
-
-
-            return Ok(new AuthResponseDto { IsSuccess = true, Message = "Password reset code sent to your email." });
+            var randomNumber = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
         }
 
-        // =========================
-        // RESET PASSWORD (VERIFY OTP + CHANGE PASSWORD)
-        // =========================
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        private static string NormalizePhoneNumber(string? phone)
         {
-            if (dto.NewPassword != dto.ConfirmPassword)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Passwords do not match." });
+            if (string.IsNullOrWhiteSpace(phone))
+                return string.Empty;
 
-            var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null)
-                return NotFound(new AuthResponseDto { IsSuccess = false, Message = "User not found." });
+            phone = phone.Replace(" ", "").Trim();
 
-            var isValid = await _otpService.ValidateAsync(dto.Email, dto.Code);
-            if (!isValid)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Invalid or expired OTP." });
+            if (phone.StartsWith("+20"))
+                phone = "0" + phone.Substring(3);
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
-
-            if (!result.Succeeded)
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) });
-
-            return Ok(new AuthResponseDto { IsSuccess = true, Message = "Password reset successfully." });
+            return phone;
         }
-
     }
 }

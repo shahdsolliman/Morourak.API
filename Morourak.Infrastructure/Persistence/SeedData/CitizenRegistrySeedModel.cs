@@ -8,7 +8,7 @@
     {
         public string NationalId { get; set; } = null!;
         public string MobileNumber { get; set; } = null!;
-        public string NameAr { get; set; } = null!;
-        public string FatherFirstNameAr { get; set; } = null!;
+        public string FirstName { get; set; } = null!;
+        public string LastName { get; set; } = null!;
     }
 }

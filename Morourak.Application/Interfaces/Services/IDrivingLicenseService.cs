@@ -2,6 +2,7 @@ using Morourak.Application.DTOs.Delivery;
 using Morourak.Application.DTOs.DrivingLicenses;
 using Morourak.Application.DTOs.Licenses;
 using Morourak.Domain.Entities;
+using Morourak.Domain.Enums.Appointments;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -51,6 +52,9 @@ namespace Morourak.Application.Interfaces
         #endregion
 
         Task<DrivingLicenseApplication> GetApplicationByIdAsync(int applicationId, string nationalId);
+
+        // BUG 3 FIX: Exposed so ExaminatorController can submit driving exam results
+        Task SubmitAppointmentResultAsync(int applicationId, AppointmentType type, bool passed, string? notes);
 
     }
 }

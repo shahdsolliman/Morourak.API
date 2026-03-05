@@ -2,6 +2,7 @@
 using Morourak.Domain.Common;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Common;
+using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services
 {
@@ -16,7 +17,7 @@ namespace Morourak.Application.Services
             if (dto.Method == DeliveryMethod.HomeDelivery)
             {
                 if (dto.Address == null)
-                    throw new InvalidOperationException("Address required for home delivery.");
+                    throw new AppEx.ValidationException("Address required for home delivery.", "ADDRESS_MISSING");
 
                 license.DeliveryAddress = new Address(
                     dto.Address.Governorate,
@@ -39,7 +40,7 @@ namespace Morourak.Application.Services
             if (dto.Method == DeliveryMethod.HomeDelivery)
             {
                 if (dto.Address == null)
-                    throw new InvalidOperationException("Address required for home delivery.");
+                    throw new AppEx.ValidationException("Address required for home delivery.", "ADDRESS_MISSING");
 
                 license.DeliveryAddress = new Address(
                     dto.Address.Governorate,

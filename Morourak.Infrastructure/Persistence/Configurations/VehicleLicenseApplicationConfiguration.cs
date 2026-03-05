@@ -17,11 +17,10 @@ namespace Morourak.Infrastructure.Persistence.Configurations
 
 
 
-            builder.Property(v => v.OwnershipProofPath).IsRequired();
-            builder.Property(v => v.VehicleDataCertificatePath).IsRequired();
-            builder.Property(v => v.IdCardPath).IsRequired();
-            builder.Property(v => v.InsuranceCertificatePath).IsRequired();
-
+            builder.Property(v => v.OwnershipProofPath).IsRequired(false);
+            builder.Property(v => v.VehicleDataCertificatePath).IsRequired(false);
+            builder.Property(v => v.IdCardPath).IsRequired(false);
+            builder.Property(v => v.InsuranceCertificatePath).IsRequired(false);
             builder.Property(v => v.CustomClearancePath).IsRequired(false);
         }
     }

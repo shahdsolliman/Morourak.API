@@ -8,7 +8,7 @@ namespace Morourak.Application.DTOs.DrivingLicenses
         public int ApplicationId { get; set; }
         public string CitizenNationalId { get; set; } = null!;
         public DrivingLicenseCategory Category { get; set; }
-        public LicenseType LicenseType { get; set; }
+        public DrivingLicenseType LicenseType { get; set; }
         public LicenseStatus Status { get; set; }
         public DateTime SubmittedAt { get; set; }
         public DateTime CreatedAt { get; set; }

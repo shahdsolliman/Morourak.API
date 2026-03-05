@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services
 {
@@ -35,14 +36,14 @@ namespace Morourak.Application.Services
         protected async Task<CitizenRegistry> GetCitizenAsync(string nationalId)
         {
             var citizen = await _citizenRepo.GetAsync(c => c.NationalId == nationalId);
-            if (citizen == null) throw new KeyNotFoundException("Citizen not found.");
+            if (citizen == null) throw new AppEx.ValidationException("Citizen not found.", "CITIZEN_NOT_FOUND");
             return citizen;
         }
 
         protected async Task<CitizenRegistry> GetCitizenAsync(int id)
         {
             var citizen = await _citizenRepo.GetAsync(c => c.Id == id);
-            if (citizen == null) throw new KeyNotFoundException($"Citizen with ID {id} not found.");
+            if (citizen == null) throw new AppEx.ValidationException($"Citizen with ID {id} not found.", "CITIZEN_NOT_FOUND");
             return citizen;
         }
 

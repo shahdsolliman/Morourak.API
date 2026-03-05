@@ -7,26 +7,17 @@ namespace Morourak.Domain.Entities
 {
     public class DrivingLicense : BaseEntity<int>
     {
-        public string LicenseNumber { get; set; } = null!;
+        public string LicenseNumber { get; set; } = string.Empty;
 
         public DrivingLicenseCategory Category { get; set; }
 
-        //public LicenseStatus Status { get; set; } = LicenseStatus.Pending;
-
-        /// <summary>
-        /// Citizen National ID (14 digits)
-        /// Links license to governmental registry identity.
-        /// </summary>
         public int CitizenRegistryId { get; set; }
 
-        /// <summary>
-        /// Optional navigation to registry record (read-only integration style).
-        /// </summary>
-        public CitizenRegistry Citizen { get; set; }
+        public CitizenRegistry? Citizen { get; set; }
 
-        public string LicensingUnit { get; set; } = null!;
+        public string LicensingUnit { get; set; } = string.Empty;
 
-        public string Governorate { get; set; } = null!;
+        public string Governorate { get; set; } = string.Empty;
 
         public DateOnly IssueDate { get; set; }
 
@@ -53,7 +44,5 @@ namespace Morourak.Domain.Entities
                 return LicenseStatus.Active;
             }
         }
-       
-
     }
 }

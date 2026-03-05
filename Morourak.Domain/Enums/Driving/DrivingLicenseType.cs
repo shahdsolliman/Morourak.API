@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Morourak.Domain.Enums.Driving
 {
-    public enum LicenseType
+    public enum DrivingLicenseType
     {
         [Display(Name = "خاصة")]
         Private = 1,

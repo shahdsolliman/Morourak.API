@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AppEx = Morourak.Application.Exceptions;
 using Morourak.Application.Interfaces.Services;
 
 [Authorize]
@@ -26,7 +27,7 @@ public class ServiceRequestsController : ControllerBase
     {
         var request = await _serviceRequestService.GetByRequestNumberAsync(requestNumber);
         if (request == null)
-            return NotFound();
+            throw new AppEx.ValidationException("Service request not found.", "REQUEST_NOT_FOUND");
 
         return Ok(request);
     }

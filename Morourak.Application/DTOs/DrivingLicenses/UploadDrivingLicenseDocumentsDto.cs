@@ -9,7 +9,6 @@ namespace Morourak.Application.DTOs.DrivingLicenses
         public byte[] EducationalCertificate { get; set; } = null!;
         public byte[] IdCard { get; set; } = null!;
         public byte[] ResidenceProof { get; set; } = null!;
-        public byte[] MedicalCertificate { get; set; } = null!;
 
         public DrivingLicenseCategory Category { get; set; }
         public string Governorate { get; set; } = null!;

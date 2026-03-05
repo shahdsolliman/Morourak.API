@@ -31,11 +31,17 @@ namespace Morourak.Infrastructure.Persistence
         public DbSet<VehicleViolation> VehicleViolations { get; set; }
         public DbSet<TrafficViolation> TrafficViolations { get; set; }
 
+        /// <summary>
+        /// جداول المحافظات ووحدات المرور — تُستخدم كبيانات مرجعية لقوائم الاختيار.
+        /// </summary>
+        public DbSet<Governorate> Governorates { get; set; } = null!;
+        public DbSet<TrafficUnit> TrafficUnits { get; set; } = null!;
+        public DbSet<Location> Locations { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Apply all configurations from this assembly
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(PersistenceDbContext).Assembly);
 
             // Ensure NationalId is unique (one citizen per National ID)
@@ -111,6 +117,17 @@ namespace Morourak.Infrastructure.Persistence
                 .WithMany()
                 .HasForeignKey(v => v.CitizenRegistryId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Governorate -> TrafficUnit (1-to-many)
+            modelBuilder.Entity<TrafficUnit>()
+                .HasOne(t => t.Governorate)
+                .WithMany(g => g.TrafficUnits)
+                .HasForeignKey(t => t.GovernorateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Governorate>()
+                .HasIndex(g => g.Name)
+                .IsUnique();
 
         }
     }

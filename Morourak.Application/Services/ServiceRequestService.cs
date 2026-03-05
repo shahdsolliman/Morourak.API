@@ -6,6 +6,7 @@ using Morourak.Domain.Enums.Request;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services;
 
@@ -45,7 +46,7 @@ public class ServiceRequestService : IServiceRequestService
     public async Task<IReadOnlyList<ServiceRequestDto>> GetCitizenRequestsAsync()
     {
         var nationalId = _currentUser.NationalId
-            ?? throw new UnauthorizedAccessException("NationalId not found in token");
+            ?? throw new AppEx.ValidationException("NationalId not found in token.", "AUTH_MISSING_NATIONAL_ID");
 
         var requests = await _unitOfWork.Repository<ServiceRequest>()
             .FindAsync(x => x.CitizenNationalId == nationalId);
@@ -66,7 +67,7 @@ public class ServiceRequestService : IServiceRequestService
         var repo = _unitOfWork.Repository<ServiceRequest>();
 
         var request = await repo.GetAsync(x => x.RequestNumber == requestNumber)
-            ?? throw new Exception("Request not found");
+            ?? throw new AppEx.ValidationException("Request not found.", "REQUEST_NOT_FOUND");
 
         request.Status = status;
         request.LastUpdatedAt = DateTime.UtcNow;
@@ -85,7 +86,7 @@ public class ServiceRequestService : IServiceRequestService
     {
         if (string.IsNullOrWhiteSpace(citizenNationalId))
             citizenNationalId = _currentUser.NationalId
-                ?? throw new UnauthorizedAccessException("NationalId not found");
+                ?? throw new AppEx.ValidationException("NationalId not found.", "AUTH_MISSING_NATIONAL_ID");
 
         var request = new ServiceRequest
         {
@@ -110,7 +111,7 @@ public class ServiceRequestService : IServiceRequestService
         var repo = _unitOfWork.Repository<ServiceRequest>();
 
         var request = await repo.GetAsync(x => x.RequestNumber == requestNumber)
-            ?? throw new Exception("Request not found");
+            ?? throw new AppEx.ValidationException("Request not found.", "REQUEST_NOT_FOUND");
 
         request.PaymentStatus = PaymentStatus.Paid;
         request.PaymentTransactionId = transactionId;

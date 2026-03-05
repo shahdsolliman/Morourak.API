@@ -4,6 +4,7 @@ using Morourak.API.DTOs.DrivingLicenses;
 using Morourak.Application.DTOs.Delivery;
 using Morourak.Application.DTOs.DrivingLicenses;
 using Morourak.Application.Interfaces;
+using AppEx = Morourak.Application.Exceptions; 
 
 namespace Morourak.API.Controllers
 {
@@ -32,7 +33,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = User.FindFirst("NationalId")?.Value;
             if (string.IsNullOrEmpty(nationalId))
-                throw new UnauthorizedAccessException("National ID not found in token.");
+                throw new AppEx.ValidationException("National ID not found in token.", "AUTH_MISSING_NATIONAL_ID");
             return nationalId;
         }
 
@@ -44,36 +45,27 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> UploadDocuments([FromForm] UploadDrivingLicenseDocumentsApiDto apiDto)
         {
             if (apiDto == null)
-                return BadRequest(new { Message = "No data received." });
+                throw new AppEx.ValidationException("No data received.");
 
-            try
+            var nationalId = GetNationalId();
+
+            var dto = new UploadDrivingLicenseDocumentsDto
             {
-                var nationalId = GetNationalId();
+                PersonalPhoto = await ToByteArrayAsync(apiDto.PersonalPhoto),
+                EducationalCertificate = await ToByteArrayAsync(apiDto.EducationalCertificate),
+                IdCard = await ToByteArrayAsync(apiDto.IdCard),
+                ResidenceProof = await ToByteArrayAsync(apiDto.ResidenceProof),
+                Category = apiDto.Category,
+                Governorate = apiDto.Governorate,
+                LicensingUnit = apiDto.LicensingUnit
+            };
 
-                var dto = new UploadDrivingLicenseDocumentsDto
-                {
-                    PersonalPhoto = await ToByteArrayAsync(apiDto.PersonalPhoto),
-                    EducationalCertificate = await ToByteArrayAsync(apiDto.EducationalCertificate),
-                    IdCard = await ToByteArrayAsync(apiDto.IdCard),
-                    ResidenceProof = await ToByteArrayAsync(apiDto.ResidenceProof),
-                    MedicalCertificate = await ToByteArrayAsync(apiDto.MedicalCertificate),
-                    Category = apiDto.Category,
-                    Governorate = apiDto.Governorate,
-                    LicensingUnit = apiDto.LicensingUnit
-                };
-
-                var result = await _service.UploadInitialDocumentsAsync(nationalId, dto);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var result = await _service.UploadInitialDocumentsAsync(nationalId, dto);
+            return Ok(result);
         }
 
         #endregion
 
-       
         #region Finalize License
 
         [HttpPost("finalize/{requestNumber}")]
@@ -85,12 +77,18 @@ namespace Morourak.API.Controllers
                 var result = await _service.FinalizeLicenseAsync(requestNumber, nationalId, delivery);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (AppEx.AppException ex)
             {
-                Console.WriteLine(ex);
-                if (ex.InnerException != null)
-                    Console.WriteLine("Inner: " + ex.InnerException);
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    code = ex.ErrorCode,
+                    details = ex.Details
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "An unexpected server error occurred." });
             }
         }
 
@@ -104,19 +102,26 @@ namespace Morourak.API.Controllers
             try
             {
                 var nationalId = GetNationalId();
-
                 var dto = new SubmitRenewalRequestDto
                 {
                     NewCategory = apiDto.NewCategory,
-                    MedicalCertificate = await ToByteArrayAsync(apiDto.MedicalCertificate)
                 };
 
                 var result = await _service.SubmitRenewalRequestAsync(nationalId, dto);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (AppEx.AppException ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    code = ex.ErrorCode,
+                    details = ex.Details
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "An unexpected server error occurred." });
             }
         }
 
@@ -129,9 +134,18 @@ namespace Morourak.API.Controllers
                 var result = await _service.FinalizeRenewalAsync(requestNumber, nationalId, delivery);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (AppEx.AppException ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    code = ex.ErrorCode,
+                    details = ex.Details
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "An unexpected server error occurred." });
             }
         }
 
@@ -152,25 +166,33 @@ namespace Morourak.API.Controllers
 
                 return Ok(licenses);
             }
-            catch (Exception ex)
+            catch (AppEx.AppException ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    code = ex.ErrorCode,
+                    details = ex.Details
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "An unexpected server error occurred." });
             }
         }
 
         #endregion
-
 
         #region Issue Replacement
 
         [HttpPost("issue-replacement/{drivingLicenseNumber}")]
         public async Task<IActionResult> IssueReplacement(string drivingLicenseNumber, [FromBody] IssueReplacementDrivingLicenseApiDto apiDto)
         {
-            if (apiDto.ReplacementType != "Lost" && apiDto.ReplacementType != "Damaged")
-                return BadRequest(new { Message = "Replacement type must be 'Lost' or 'Damaged'." });
-
             try
             {
+                if (apiDto.ReplacementType != "Lost" && apiDto.ReplacementType != "Damaged")
+                    throw new AppEx.ValidationException("Replacement type must be 'Lost' or 'Damaged'.");
+
                 var nationalId = GetNationalId();
 
                 var result = await _service.IssueReplacementAsync(
@@ -182,9 +204,18 @@ namespace Morourak.API.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (AppEx.AppException ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    code = ex.ErrorCode,
+                    details = ex.Details
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "An unexpected server error occurred." });
             }
         }
 

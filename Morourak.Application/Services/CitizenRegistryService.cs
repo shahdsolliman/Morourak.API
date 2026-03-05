@@ -1,4 +1,6 @@
-﻿using Morourak.Application.Interfaces;
+﻿using Morourak.Application.DTOs.Auth;
+using Morourak.Application.Exceptions;
+using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 
@@ -13,22 +15,44 @@ namespace Morourak.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<(bool IsValid, string Message)> ValidateAsync(
+        public async Task<CitizenMatchResult> ValidateFullMatchAsync(
             string nationalId,
+            string firstName,
+            string lastName,
             string mobileNumber)
         {
+            var result = new CitizenMatchResult();
+
             var citizen = (await _unitOfWork
                 .Repository<CitizenRegistry>()
                 .FindAsync(c => c.NationalId == nationalId))
                 .FirstOrDefault();
 
             if (citizen == null)
-                return (false, "National ID does not exist in government records.");
+            {
+                result.Errors.Add(new ErrorDetail
+                {
+                    Field = "nationalId",
+                    Error = "No citizen record found"
+                });
 
-            if (citizen.MobileNumber != mobileNumber)
-                return (false, "Mobile number does not match the provided National ID.");
+                return result;
+            }
 
-            return (true, "Citizen validation successful.");
+            result.Citizen = citizen;
+
+            if (!string.Equals(firstName?.Trim(), citizen.FirstName?.Trim(), StringComparison.OrdinalIgnoreCase))
+                result.Errors.Add(new ErrorDetail { Field = "firstName", Error = "First name does not match official records" });
+
+            if (!string.Equals(lastName?.Trim(), citizen.LastName?.Trim(), StringComparison.OrdinalIgnoreCase))
+                result.Errors.Add(new ErrorDetail { Field = "lastName", Error = "Last name does not match official records" });
+
+            if (NormalizePhoneNumber(mobileNumber) != NormalizePhoneNumber(citizen.MobileNumber))
+                result.Errors.Add(new ErrorDetail { Field = "mobileNumber", Error = "Mobile number does not match official records" });
+
+            result.IsMatch = !result.Errors.Any();
+
+            return result;
         }
 
         public async Task<int?> GetCitizenIdByNationalIdAsync(string nationalId)
@@ -39,6 +63,19 @@ namespace Morourak.Application.Services
                 .FirstOrDefault();
 
             return citizen?.Id;
+        }
+
+        private static string NormalizePhoneNumber(string? phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                return string.Empty;
+
+            phone = phone.Replace(" ", "").Trim();
+
+            if (phone.StartsWith("+20"))
+                phone = "0" + phone.Substring(3);
+
+            return phone;
         }
     }
 }

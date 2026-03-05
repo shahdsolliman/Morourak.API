@@ -14,11 +14,11 @@ namespace Morourak.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasMaxLength(14);
 
-            builder.Property(c => c.NameAr)
+            builder.Property(c => c.FirstName)
                 .IsRequired()
                 .HasMaxLength(100);
 
-            builder.Property(c => c.FatherFirstNameAr)
+            builder.Property(c => c.LastName)
                 .IsRequired()
                 .HasMaxLength(50);
 

@@ -33,9 +33,14 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<int>("ApplicationId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignedToUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("CitizenNationalId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(14)
+                        .HasColumnType("nvarchar(14)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -45,6 +50,13 @@ namespace Morourak.Infrastructure.Migrations
 
                     b.Property<TimeOnly>("EndTime")
                         .HasColumnType("time");
+
+                    b.Property<int>("GovernorateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int?>("RenewalApplicationId")
                         .HasColumnType("int");
@@ -59,6 +71,9 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<int>("TrafficUnitId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
@@ -67,7 +82,11 @@ namespace Morourak.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GovernorateId");
+
                     b.HasIndex("RenewalApplicationId");
+
+                    b.HasIndex("TrafficUnitId");
 
                     b.ToTable("ExaminationAppointments");
                 });
@@ -80,7 +99,12 @@ namespace Morourak.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("FatherFirstNameAr")
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -89,11 +113,6 @@ namespace Morourak.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
-
-                    b.Property<string>("NameAr")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("NationalId")
                         .IsRequired()
@@ -237,9 +256,8 @@ namespace Morourak.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("MedicalCertificatePath")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool>("MedicalExaminationPassed")
+                        .HasColumnType("bit");
 
                     b.Property<string>("PersonalPhotoPath")
                         .IsRequired()
@@ -294,6 +312,113 @@ namespace Morourak.Infrastructure.Migrations
                     b.ToTable("EmailOtps");
                 });
 
+            modelBuilder.Entity("Morourak.Domain.Entities.Governorate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Governorates");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.Location", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("TrafficUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrafficUnitId");
+
+                    b.ToTable("Locations");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "صالة الانتظار الرئيسية",
+                            TrafficUnitId = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "مكتب تراخيص المركبات",
+                            TrafficUnitId = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "مكتب التحريات",
+                            TrafficUnitId = 1
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "خزينة السداد",
+                            TrafficUnitId = 2
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "صالة الفحص الفني",
+                            TrafficUnitId = 2
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "مكتب استلام الرخص",
+                            TrafficUnitId = 3
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "نيابة المرور",
+                            TrafficUnitId = 3
+                        });
+                });
+
             modelBuilder.Entity("Morourak.Domain.Entities.RenewalApplication", b =>
                 {
                     b.Property<int>("Id")
@@ -314,9 +439,8 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<int>("DrivingLicenseId")
                         .HasColumnType("int");
 
-                    b.Property<string>("MedicalCertificatePath")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool>("MedicalExaminationPassed")
+                        .HasColumnType("bit");
 
                     b.Property<int>("RequestedCategory")
                         .HasColumnType("int");
@@ -357,6 +481,18 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<DateTime?>("LastUpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal?>("PaymentAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("PaymentTimestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentTransactionId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("ReferenceId")
                         .HasColumnType("int");
 
@@ -375,6 +511,41 @@ namespace Morourak.Infrastructure.Migrations
                     b.HasKey("RequestNumber");
 
                     b.ToTable("ServiceRequests");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.TrafficUnit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("GovernorateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WorkingHours")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GovernorateId");
+
+                    b.ToTable("TrafficUnits");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.TrafficViolation", b =>
@@ -561,11 +732,9 @@ namespace Morourak.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("IdCardPath")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("InsuranceCertificatePath")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ManufactureYear")
@@ -576,7 +745,6 @@ namespace Morourak.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OwnershipProofPath")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Status")
@@ -592,7 +760,6 @@ namespace Morourak.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("VehicleDataCertificatePath")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("VehicleLicenseId")
@@ -696,9 +863,25 @@ namespace Morourak.Infrastructure.Migrations
 
             modelBuilder.Entity("Morourak.Domain.Entities.Appointment", b =>
                 {
+                    b.HasOne("Morourak.Domain.Entities.Governorate", "Governorate")
+                        .WithMany()
+                        .HasForeignKey("GovernorateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Morourak.Domain.Entities.RenewalApplication", null)
                         .WithMany("Appointments")
                         .HasForeignKey("RenewalApplicationId");
+
+                    b.HasOne("Morourak.Domain.Entities.TrafficUnit", "TrafficUnit")
+                        .WithMany()
+                        .HasForeignKey("TrafficUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Governorate");
+
+                    b.Navigation("TrafficUnit");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.DeliveryRequest", b =>
@@ -790,6 +973,17 @@ namespace Morourak.Infrastructure.Migrations
                     b.Navigation("DrivingLicense");
                 });
 
+            modelBuilder.Entity("Morourak.Domain.Entities.Location", b =>
+                {
+                    b.HasOne("Morourak.Domain.Entities.TrafficUnit", "TrafficUnit")
+                        .WithMany("Locations")
+                        .HasForeignKey("TrafficUnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TrafficUnit");
+                });
+
             modelBuilder.Entity("Morourak.Domain.Entities.RenewalApplication", b =>
                 {
                     b.HasOne("Morourak.Domain.Entities.CitizenRegistry", "Citizen")
@@ -807,6 +1001,17 @@ namespace Morourak.Infrastructure.Migrations
                     b.Navigation("Citizen");
 
                     b.Navigation("DrivingLicense");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.TrafficUnit", b =>
+                {
+                    b.HasOne("Morourak.Domain.Entities.Governorate", "Governorate")
+                        .WithMany("TrafficUnits")
+                        .HasForeignKey("GovernorateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Governorate");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.TrafficViolation", b =>
@@ -902,9 +1107,19 @@ namespace Morourak.Infrastructure.Migrations
                     b.Navigation("Applications");
                 });
 
+            modelBuilder.Entity("Morourak.Domain.Entities.Governorate", b =>
+                {
+                    b.Navigation("TrafficUnits");
+                });
+
             modelBuilder.Entity("Morourak.Domain.Entities.RenewalApplication", b =>
                 {
                     b.Navigation("Appointments");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.TrafficUnit", b =>
+                {
+                    b.Navigation("Locations");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.VehicleLicense", b =>

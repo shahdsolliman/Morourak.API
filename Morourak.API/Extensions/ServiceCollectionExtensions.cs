@@ -63,6 +63,9 @@ namespace Morourak.API.Extensions
             services.AddScoped<IDrivingLicenseService, DrivingLicenseService>();
             services.AddScoped<IApplicationValidationService, ApplicationValidationService>();
             services.AddScoped<ITrafficViolationService, TrafficViolationService>();
+            services.AddScoped<IAdminUserService, Morourak.Infrastructure.Services.AdminUserService>();
+            // قائمة المحافظات ووحدات المرور — بيانات مرجعية للفروند إند
+            services.AddScoped<IGovernorateService, GovernorateService>();
             // EmailSettings
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 

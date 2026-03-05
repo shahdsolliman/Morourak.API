@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Morourak.Infrastructure.Identity;
 using Morourak.Infrastructure.Identity.Constants;
 
 namespace Morourak.Infrastructure.Identity.Seed;
@@ -7,17 +8,18 @@ public static class IdentityUserSeeder
 {
     public static async Task SeedAsync(UserManager<ApplicationUser> userManager)
     {
-        // Doctor
+        // Admin
         await SeedUserAsync(
             userManager,
-            phoneNumber: "01000000001",
-            username: "doctor.demo",
-            email: "doctor@morourak.com",
-            firstName: "Demo",
-            lastName: "Doctor",
-            nationalId: "99900000000001",
-            role: IdentityConstants.Roles.Doctor
+            phoneNumber: "01000000000",
+            username: "admin.demo",
+            email: "admin@morourak.com",
+            firstName: "System",
+            lastName: "Admin",
+            nationalId: "99900000000000",
+            role: AppIdentityConstants.Roles.Admin
         );
+
 
         // Inspector
         await SeedUserAsync(
@@ -28,19 +30,31 @@ public static class IdentityUserSeeder
             firstName: "Demo",
             lastName: "Inspector",
             nationalId: "99900000000002",
-            role: IdentityConstants.Roles.Inspector
+            role: AppIdentityConstants.Roles.Inspector
         );
 
-        // Officer
+        // Examinator
         await SeedUserAsync(
             userManager,
-            phoneNumber: "01000000003",
-            username: "officer.demo",
-            email: "officer@morourak.com",
+            phoneNumber: "01000000010", // Changed slightly to avoid conflicts if needed, but original was 01000000003
+            username: "examinator.demo",
+            email: "examinator@morourak.com",
             firstName: "Demo",
-            lastName: "Officer",
-            nationalId: "99900000000003",
-            role: IdentityConstants.Roles.Officer
+            lastName: "Examinator",
+            nationalId: "99900000000010",
+            role: AppIdentityConstants.Roles.Examinator
+        );
+
+        // Doctor
+        await SeedUserAsync(
+            userManager,
+            phoneNumber: "01000000020",
+            username: "doctor.demo",
+            email: "doctor@morourak.com",
+            firstName: "Demo",
+            lastName: "Doctor",
+            nationalId: "99900000000020",
+            role: AppIdentityConstants.Roles.Doctor
         );
     }
 
@@ -72,9 +86,12 @@ public static class IdentityUserSeeder
             PhoneNumberConfirmed = true
         };
 
-        var result = await userManager.CreateAsync(user, IdentityConstants.DefaultDemoPassword);
+        var result = await userManager.CreateAsync(user, AppIdentityConstants.DefaultDemoPassword);
         if (!result.Succeeded)
-            throw new Exception($"Failed to create seeded user ({role})");
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            throw new Exception($"Failed to create seeded user ({role}). Errors: {errors}");
+        }
 
         await userManager.AddToRoleAsync(user, role);
     }

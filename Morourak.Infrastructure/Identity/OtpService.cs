@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Morourak.Application.Interfaces.Services;
 using System.Security.Cryptography;
+using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Infrastructure.Identity
 {
@@ -25,20 +26,21 @@ namespace Morourak.Infrastructure.Identity
             OtpType type = OtpType.Register)
         {
             var user = await _userManager.FindByEmailAsync(email)
-                ?? throw new InvalidOperationException("User not found.");
+                ?? throw new AppEx.ValidationException("User not found.", "USER_NOT_FOUND");
 
             // Prevent OTP spam
             if (user.VerificationCodeExpiry.HasValue &&
                 user.VerificationCodeExpiry > DateTime.UtcNow.AddMinutes(-ResendCooldownMinutes))
             {
-                throw new InvalidOperationException(
-                    "Please wait before requesting another verification code.");
+                throw new AppEx.ValidationException(
+                    "Please wait before requesting another verification code.", "OTP_COOLDOWN");
             }
 
             var code = GenerateSecureOtp();
 
             user.VerificationCode = code;
             user.VerificationCodeExpiry = DateTime.UtcNow.AddMinutes(OtpExpiryMinutes);
+            user.OtpAttempts = 0; // Reset attempts
             await _userManager.UpdateAsync(user);
 
             var subject = type == OtpType.Register
@@ -72,12 +74,28 @@ namespace Morourak.Infrastructure.Identity
             if (user == null)
                 return false;
 
-            if (user.VerificationCode != code ||
-                user.VerificationCodeExpiry < DateTime.UtcNow)
+            if (user.VerificationCode == null || user.VerificationCodeExpiry < DateTime.UtcNow)
                 return false;
 
+            if (user.OtpAttempts >= 5) // Brute force protection
+            {
+                user.VerificationCode = null;
+                user.VerificationCodeExpiry = null;
+                await _userManager.UpdateAsync(user);
+                return false;
+            }
+
+            if (user.VerificationCode != code)
+            {
+                user.OtpAttempts++;
+                await _userManager.UpdateAsync(user);
+                return false;
+            }
+
+            // Success
             user.VerificationCode = null;
             user.VerificationCodeExpiry = null;
+            user.OtpAttempts = 0;
             await _userManager.UpdateAsync(user);
 
             return true;
