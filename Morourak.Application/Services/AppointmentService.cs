@@ -1,9 +1,10 @@
-using Morourak.Application.DTOs.Appointments;
+﻿using Morourak.Application.DTOs.Appointments;
 using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Appointments;
 using Morourak.Domain.Enums.Request;
+using Morourak.Domain.Extensions;
 using AppEx = Morourak.Application.Exceptions;
 using System.Globalization;
 
@@ -25,9 +26,6 @@ namespace Morourak.Application.Services
             _generator = generator;
         }
 
-        // =========================================================
-        // Available Slots (Per Service - Independent)
-        // =========================================================
         public async Task<IEnumerable<AppointmentDto>> GetAvailableSlotsAsync(
             DateOnly date,
             AppointmentType type,
@@ -35,7 +33,7 @@ namespace Morourak.Application.Services
         {
             if (date < DateOnly.FromDateTime(DateTime.Today))
                 throw new AppEx.ValidationException(
-                    "\u0644\u0627 \u064a\u0645\u0643\u0646 \u0639\u0631\u0636 \u0645\u0648\u0627\u0639\u064a\u062f \u0644\u062a\u0627\u0631\u064a\u062e \u0633\u0627\u0628\u0642.",
+                    "لا يمكن عرض مواعيد لتاريخ سابق.",
                     "INVALID_PAST_DATE");
 
             var repo = _unitOfWork.Repository<Appointment>();
@@ -60,26 +58,17 @@ namespace Morourak.Application.Services
                 slots.Add(new AppointmentDto
                 {
                     Type = type,
-                    TypeName = type switch
-                    {
-                        AppointmentType.Medical => "\u0643\u0634\u0641 \u0637\u0628\u064a",
-                        AppointmentType.Driving => "\u0627\u062e\u062a\u0628\u0627\u0631 \u0642\u064a\u0627\u062f\u0629",
-                        AppointmentType.Technical => "\u0641\u062d\u0635 \u0641\u0646\u064a",
-                        _ => "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f"
-                    },
+                    TypeName = GetAppointmentTypeName(type),
                     Date = date,
-                    DateFormatted = date.ToString("d MMMM yyyy", new CultureInfo("ar-EG")),
+                    DateFormatted = FormatArabicDate(date),
                     StartTime = time,
-                    TimeFormatted = time
-                        .ToString("hh:mm tt", new CultureInfo("en-US"))
-                        .Replace("AM", "\u0635\u0628\u0627\u062d\u0627\u064b")
-                        .Replace("PM", "\u0645\u0633\u0627\u0621\u064b"),
+                    TimeFormatted = FormatArabicTime(time),
                     EndTime = time.AddMinutes(SlotDurationMinutes),
                     Status = AppointmentStatus.Available,
                     GovernorateId = 0,
                     TrafficUnitId = trafficUnitId,
-                    GovernorateName = "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f",
-                    TrafficUnitName = "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f",
+                    GovernorateName = "غير محدد",
+                    TrafficUnitName = "غير محدد",
                     CreatedAt = DateTime.UtcNow
                 });
             }
@@ -87,9 +76,6 @@ namespace Morourak.Application.Services
             return slots;
         }
 
-        // =========================================================
-        // Confirm Booking (Atomic - Safe - Validated)
-        // =========================================================
         public async Task<BookingConfirmationDto> ConfirmBookingAsync(
             string nationalId,
             ConfirmAppointmentRequestDto request)
@@ -99,15 +85,14 @@ namespace Morourak.Application.Services
 
             ValidateWorkingHours(request.Time);
 
-            await ValidateGovernorate(request.GovernorateId);
+            var governorate = await ValidateGovernorate(request.GovernorateId);
             var trafficUnit = await ValidateTrafficUnit(
                 request.GovernorateId,
                 request.TrafficUnitId);
 
-            var repo = _unitOfWork.Repository<Appointment>();
+            var appointmentRepo = _unitOfWork.Repository<Appointment>();
 
-            // 1) Slot taken for this service?
-            var slotTaken = await repo.FindAsync(a =>
+            var slotTaken = await appointmentRepo.FindAsync(a =>
                 a.TrafficUnitId == request.TrafficUnitId &&
                 a.Date == request.Date &&
                 a.Type == appointmentType &&
@@ -116,139 +101,177 @@ namespace Morourak.Application.Services
 
             if (slotTaken.Any())
                 throw new AppEx.ValidationException(
-                    "\u0647\u0630\u0627 \u0627\u0644\u0645\u0648\u0639\u062f \u0645\u062d\u062c\u0648\u0632 \u0628\u0627\u0644\u0641\u0639\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u062e\u062f\u0645\u0629.",
+                    "هذا الموعد محجوز بالفعل لهذه الخدمة.",
                     "SLOT_UNAVAILABLE");
 
-            // 2) Citizen overlapping check (any service)
-            var overlapping = await repo.FindAsync(a =>
-                a.CitizenNationalId == nationalId &&
-                a.Date == request.Date &&
-                a.Status != AppointmentStatus.Cancelled &&
-                request.Time < a.EndTime &&
-                request.Time.AddMinutes(SlotDurationMinutes) > a.StartTime);
-
-            if (overlapping.Any())
-                throw new AppEx.ValidationException(
-                    "\u0644\u0627 \u064a\u0645\u0643\u0646 \u062d\u062c\u0632 \u0623\u0643\u062b\u0631 \u0645\u0646 \u0645\u0648\u0639\u062f \u0641\u064a \u0646\u0641\u0633 \u0627\u0644\u062a\u0648\u0642\u064a\u062a.",
-                    "CITIZEN_TIME_CONFLICT");
-
-            // 3) Prevent duplicate active same type
-            var duplicateType = await repo.FindAsync(a =>
+            var duplicateType = await appointmentRepo.FindAsync(a =>
                 a.CitizenNationalId == nationalId &&
                 a.Type == appointmentType &&
-                a.Status == AppointmentStatus.Scheduled);
+                IsActiveAppointmentStatus(a.Status));
 
             if (duplicateType.Any())
                 throw new AppEx.ValidationException(
-                    "\u0644\u062f\u064a\u0643 \u0645\u0648\u0639\u062f \u0642\u0627\u0626\u0645 \u0628\u0627\u0644\u0641\u0639\u0644 \u0644\u0646\u0641\u0633 \u0646\u0648\u0639 \u0627\u0644\u062e\u062f\u0645\u0629.",
+                    "لديك موعد نشط بالفعل لنفس نوع الخدمة.",
                     "DUPLICATE_APPOINTMENT_TYPE");
 
-            // 4) Create service request
-            var requestNumber = await _generator.GenerateAsync(serviceType);
-            var serviceRequestRepo = _unitOfWork.Repository<ServiceRequest>();
+            var overlappingDifferentType = await appointmentRepo.FindAsync(a =>
+                a.CitizenNationalId == nationalId &&
+                a.Date == request.Date &&
+                a.StartTime == request.Time &&
+                a.Type != appointmentType &&
+                IsActiveAppointmentStatus(a.Status));
 
-            var relatedRequests = await serviceRequestRepo.FindAsync(sr =>
-                sr.CitizenNationalId == nationalId &&
-                sr.ReferenceId > 0 &&
-                (sr.ServiceType == serviceType ||
-                 sr.ServiceType == ServiceType.DrivingLicenseIssue ||
-                 sr.ServiceType == ServiceType.DrivingLicenseRenewal ||
-                 sr.ServiceType == ServiceType.DrivingLicenseUpgrade ||
-                 sr.ServiceType == ServiceType.ExaminationDriving ||
-                 sr.ServiceType == ServiceType.ExaminationTechnical));
+            if (overlappingDifferentType.Any())
+                throw new AppEx.ValidationException(
+                    "لا يمكن حجز نوعين مختلفين في نفس التاريخ والتوقيت.",
+                    "CITIZEN_TIME_CONFLICT");
 
-            var applicationId = relatedRequests
-                .OrderByDescending(sr => sr.SubmittedAt)
-                .ThenByDescending(sr => sr.Id)
-                .Select(sr => sr.ReferenceId)
-                .FirstOrDefault();
-
+            var applicationId = await GetLinkedApplicationIdAsync(nationalId, serviceType);
             if (applicationId <= 0)
                 throw new AppEx.ValidationException(
-                    "No linked application found for this appointment.",
+                    "لا يوجد طلب مرتبط صالح لإتمام الحجز.",
                     "APPLICATION_NOT_FOUND");
+
+            var now = DateTime.UtcNow;
+            var serviceRequestRepo = _unitOfWork.Repository<ServiceRequest>();
+
             var serviceRequest = new ServiceRequest
             {
-                RequestNumber = requestNumber,
+                RequestNumber = await _generator.GenerateAsync(serviceType),
                 CitizenNationalId = nationalId,
                 ServiceType = serviceType,
                 ReferenceId = applicationId,
                 Status = RequestStatus.Pending,
                 PaymentStatus = PaymentStatus.Pending,
-                SubmittedAt = DateTime.UtcNow,
-                LastUpdatedAt = DateTime.UtcNow
+                SubmittedAt = now,
+                LastUpdatedAt = now
             };
 
             await serviceRequestRepo.AddAsync(serviceRequest);
 
-            // 5) Create appointment
             var appointment = new Appointment
             {
-                ApplicationId = applicationId,
+                ApplicationId = serviceRequest.ReferenceId,
                 CitizenNationalId = nationalId,
                 Date = request.Date,
                 StartTime = request.Time,
                 EndTime = request.Time.AddMinutes(SlotDurationMinutes),
                 Status = AppointmentStatus.Scheduled,
                 Type = appointmentType,
-                RequestNumber = requestNumber,
+                RequestNumber = serviceRequest.RequestNumber,
                 GovernorateId = request.GovernorateId,
                 TrafficUnitId = request.TrafficUnitId,
-                CreatedAt = DateTime.UtcNow
+                Notes = null,
+                AssignedToUserId = null,
+                CreatedAt = now
             };
 
-            await repo.AddAsync(appointment);
+            await appointmentRepo.AddAsync(appointment);
             await _unitOfWork.CommitAsync();
 
             return BuildConfirmationResponse(
-                request,
-                trafficUnit,
-                requestNumber,
-                appointment.Id);
+                appointment,
+                serviceRequest,
+                governorate,
+                trafficUnit);
         }
 
-        // =========================================================
-        // Private Helpers
-        // =========================================================
         private static AppointmentType MapToAppointmentType(string serviceType) =>
-            serviceType switch
+            serviceType.Trim() switch
             {
-                "\u0643\u0634\u0641 \u0637\u0628\u064a" => AppointmentType.Medical,
-                "\u0641\u062d\u0635 \u0641\u0646\u064a" => AppointmentType.Technical,
-                "\u0627\u062e\u062a\u0628\u0627\u0631 \u0642\u064a\u0627\u062f\u0629" => AppointmentType.Driving,
+                "كشف طبي" => AppointmentType.Medical,
+                "فحص فني" => AppointmentType.Technical,
+                "اختبار قيادة" => AppointmentType.Driving,
                 _ => throw new AppEx.ValidationException(
-                    "\u0646\u0648\u0639 \u0627\u0644\u062e\u062f\u0645\u0629 \u063a\u064a\u0631 \u0645\u062f\u0639\u0648\u0645.",
+                    "نوع الخدمة غير مدعوم.",
                     "INVALID_SERVICE_TYPE")
             };
 
         private static ServiceType MapToServiceType(string serviceType) =>
-            serviceType switch
+            serviceType.Trim() switch
             {
-                "\u0643\u0634\u0641 \u0637\u0628\u064a" => ServiceType.DrivingLicenseIssue,
-                "\u0641\u062d\u0635 \u0641\u0646\u064a" => ServiceType.ExaminationTechnical,
-                "\u0627\u062e\u062a\u0628\u0627\u0631 \u0642\u064a\u0627\u062f\u0629" => ServiceType.ExaminationDriving,
+                "كشف طبي" => ServiceType.DrivingLicenseIssue,
+                "فحص فني" => ServiceType.ExaminationTechnical,
+                "اختبار قيادة" => ServiceType.ExaminationDriving,
                 _ => throw new AppEx.ValidationException(
-                    "\u0646\u0648\u0639 \u0627\u0644\u062e\u062f\u0645\u0629 \u063a\u064a\u0631 \u0645\u062f\u0639\u0648\u0645.",
+                    "نوع الخدمة غير مدعوم.",
                     "INVALID_SERVICE_TYPE")
             };
+
+        private static bool IsActiveAppointmentStatus(AppointmentStatus status)
+        {
+            return status == AppointmentStatus.Pending || status == AppointmentStatus.Scheduled;
+        }
+
+        private async Task<int> GetLinkedApplicationIdAsync(string nationalId, ServiceType serviceType)
+        {
+            var serviceRequestRepo = _unitOfWork.Repository<ServiceRequest>();
+            var allowedTypes = GetRelevantLinkTypes(serviceType);
+
+            var relatedRequests = await serviceRequestRepo.FindAsync(sr =>
+                sr.CitizenNationalId == nationalId &&
+                sr.ReferenceId > 0 &&
+                allowedTypes.Contains(sr.ServiceType));
+
+            return relatedRequests
+                .OrderByDescending(sr => sr.SubmittedAt)
+                .ThenByDescending(sr => sr.LastUpdatedAt ?? sr.SubmittedAt)
+                .Select(sr => sr.ReferenceId)
+                .FirstOrDefault();
+        }
+
+        private static ServiceType[] GetRelevantLinkTypes(ServiceType serviceType)
+        {
+            return serviceType switch
+            {
+                ServiceType.ExaminationTechnical =>
+                [
+                    ServiceType.ExaminationTechnical,
+                    ServiceType.VehicleLicenseIssue,
+                    ServiceType.VehicleLicenseRenewal,
+                    ServiceType.VehicleLicenseReplacementLost,
+                    ServiceType.VehicleLicenseReplacementDamaged
+                ],
+                ServiceType.ExaminationDriving =>
+                [
+                    ServiceType.ExaminationDriving,
+                    ServiceType.DrivingLicenseIssue,
+                    ServiceType.DrivingLicenseRenewal,
+                    ServiceType.DrivingLicenseUpgrade,
+                    ServiceType.DrivingLicenseReplacementLost,
+                    ServiceType.DrivingLicenseReplacementDamaged
+                ],
+                _ =>
+                [
+                    serviceType,
+                    ServiceType.DrivingLicenseIssue,
+                    ServiceType.DrivingLicenseRenewal,
+                    ServiceType.DrivingLicenseUpgrade,
+                    ServiceType.ExaminationDriving,
+                    ServiceType.ExaminationTechnical
+                ]
+            };
+        }
 
         private static void ValidateWorkingHours(TimeOnly time)
         {
             if (time < WorkStart || time >= WorkEnd)
                 throw new AppEx.ValidationException(
-                    "\u0627\u0644\u0645\u0648\u0639\u062f \u062e\u0627\u0631\u062c \u0633\u0627\u0639\u0627\u062a \u0627\u0644\u0639\u0645\u0644 \u0627\u0644\u0631\u0633\u0645\u064a\u0629.",
+                    "الموعد خارج ساعات العمل الرسمية.",
                     "INVALID_WORKING_HOURS");
         }
 
-        private async Task ValidateGovernorate(int id)
+        private async Task<Governorate> ValidateGovernorate(int id)
         {
             var gov = await _unitOfWork.Repository<Governorate>()
                 .GetByIdAsync(id);
 
             if (gov == null)
                 throw new AppEx.ValidationException(
-                    "\u0627\u0644\u0645\u062d\u0627\u0641\u0638\u0629 \u0627\u0644\u0645\u062e\u062a\u0627\u0631\u0629 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f\u0629.",
+                    "المحافظة المختارة غير موجودة.",
                     "GOVERNORATE_NOT_FOUND");
+
+            return gov;
         }
 
         private async Task<TrafficUnit> ValidateTrafficUnit(int govId, int unitId)
@@ -258,38 +281,114 @@ namespace Morourak.Application.Services
 
             if (unit == null)
                 throw new AppEx.ValidationException(
-                    "\u0648\u062d\u062f\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0627\u0644\u0645\u062e\u062a\u0627\u0631\u0629 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f\u0629 \u0641\u064a \u0647\u0630\u0647 \u0627\u0644\u0645\u062d\u0627\u0641\u0638\u0629.",
+                    "وحدة المرور المختارة غير موجودة في هذه المحافظة.",
                     "TRAFFIC_UNIT_NOT_FOUND");
 
             return unit;
         }
 
         private static BookingConfirmationDto BuildConfirmationResponse(
-            ConfirmAppointmentRequestDto request,
-            TrafficUnit trafficUnit,
-            string requestNumber,
-            int bookingId)
+            Appointment appointment,
+            ServiceRequest serviceRequest,
+            Governorate governorate,
+            TrafficUnit trafficUnit)
         {
-            var culture = new CultureInfo("ar-EG");
+            var dateFormatted = FormatArabicDate(appointment.Date);
+            var timeFormatted = FormatArabicTime(appointment.StartTime);
 
             return new BookingConfirmationDto
             {
-                Message = "\u062a\u0645 \u0627\u0644\u062d\u062c\u0632 \u0628\u0646\u062c\u0627\u062d",
-                BookingNumber = bookingId.ToString(),
-                RequestNumber = requestNumber,
-                TrafficUnitName = trafficUnit.Name,
-                TrafficUnitAddress = trafficUnit.Address ?? string.Empty,
-                WorkingHours = trafficUnit.WorkingHours ?? string.Empty,
-                ServiceName = request.ServiceType,
-                Date = request.Date.ToString("d MMMM yyyy", culture),
-                Time = request.Time
-                    .ToString("hh:mm tt", new CultureInfo("en-US"))
-                    .Replace("AM", "\u0635\u0628\u0627\u062d\u0627\u064b")
-                    .Replace("PM", "\u0645\u0633\u0627\u0621\u064b")
+                Appointment = new BookingAppointmentDto
+                {
+                    Message = "تم الحجز بنجاح",
+                    BookingNumber = appointment.Id.ToString(),
+                    ApplicationId = appointment.ApplicationId,
+                    RequestNumber = serviceRequest.RequestNumber,
+                    ServiceName = GetAppointmentTypeName(appointment.Type),
+                    Date = dateFormatted,
+                    Time = timeFormatted,
+                    DateFormatted = dateFormatted,
+                    TimeFormatted = timeFormatted,
+                    TrafficUnitName = NullOrDefault(trafficUnit.Name),
+                    TrafficUnitAddress = NullOrDefault(trafficUnit.Address),
+                    GovernorateName = NullOrDefault(governorate.Name),
+                    WorkingHours = NullOrDefault(trafficUnit.WorkingHours),
+                    Notes = NullOrDefault(appointment.Notes),
+                    AssignedToUserId = appointment.AssignedToUserId
+                },
+                ServiceRequest = new BookingServiceRequestDto
+                {
+                    RequestNumber = serviceRequest.RequestNumber,
+                    CitizenNationalId = serviceRequest.CitizenNationalId,
+                    ServiceType = GetServiceTypeName(serviceRequest.ServiceType),
+                    Status = GetRequestStatusName(serviceRequest.Status),
+                    PaymentStatus = GetPaymentStatusName(serviceRequest.PaymentStatus),
+                    SubmittedAt = FormatArabicDate(serviceRequest.SubmittedAt),
+                    LastUpdatedAt = FormatArabicDate(serviceRequest.LastUpdatedAt ?? serviceRequest.SubmittedAt)
+                }
             };
         }
 
-        // ================= My Appointments =================
+        private static string GetAppointmentTypeName(AppointmentType type)
+        {
+            return type switch
+            {
+                AppointmentType.Medical => "كشف طبي",
+                AppointmentType.Driving => "اختبار قيادة",
+                AppointmentType.Technical => "فحص فني",
+                _ => "غير محدد"
+            };
+        }
+
+        private static string GetServiceTypeName(ServiceType serviceType)
+        {
+            return serviceType switch
+            {
+                ServiceType.ExaminationTechnical => "فحص فني",
+                ServiceType.ExaminationDriving => "اختبار قيادة",
+                _ => serviceType.GetDisplayName()
+            };
+        }
+
+        private static string GetRequestStatusName(RequestStatus status)
+        {
+            return status.GetDisplayName();
+        }
+
+        private static string GetPaymentStatusName(PaymentStatus paymentStatus)
+        {
+            return paymentStatus switch
+            {
+                PaymentStatus.Pending => "قيد الانتظار",
+                PaymentStatus.Paid => "مدفوع",
+                PaymentStatus.Failed => "فشل",
+                _ => "غير محدد"
+            };
+        }
+
+        private static string NullOrDefault(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? "غير محدد" : value;
+        }
+
+        private static string FormatArabicDate(DateOnly date)
+        {
+            return date.ToString("d MMMM yyyy", new CultureInfo("ar-EG"));
+        }
+
+        private static string FormatArabicDate(DateTime dateTime)
+        {
+            return DateOnly.FromDateTime(dateTime).ToString("d MMMM yyyy", new CultureInfo("ar-EG"));
+        }
+
+        private static string FormatArabicTime(TimeOnly time)
+        {
+            return time
+                .ToString("hh:mm tt", new CultureInfo("en-US"))
+                .Replace("AM", "صباحاً")
+                .Replace("PM", "مساءً");
+        }
+
         public async Task<IEnumerable<AppointmentDto>> GetMyAppointmentsAsync(string nationalId)
         {
             var appointments = await _unitOfWork.Repository<Appointment>()
@@ -301,7 +400,6 @@ namespace Morourak.Application.Services
             return appointments.Select(MapToDto).ToList();
         }
 
-        // ================= Update Status =================
         public async Task UpdateStatusAsync(
             int applicationId,
             AppointmentType type,
@@ -375,24 +473,16 @@ namespace Morourak.Application.Services
             await _unitOfWork.CommitAsync();
         }
 
-        // ================= Mapping Helper =================
         private AppointmentDto MapToDto(Appointment appointment)
         {
-            var arCulture = new CultureInfo("ar-EG");
-            var typeName = appointment.Type switch
-            {
-                AppointmentType.Medical => "\u0643\u0634\u0641 \u0637\u0628\u064a",
-                AppointmentType.Driving => "\u0627\u062e\u062a\u0628\u0627\u0631 \u0642\u064a\u0627\u062f\u0629",
-                AppointmentType.Technical => "\u0641\u062d\u0635 \u0641\u0646\u064a",
-                _ => "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f"
-            };
+            var typeName = GetAppointmentTypeName(appointment.Type);
 
             var governorateName = string.IsNullOrWhiteSpace(appointment.Governorate?.Name)
-                ? "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f"
+                ? "غير محدد"
                 : appointment.Governorate!.Name;
 
             var trafficUnitName = string.IsNullOrWhiteSpace(appointment.TrafficUnit?.Name)
-                ? "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f"
+                ? "غير محدد"
                 : appointment.TrafficUnit!.Name;
 
             return new AppointmentDto
@@ -402,12 +492,9 @@ namespace Morourak.Application.Services
                 Type = appointment.Type,
                 TypeName = typeName,
                 Date = appointment.Date,
-                DateFormatted = appointment.Date.ToString("d MMMM yyyy", arCulture),
+                DateFormatted = FormatArabicDate(appointment.Date),
                 StartTime = appointment.StartTime,
-                TimeFormatted = appointment.StartTime
-                    .ToString("hh:mm tt", new CultureInfo("en-US"))
-                    .Replace("AM", "\u0635\u0628\u0627\u062d\u0627\u064b")
-                    .Replace("PM", "\u0645\u0633\u0627\u0621\u064b"),
+                TimeFormatted = FormatArabicTime(appointment.StartTime),
                 EndTime = appointment.EndTime,
                 Status = appointment.Status,
                 CreatedAt = appointment.CreatedAt,
@@ -422,7 +509,6 @@ namespace Morourak.Application.Services
             };
         }
 
-        // ================= Get Appointments By Type =================
         public async Task<IEnumerable<AppointmentDto>> GetAppointmentsByTypeAsync(AppointmentType type)
         {
             var repo = _unitOfWork.Repository<Appointment>();
@@ -438,7 +524,6 @@ namespace Morourak.Application.Services
                 .ToList();
         }
 
-        // ================= Get Appointments By Role =================
         public async Task<IEnumerable<AppointmentDto>> GetByRoleAsync(string role, string? userId = null)
         {
             role = role.ToUpperInvariant();
@@ -491,4 +576,3 @@ namespace Morourak.Application.Services
         }
     }
 }
-

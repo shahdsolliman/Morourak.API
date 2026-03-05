@@ -1,4 +1,4 @@
-﻿using Morourak.Application.Interfaces;
+using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Request;
@@ -16,55 +16,55 @@ namespace Morourak.Application.Services
 
         public async Task<string> GenerateAsync(ServiceType serviceType)
         {
-            var prefix = serviceType switch
+            var (prefix, startNumber) = GetPrefixAndStart(serviceType);
+            var repository = _unitOfWork.Repository<ServiceRequest>();
+
+            var requestsWithPrefix = await repository.FindAsync(r => r.RequestNumber.StartsWith(prefix + "-"));
+
+            var nextNumber = requestsWithPrefix
+                .Select(r => TryParseSuffix(r.RequestNumber, prefix))
+                .Where(n => n.HasValue)
+                .Select(n => n!.Value)
+                .DefaultIfEmpty(startNumber - 1)
+                .Max() + 1;
+
+            var generated = $"{prefix}-{nextNumber}";
+
+            // Defensive collision check against malformed or concurrent inserts already in DB.
+            while ((await repository.FindAsync(r => r.RequestNumber == generated)).Any())
             {
-                ServiceType.VehicleLicenseIssue => "VL",
-                ServiceType.VehicleLicenseRenewal => "VR",
-                ServiceType.VehicleLicenseReplacementLost => "RPL",
-                ServiceType.VehicleLicenseReplacementDamaged => "RPD",
-                ServiceType.DrivingLicenseIssue => "DL",
-                ServiceType.DrivingLicenseReplacementLost => "EL",
-                ServiceType.DrivingLicenseReplacementDamaged => "ED",
-                ServiceType.DrivingLicenseRenewal => "DR",
-                ServiceType.ExaminationTechnical => "ET",
-                ServiceType.ExaminationDriving => "EDR",
-                _ => "SR"
+                nextNumber++;
+                generated = $"{prefix}-{nextNumber}";
+            }
+
+            return generated;
+        }
+
+        private static (string Prefix, int StartNumber) GetPrefixAndStart(ServiceType serviceType)
+        {
+            return serviceType switch
+            {
+                ServiceType.VehicleLicenseIssue => ("VL", 100),
+                ServiceType.VehicleLicenseRenewal => ("VR", 200),
+                ServiceType.VehicleLicenseReplacementLost => ("RPL", 300),
+                ServiceType.VehicleLicenseReplacementDamaged => ("RPD", 400),
+                ServiceType.DrivingLicenseIssue => ("DL", 500),
+                ServiceType.DrivingLicenseRenewal => ("DR", 800),
+                ServiceType.DrivingLicenseReplacementLost => ("EL", 900),
+                ServiceType.DrivingLicenseReplacementDamaged => ("ED", 1000),
+                ServiceType.ExaminationTechnical => ("ET", 1100),
+                ServiceType.ExaminationDriving => ("EDR", 1200),
+                _ => ("SR", 1)
             };
+        }
 
-            // Query existing requests with the same prefix
-            var requests = await _unitOfWork.Repository<ServiceRequest>().FindAsync(r => r.RequestNumber.StartsWith(prefix + "-"));
-            
-            var lastRequest = requests
-                .OrderByDescending(r => r.SubmittedAt)
-                .ThenByDescending(r => r.RequestNumber)
-                .FirstOrDefault();
+        private static int? TryParseSuffix(string requestNumber, string prefix)
+        {
+            if (!requestNumber.StartsWith(prefix + "-"))
+                return null;
 
-            int nextNumber;
-            if (lastRequest != null)
-            {
-                var parts = lastRequest.RequestNumber.Split('-');
-                if (parts.Length > 1 && int.TryParse(parts[1], out var lastNum))
-                {
-                    nextNumber = lastNum + 1;
-                }
-                else
-                {
-                    nextNumber = 1;
-                }
-            }
-            else
-            {
-                // Default start numbers if none found
-                nextNumber = serviceType switch
-                {
-                    ServiceType.VehicleLicenseIssue => 100,
-                    ServiceType.DrivingLicenseIssue => 500,
-                    ServiceType.DrivingLicenseRenewal => 800,
-                    _ => 1
-                };
-            }
-
-            return $"{prefix}-{nextNumber}";
+            var suffix = requestNumber[(prefix.Length + 1)..];
+            return int.TryParse(suffix, out var parsed) ? parsed : null;
         }
     }
 }
