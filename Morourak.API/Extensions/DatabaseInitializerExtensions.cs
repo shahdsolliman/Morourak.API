@@ -44,10 +44,11 @@ namespace Morourak.API.Extensions
                 await persistenceContext.Database.MigrateAsync();
 
                 // ===== Seed Core Data (idempotent) =====
+                logger.LogInformation("Seeding Governorates and Traffic Units...");
+                await GovernorateSeeder.SeedAsync(persistenceContext, logger);
 
-                // بذر المحافظات ووحدات المرور تم نقله إلى Migrations لضمان الـ Consistency
-                // logger.LogInformation("Seeding Governorates and Traffic Units...");
-                // await GovernorateSeeder.SeedAsync(persistenceContext, logger);
+                logger.LogInformation("Seeding Locations...");
+                await LocationSeeder.SeedAsync(persistenceContext, logger);
 
                 logger.LogInformation("Seeding Vehicle Types...");
                 await VehicleTypeSeeder.SeedAsync(persistenceContext, logger);

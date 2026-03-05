@@ -33,10 +33,6 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<int>("ApplicationId")
                         .HasColumnType("int");
 
-                    b.Property<string>("AssignedToUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<string>("CitizenNationalId")
                         .IsRequired()
                         .HasMaxLength(14)
@@ -53,10 +49,6 @@ namespace Morourak.Infrastructure.Migrations
 
                     b.Property<int>("GovernorateId")
                         .HasColumnType("int");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int?>("RenewalApplicationId")
                         .HasColumnType("int");
