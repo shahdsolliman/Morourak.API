@@ -1,4 +1,4 @@
-﻿using Morourak.Application.DTOs.Appointments;
+using Morourak.Application.DTOs.Appointments;
 using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
@@ -145,24 +145,46 @@ namespace Morourak.Application.Services
 
             // 4) Create service request
             var requestNumber = await _generator.GenerateAsync(serviceType);
+            var serviceRequestRepo = _unitOfWork.Repository<ServiceRequest>();
 
+            var relatedRequests = await serviceRequestRepo.FindAsync(sr =>
+                sr.CitizenNationalId == nationalId &&
+                sr.ReferenceId > 0 &&
+                (sr.ServiceType == serviceType ||
+                 sr.ServiceType == ServiceType.DrivingLicenseIssue ||
+                 sr.ServiceType == ServiceType.DrivingLicenseRenewal ||
+                 sr.ServiceType == ServiceType.DrivingLicenseUpgrade ||
+                 sr.ServiceType == ServiceType.ExaminationDriving ||
+                 sr.ServiceType == ServiceType.ExaminationTechnical));
+
+            var applicationId = relatedRequests
+                .OrderByDescending(sr => sr.SubmittedAt)
+                .ThenByDescending(sr => sr.Id)
+                .Select(sr => sr.ReferenceId)
+                .FirstOrDefault();
+
+            if (applicationId <= 0)
+                throw new AppEx.ValidationException(
+                    "No linked application found for this appointment.",
+                    "APPLICATION_NOT_FOUND");
             var serviceRequest = new ServiceRequest
             {
                 RequestNumber = requestNumber,
                 CitizenNationalId = nationalId,
                 ServiceType = serviceType,
+                ReferenceId = applicationId,
                 Status = RequestStatus.Pending,
                 PaymentStatus = PaymentStatus.Pending,
                 SubmittedAt = DateTime.UtcNow,
                 LastUpdatedAt = DateTime.UtcNow
             };
 
-            await _unitOfWork.Repository<ServiceRequest>()
-                .AddAsync(serviceRequest);
+            await serviceRequestRepo.AddAsync(serviceRequest);
 
             // 5) Create appointment
             var appointment = new Appointment
             {
+                ApplicationId = applicationId,
                 CitizenNationalId = nationalId,
                 Date = request.Date,
                 StartTime = request.Time,
@@ -469,3 +491,4 @@ namespace Morourak.Application.Services
         }
     }
 }
+
