@@ -26,14 +26,14 @@ namespace Morourak.Infrastructure.Identity
             OtpType type = OtpType.Register)
         {
             var user = await _userManager.FindByEmailAsync(email)
-                ?? throw new AppEx.ValidationException("User not found.", "USER_NOT_FOUND");
+                ?? throw new AppEx.ValidationException("???????? ??? ?????.", "USER_NOT_FOUND");
 
             // Prevent OTP spam
             if (user.VerificationCodeExpiry.HasValue &&
                 user.VerificationCodeExpiry > DateTime.UtcNow.AddMinutes(-ResendCooldownMinutes))
             {
                 throw new AppEx.ValidationException(
-                    "Please wait before requesting another verification code.", "OTP_COOLDOWN");
+                    "???? ???????? ??? ??? ??? ???? ????.", "OTP_COOLDOWN");
             }
 
             var code = GenerateSecureOtp();

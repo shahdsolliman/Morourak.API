@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Enums.Appointments;
@@ -37,7 +37,7 @@ namespace Morourak.API.Controllers
 
             if (string.IsNullOrEmpty(role) || !RoleTypeMap.ContainsKey(role))
                 throw new AppEx.ValidationException(
-                    "You are not authorized to access staff examinations.",
+                    "??? ???? ?? ??????? ??? ?????? ????????.",
                     "AUTHZ_ERROR"
                 );
             role = role.ToUpperInvariant();
@@ -58,13 +58,13 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> Submit([FromBody] SubmitResultDto dto)
         {
             if (dto == null)
-                throw new AppEx.ValidationException("Request body is required.", "BODY_MISSING");
+                throw new AppEx.ValidationException("??? ????? ?????.", "BODY_MISSING");
 
             var role = User.FindFirstValue(ClaimTypes.Role);
 
             if (string.IsNullOrEmpty(role) || !RoleTypeMap.ContainsKey(role))
                 throw new AppEx.ValidationException(
-                    "You are not authorized to submit examination results.",
+                    "??? ???? ?? ?????? ????? ?????.",
                     "AUTHZ_ERROR"
                 );
 
@@ -98,3 +98,4 @@ namespace Morourak.API.Controllers
         public string? Notes { get; set; }
     }
 }
+

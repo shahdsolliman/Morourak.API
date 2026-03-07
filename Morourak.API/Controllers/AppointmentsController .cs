@@ -56,7 +56,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = User.FindFirstValue("NationalId");
             if (string.IsNullOrEmpty(nationalId))
-                throw new AppEx.ValidationException("User not authenticated.", "AUTH_ERROR");
+                throw new AppEx.ValidationException("???????? ??? ???? ??????.", "AUTH_ERROR");
 
             var result = await _service.ConfirmBookingAsync(nationalId, request);
 
@@ -77,7 +77,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = User.FindFirstValue("NationalId");
             if (string.IsNullOrEmpty(nationalId))
-                throw new AppEx.ValidationException("User not authenticated.", "AUTH_ERROR");
+                throw new AppEx.ValidationException("???????? ??? ???? ??????.", "AUTH_ERROR");
 
             var result = await _service.GetMyAppointmentsAsync(nationalId);
 

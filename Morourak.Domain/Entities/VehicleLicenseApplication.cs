@@ -50,9 +50,7 @@ namespace Morourak.Domain.Entities
         /// <summary>
         /// Year the vehicle was manufactured
         /// </summary>
-        public int ManufactureYear { get; set; }
-
-        public string Governorate { get; set; } = null!;
+        
 
         #endregion
 

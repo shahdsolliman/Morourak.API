@@ -36,14 +36,14 @@ namespace Morourak.Application.Services
         protected async Task<CitizenRegistry> GetCitizenAsync(string nationalId)
         {
             var citizen = await _citizenRepo.GetAsync(c => c.NationalId == nationalId);
-            if (citizen == null) throw new AppEx.ValidationException("Citizen not found.", "CITIZEN_NOT_FOUND");
+            if (citizen == null) throw new AppEx.ValidationException("??????? ??? ?????.", "CITIZEN_NOT_FOUND");
             return citizen;
         }
 
         protected async Task<CitizenRegistry> GetCitizenAsync(int id)
         {
             var citizen = await _citizenRepo.GetAsync(c => c.Id == id);
-            if (citizen == null) throw new AppEx.ValidationException($"Citizen with ID {id} not found.", "CITIZEN_NOT_FOUND");
+            if (citizen == null) throw new AppEx.ValidationException($"??????? ???????? {id} ??? ?????.", "CITIZEN_NOT_FOUND");
             return citizen;
         }
 

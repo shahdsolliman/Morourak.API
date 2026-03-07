@@ -27,8 +27,9 @@ public class ServiceRequestsController : ControllerBase
     {
         var request = await _serviceRequestService.GetByRequestNumberAsync(requestNumber);
         if (request == null)
-            throw new AppEx.ValidationException("Service request not found.", "REQUEST_NOT_FOUND");
+            throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
 
         return Ok(request);
     }
 }
+

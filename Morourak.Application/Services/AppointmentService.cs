@@ -1,4 +1,4 @@
-using Morourak.Application.DTOs.Appointments;
+﻿using Morourak.Application.DTOs.Appointments;
 using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
@@ -30,7 +30,7 @@ namespace Morourak.Application.Services
         {
             if (date < DateOnly.FromDateTime(DateTime.Today))
                 throw new AppEx.ValidationException(
-                    "لا يمكن عرض مواعيد لتاريخ سابق.",
+                    "Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø¹Ø±Ø¶ Ù…ÙˆØ§Ø¹ÙŠØ¯ Ù„ØªØ§Ø±ÙŠØ® Ø³Ø§Ø¨Ù‚.",
                     "INVALID_PAST_DATE");
 
             var repo = _unitOfWork.Repository<Appointment>();
@@ -66,8 +66,8 @@ namespace Morourak.Application.Services
                     Status = AppointmentStatus.Available,
                     GovernorateId = 0,
                     TrafficUnitId = trafficUnitId,
-                    GovernorateName = "غير محدد",
-                    TrafficUnitName = "غير محدد",
+                    GovernorateName = "ØºÙŠØ± Ù…Ø­Ø¯Ø¯",
+                    TrafficUnitName = "ØºÙŠØ± Ù…Ø­Ø¯Ø¯",
                     CreatedAt = FormatArabicDateTime(DateTime.Now),
                 });
             }
@@ -99,7 +99,7 @@ namespace Morourak.Application.Services
 
             if (slotTaken.Any())
                 throw new AppEx.ValidationException(
-                    "هذا الموعد محجوز بالفعل لهذه الخدمة.",
+                    "Ù‡Ø°Ø§ Ø§Ù„Ù…ÙˆØ¹Ø¯ Ù…Ø­Ø¬ÙˆØ² Ø¨Ø§Ù„ÙØ¹Ù„ Ù„Ù‡Ø°Ù‡ Ø§Ù„Ø®Ø¯Ù…Ø©.",
                     "SLOT_UNAVAILABLE");
 
             var overlappingActiveAppointment = (await appointmentRepo.FindAsync(a =>
@@ -111,14 +111,14 @@ namespace Morourak.Application.Services
 
             if (overlappingActiveAppointment.Any())
                 throw new AppEx.ValidationException(
-                    "لا يمكن حجز أكثر من موعد نشط في نفس التاريخ والتوقيت.",
+                    "Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø­Ø¬Ø² Ø£ÙƒØ«Ø± Ù…Ù† Ù…ÙˆØ¹Ø¯ Ù†Ø´Ø· ÙÙŠ Ù†ÙØ³ Ø§Ù„ØªØ§Ø±ÙŠØ® ÙˆØ§Ù„ØªÙˆÙ‚ÙŠØª.",
                     "CITIZEN_TIME_CONFLICT");
 
             var serviceRequest = await FindPrimaryServiceRequestAsync(nationalId, appointmentType);
             if (serviceRequest == null)
                 throw new AppEx.ValidationException(
-                    "APPLICATION_NOT_FOUND",
-                    "APPLICATION_NOT_FOUND");
+                    "?? ??? ?????? ??? ??? ????? ???????.",
+                    "?? ??? ?????? ??? ??? ????? ???????.");
 
             var assignedToUserId = ResolveAssignedToUserId(appointmentType);
             var now = DateTime.UtcNow;
@@ -153,16 +153,16 @@ namespace Morourak.Application.Services
         {
             var normalized = serviceType.Trim();
 
-            if (normalized.Equals("كشف طبي", StringComparison.OrdinalIgnoreCase))
+            if (normalized.Equals("ÙƒØ´Ù Ø·Ø¨ÙŠ", StringComparison.OrdinalIgnoreCase))
                 return AppointmentType.Medical;
 
-            if (normalized.Equals("فحص فني", StringComparison.OrdinalIgnoreCase))
+            if (normalized.Equals("ÙØ­Øµ ÙÙ†ÙŠ", StringComparison.OrdinalIgnoreCase))
                 return AppointmentType.Technical;
 
-            if (normalized.Equals("اختبار قيادة", StringComparison.OrdinalIgnoreCase))
+            if (normalized.Equals("Ø§Ø®ØªØ¨Ø§Ø± Ù‚ÙŠØ§Ø¯Ø©", StringComparison.OrdinalIgnoreCase))
                 return AppointmentType.Driving;
 
-            if (normalized.Contains("مركبة", StringComparison.OrdinalIgnoreCase) ||
+            if (normalized.Contains("Ù…Ø±ÙƒØ¨Ø©", StringComparison.OrdinalIgnoreCase) ||
                 normalized.Equals(nameof(ServiceType.VehicleLicenseIssue), StringComparison.OrdinalIgnoreCase) ||
                 normalized.Equals(nameof(ServiceType.VehicleLicenseRenewal), StringComparison.OrdinalIgnoreCase) ||
                 normalized.Equals(nameof(ServiceType.VehicleLicenseReplacementLost), StringComparison.OrdinalIgnoreCase) ||
@@ -171,7 +171,7 @@ namespace Morourak.Application.Services
                 return AppointmentType.Technical;
             }
 
-            if (normalized.Contains("قيادة", StringComparison.OrdinalIgnoreCase) ||
+            if (normalized.Contains("Ù‚ÙŠØ§Ø¯Ø©", StringComparison.OrdinalIgnoreCase) ||
                 normalized.Equals(nameof(ServiceType.DrivingLicenseIssue), StringComparison.OrdinalIgnoreCase) ||
                 normalized.Equals(nameof(ServiceType.DrivingLicenseRenewal), StringComparison.OrdinalIgnoreCase) ||
                 normalized.Equals(nameof(ServiceType.DrivingLicenseReplacementLost), StringComparison.OrdinalIgnoreCase) ||
@@ -182,7 +182,7 @@ namespace Morourak.Application.Services
             }
 
             throw new AppEx.ValidationException(
-                "نوع الخدمة غير مدعوم.",
+                "Ù†ÙˆØ¹ Ø§Ù„Ø®Ø¯Ù…Ø© ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ….",
                 "INVALID_SERVICE_TYPE");
         }
 
@@ -263,7 +263,7 @@ namespace Morourak.Application.Services
         {
             if (time < WorkStart || time >= WorkEnd)
                 throw new AppEx.ValidationException(
-                    "الموعد خارج ساعات العمل الرسمية.",
+                    "Ø§Ù„Ù…ÙˆØ¹Ø¯ Ø®Ø§Ø±Ø¬ Ø³Ø§Ø¹Ø§Øª Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„Ø±Ø³Ù…ÙŠØ©.",
                     "INVALID_WORKING_HOURS");
         }
 
@@ -274,7 +274,7 @@ namespace Morourak.Application.Services
 
             if (gov == null)
                 throw new AppEx.ValidationException(
-                    "المحافظة المختارة غير موجودة.",
+                    "Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø© Ø§Ù„Ù…Ø®ØªØ§Ø±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©.",
                     "GOVERNORATE_NOT_FOUND");
 
             return gov;
@@ -287,7 +287,7 @@ namespace Morourak.Application.Services
 
             if (unit == null)
                 throw new AppEx.ValidationException(
-                    "وحدة المرور المختارة غير موجودة في هذه المحافظة.",
+                    "ÙˆØ­Ø¯Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø§Ù„Ù…Ø®ØªØ§Ø±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø© ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø©.",
                     "TRAFFIC_UNIT_NOT_FOUND");
 
             return unit;
@@ -307,7 +307,7 @@ namespace Morourak.Application.Services
             {
                 Appointment = new BookingAppointmentDto
                 {
-                    Message = "تم الحجز بنجاح",
+                    Message = "ØªÙ… Ø§Ù„Ø­Ø¬Ø² Ø¨Ù†Ø¬Ø§Ø­",
                     BookingNumber = appointment.Id.ToString(),
                     ApplicationId = appointment.ApplicationId,
                     RequestNumber = serviceRequest.RequestNumber,
@@ -339,10 +339,10 @@ namespace Morourak.Application.Services
         {
             return type switch
             {
-                AppointmentType.Medical => "كشف طبي",
-                AppointmentType.Driving => "اختبار قيادة",
-                AppointmentType.Technical => "فحص فني",
-                _ => "غير محدد"
+                AppointmentType.Medical => "ÙƒØ´Ù Ø·Ø¨ÙŠ",
+                AppointmentType.Driving => "Ø§Ø®ØªØ¨Ø§Ø± Ù‚ÙŠØ§Ø¯Ø©",
+                AppointmentType.Technical => "ÙØ­Øµ ÙÙ†ÙŠ",
+                _ => "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"
             };
         }
 
@@ -350,8 +350,8 @@ namespace Morourak.Application.Services
         {
             return serviceType switch
             {
-                ServiceType.ExaminationTechnical => "فحص فني",
-                ServiceType.ExaminationDriving => "اختبار قيادة",
+                ServiceType.ExaminationTechnical => "ÙØ­Øµ ÙÙ†ÙŠ",
+                ServiceType.ExaminationDriving => "Ø§Ø®ØªØ¨Ø§Ø± Ù‚ÙŠØ§Ø¯Ø©",
                 _ => serviceType.GetDisplayName()
             };
         }
@@ -365,16 +365,16 @@ namespace Morourak.Application.Services
         {
             return paymentStatus switch
             {
-                PaymentStatus.Pending => "قيد الانتظار",
-                PaymentStatus.Paid => "مدفوع",
-                PaymentStatus.Failed => "فشل",
-                _ => "غير محدد"
+                PaymentStatus.Pending => "Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±",
+                PaymentStatus.Paid => "Ù…Ø¯ÙÙˆØ¹",
+                PaymentStatus.Failed => "ÙØ´Ù„",
+                _ => "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"
             };
         }
 
         private static string NullOrDefault(string? value)
         {
-            return string.IsNullOrWhiteSpace(value) ? "غير محدد" : value;
+            return string.IsNullOrWhiteSpace(value) ? "ØºÙŠØ± Ù…Ø­Ø¯Ø¯" : value;
         }
 
         private static string FormatArabicDate(DateOnly date)
@@ -391,8 +391,8 @@ namespace Morourak.Application.Services
         {
             return time
                 .ToString("hh:mm tt", new CultureInfo("en-US"))
-                .Replace("AM", "صباحاً")
-                .Replace("PM", "مساءً");
+                .Replace("AM", "ØµØ¨Ø§Ø­Ø§Ù‹")
+                .Replace("PM", "Ù…Ø³Ø§Ø¡Ù‹");
         }
 
         public async Task<IEnumerable<AppointmentDto>> GetMyAppointmentsAsync(string nationalId)
@@ -414,10 +414,10 @@ namespace Morourak.Application.Services
             string staffUserId)
         {
             if (string.IsNullOrWhiteSpace(requestNumber))
-                throw new AppEx.ValidationException("Request number is required.", "REQUEST_NUMBER_REQUIRED");
+                throw new AppEx.ValidationException("??? ????? ?????.", "REQUEST_NUMBER_REQUIRED");
 
             if (string.IsNullOrWhiteSpace(staffUserId))
-                throw new AppEx.ValidationException("Staff user id is required.", "STAFF_USER_REQUIRED");
+                throw new AppEx.ValidationException("????? ?????? ?????.", "STAFF_USER_REQUIRED");
 
             // Notes are accepted for auditing/extension, even if not persisted yet.
             _ = notes;
@@ -435,7 +435,7 @@ namespace Morourak.Application.Services
 
             if (appointment == null)
                 throw new AppEx.ValidationException(
-                    $"No scheduled {type} appointment found for request number {requestNumber}.",
+                    $"?? ???? ???? {type} ????? ???? ????? {requestNumber}.",
                     "APPOINTMENT_NOT_FOUND");
 
             var serviceRequestRepo = _unitOfWork.Repository<ServiceRequest>();
@@ -443,12 +443,12 @@ namespace Morourak.Application.Services
 
             if (serviceRequest == null)
                 throw new AppEx.ValidationException(
-                    $"Service request '{requestNumber}' was not found.",
+                    $"??? ?????? '{requestNumber}' ??? ?????.",
                     "SERVICE_REQUEST_NOT_FOUND");
 
             if (serviceRequest.ReferenceId <= 0)
                 throw new AppEx.ValidationException(
-                    $"Service request '{requestNumber}' is not linked to a valid reference.",
+                    $"??? ?????? '{requestNumber}' ??? ????? ????? ????.",
                     "INVALID_SERVICE_REQUEST_REFERENCE");
 
             appointment.Status = passed ? AppointmentStatus.Passed : AppointmentStatus.Failed;
@@ -505,7 +505,7 @@ namespace Morourak.Application.Services
 
                 default:
                     throw new AppEx.ValidationException(
-                        $"Service type '{serviceRequest.ServiceType}' is not supported for appointment updates.",
+                        $"??? ?????? '{serviceRequest.ServiceType}' ??? ????? ?????? ????????.",
                         "UNSUPPORTED_SERVICE_TYPE");
             }
         }
@@ -519,7 +519,7 @@ namespace Morourak.Application.Services
             var application = await repo.GetByIdAsync(referenceId);
 
             if (application == null)
-                throw new AppEx.ValidationException("Driving license application not found.", "APPLICATION_NOT_FOUND");
+                throw new AppEx.ValidationException("??? ???? ??????? ??? ?????.", "?? ??? ?????? ??? ??? ????? ???????.");
 
             switch (appointmentType)
             {
@@ -531,7 +531,7 @@ namespace Morourak.Application.Services
                     break;
                 default:
                     throw new AppEx.ValidationException(
-                        $"Appointment type '{appointmentType}' is not valid for driving license issue.",
+                        $"??? ?????? '{appointmentType}' ??? ???? ?????? ???? ???????.",
                         "INVALID_APPOINTMENT_TYPE");
             }
 
@@ -547,7 +547,7 @@ namespace Morourak.Application.Services
             var application = await repo.GetByIdAsync(referenceId);
 
             if (application == null)
-                throw new AppEx.ValidationException("Driving license renewal application not found.", "APPLICATION_NOT_FOUND");
+                throw new AppEx.ValidationException("??? ????? ???? ??????? ??? ?????.", "?? ??? ?????? ??? ??? ????? ???????.");
 
             if (appointmentType == AppointmentType.Medical)
             {
@@ -559,7 +559,7 @@ namespace Morourak.Application.Services
             if (appointmentType != AppointmentType.Driving)
             {
                 throw new AppEx.ValidationException(
-                    $"Appointment type '{appointmentType}' is not valid for driving license renewal.",
+                    $"??? ?????? '{appointmentType}' ??? ???? ?????? ???? ???????.",
                     "INVALID_APPOINTMENT_TYPE");
             }
 
@@ -574,14 +574,14 @@ namespace Morourak.Application.Services
         {
             if (appointmentType != AppointmentType.Technical)
                 throw new AppEx.ValidationException(
-                    $"Appointment type '{appointmentType}' is not valid for vehicle license services.",
+                    $"??? ?????? '{appointmentType}' ??? ???? ?????? ??? ????????.",
                     "INVALID_APPOINTMENT_TYPE");
 
             var repo = _unitOfWork.Repository<VehicleLicenseApplication>();
             var application = await repo.GetByIdAsync(referenceId);
 
             if (application == null)
-                throw new AppEx.ValidationException("Vehicle license application not found.", "APPLICATION_NOT_FOUND");
+                throw new AppEx.ValidationException("??? ???? ??????? ??? ?????.", "?? ??? ?????? ??? ??? ????? ???????.");
 
             application.TechnicalInspectionPassed = passed;
             repo.Update(application);
@@ -600,7 +600,7 @@ namespace Morourak.Application.Services
                     var renewal = await renewalRepo.GetByIdAsync(serviceRequest.ReferenceId);
 
                     if (renewal == null)
-                        throw new AppEx.ValidationException("Driving renewal application not found.", "APPLICATION_NOT_FOUND");
+                        throw new AppEx.ValidationException("??? ????? ???? ??????? ??? ?????.", "?? ??? ?????? ??? ??? ????? ???????.");
 
                     var required = new HashSet<AppointmentType> { AppointmentType.Medical };
                     if (renewal.RequestedCategory != renewal.CurrentCategory)
@@ -635,11 +635,11 @@ namespace Morourak.Application.Services
             var assignedToUserId = ResolveAssignedToUserId(appointment.Type);
 
             var governorateName = string.IsNullOrWhiteSpace(appointment.Governorate?.Name)
-                ? "غير محدد"
+                ? "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"
                 : appointment.Governorate!.Name;
 
             var trafficUnitName = string.IsNullOrWhiteSpace(appointment.TrafficUnit?.Name)
-                ? "غير محدد"
+                ? "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"
                 : appointment.TrafficUnit!.Name;
 
             return new AppointmentDto
@@ -656,7 +656,7 @@ namespace Morourak.Application.Services
                 EndTime = appointment.EndTime,
                 Status = appointment.Status,
                 CreatedAt = FormatArabicDateTime(appointment.CreatedAt),
-                CompletedAt = appointment.UpdatedAt.HasValue ? FormatArabicDateTime(appointment.UpdatedAt.Value) : "غير مكتمل",
+                CompletedAt = appointment.UpdatedAt.HasValue ? FormatArabicDateTime(appointment.UpdatedAt.Value) : "ØºÙŠØ± Ù…ÙƒØªÙ…Ù„",
                 CitizenNationalId = appointment.CitizenNationalId,
                 GovernorateId = appointment.GovernorateId,
                 TrafficUnitId = appointment.TrafficUnitId,
@@ -669,8 +669,8 @@ namespace Morourak.Application.Services
         private static string FormatArabicDateTime(DateTime dateTime)
         {
             return dateTime.ToString("d MMMM yyyy hh:mm tt", new CultureInfo("ar-EG"))
-                           .Replace("AM", "صباحاً")
-                           .Replace("PM", "مساءً");
+                           .Replace("AM", "ØµØ¨Ø§Ø­Ø§Ù‹")
+                           .Replace("PM", "Ù…Ø³Ø§Ø¡Ù‹");
         }
 
 
@@ -735,5 +735,6 @@ namespace Morourak.Application.Services
 
     }
 }
+
 
 

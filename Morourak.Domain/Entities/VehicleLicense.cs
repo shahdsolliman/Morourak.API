@@ -14,7 +14,6 @@ namespace Morourak.Domain.Entities
         public VehicleType VehicleType { get; set; }
         public string Brand { get; set; } = null!;
         public string Model { get; set; } = null!;
-        public int ManufactureYear { get; set; }
         public DateTime IssueDate { get; set; }
         public DateTime ExpiryDate { get; set; }
         
@@ -33,7 +32,6 @@ namespace Morourak.Domain.Entities
         }
 
 
-        public string Governorate { get; set; }
         public string ChassisNumber { get; set; }
         public string EngineNumber { get; set; }
 

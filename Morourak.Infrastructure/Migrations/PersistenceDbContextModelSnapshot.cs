@@ -597,10 +597,6 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Governorate")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsPendingRenewal")
                         .HasColumnType("bit");
 
@@ -609,9 +605,6 @@ namespace Morourak.Infrastructure.Migrations
 
                     b.Property<DateTime>("IssueDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<int>("ManufactureYear")
-                        .HasColumnType("int");
 
                     b.Property<string>("Model")
                         .IsRequired()
@@ -668,18 +661,11 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<string>("CustomClearancePath")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Governorate")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("IdCardPath")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("InsuranceCertificatePath")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ManufactureYear")
-                        .HasColumnType("int");
 
                     b.Property<string>("Model")
                         .IsRequired()

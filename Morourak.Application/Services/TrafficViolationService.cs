@@ -3,6 +3,7 @@ using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Violations;
+using System.Globalization;
 using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services
@@ -260,7 +261,7 @@ namespace Morourak.Application.Services
                 LegalReference = v.LegalReference,
                 Description = v.Description,
                 Location = v.Location,
-                ViolationDateTime = v.ViolationDateTime,
+                ViolationDateTime = v.ViolationDateTime.ToString("d MMMM yyyy - hh:mm tt", new CultureInfo("ar-EG")),
                 FineAmount = v.FineAmount,
                 PaidAmount = v.PaidAmount,
                 Status = v.Status.ToString(),
@@ -285,12 +286,13 @@ namespace Morourak.Application.Services
                 LegalReference = v.LegalReference,
                 Description = v.Description,
                 Location = v.Location,
-                ViolationDateTime = v.ViolationDateTime,
+                ViolationDateTime = v.ViolationDateTime.ToString("hh:mm tt - d/M/yyyy", new CultureInfo("ar-EG")),
                 FineAmount = v.FineAmount,
                 PaidAmount = v.PaidAmount,
                 Status = v.Status.ToString(),
                 StatusAr = GetStatusArabic(v.Status),
                 IsPayable = v.IsPayable
+                
             };
         }
 

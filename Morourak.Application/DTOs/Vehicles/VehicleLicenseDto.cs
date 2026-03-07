@@ -10,9 +10,7 @@ namespace Morourak.Application.DTOs.Vehicles
         public string VehicleType { get; set; } = null!;
         public string Brand { get; set; } = null!;
         public string Model { get; set; } = null!;
-        public int ManufactureYear { get; set; }
         public string Status { get; set; } = null!;
-        public string Governorate { get; set; } = null!;
         public DateTime IssueDate { get; set; }
         public DateTime ExpiryDate { get; set; }
         public string CitizenNationalId { get; set; } = null!;

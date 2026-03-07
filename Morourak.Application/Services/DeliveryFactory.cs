@@ -17,7 +17,7 @@ namespace Morourak.Application.Services
             if (dto.Method == DeliveryMethod.HomeDelivery)
             {
                 if (dto.Address == null)
-                    throw new AppEx.ValidationException("Address required for home delivery.", "ADDRESS_MISSING");
+                    throw new AppEx.ValidationException("العنوان مطلوب عند اختيار التسليم المنزلي.", "ADDRESS_MISSING");
 
                 license.DeliveryAddress = new Address(
                     dto.Address.Governorate,
@@ -40,7 +40,7 @@ namespace Morourak.Application.Services
             if (dto.Method == DeliveryMethod.HomeDelivery)
             {
                 if (dto.Address == null)
-                    throw new AppEx.ValidationException("Address required for home delivery.", "ADDRESS_MISSING");
+                    throw new AppEx.ValidationException("العنوان مطلوب عند اختيار التسليم المنزلي.", "ADDRESS_MISSING");
 
                 license.DeliveryAddress = new Address(
                     dto.Address.Governorate,

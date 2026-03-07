@@ -7,8 +7,6 @@ namespace Morourak.Application.DTOs.Vehicles
         public VehicleType VehicleType { get; set; }
         public string Brand { get; set; } = null!;
         public string Model { get; set; } = null!;
-        public int ManufactureYear { get; set; }
-        public string Governorate { get; set; } = null!;
         public string? VehicleLicenseNumber { get; set; }
 
         public byte[]? OwnershipProof { get; set; }

@@ -8,8 +8,6 @@ namespace Morourak.API.DTOs.VehicleLicenses
         public VehicleType VehicleType { get; set; }
         public string Brand { get; set; } = null!;
         public string Model { get; set; } = null!;
-        public int ManufactureYear { get; set; }
-        public string Governorate { get; set; } = null!;
 
         public IFormFile OwnershipProof { get; set; } = null!;
         public IFormFile VehicleDataCertificate { get; set; } = null!;

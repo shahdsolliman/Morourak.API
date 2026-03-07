@@ -7,7 +7,6 @@ namespace Morourak.API.DTOs.VehicleLicenses
         [Required]
         public string VehicleLicenseNumber { get; set; } = null!;
 
-        [Required]
-        public string Governorate { get; set; } = null!;
+       
     }
 }

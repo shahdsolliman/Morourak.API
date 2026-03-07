@@ -13,7 +13,7 @@ namespace Morourak.Application.DTOs.Violations
         public string LegalReference { get; set; } = null!;
         public string Description { get; set; } = null!;
         public string Location { get; set; } = null!;
-        public DateTime ViolationDateTime { get; set; }
+        public string ViolationDateTime { get; set; }
         public decimal FineAmount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal RemainingAmount => FineAmount - PaidAmount;

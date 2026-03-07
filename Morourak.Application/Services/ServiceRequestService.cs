@@ -46,7 +46,7 @@ public class ServiceRequestService : IServiceRequestService
     public async Task<IReadOnlyList<ServiceRequestDto>> GetCitizenRequestsAsync()
     {
         var nationalId = _currentUser.NationalId
-            ?? throw new AppEx.ValidationException("NationalId not found in token.", "AUTH_MISSING_NATIONAL_ID");
+            ?? throw new AppEx.ValidationException("??? ?????? ??? ????? ?? ??? ??????.", "AUTH_MISSING_NATIONAL_ID");
 
         var requests = await _unitOfWork.Repository<ServiceRequest>()
             .FindAsync(x => x.CitizenNationalId == nationalId);
@@ -67,7 +67,7 @@ public class ServiceRequestService : IServiceRequestService
         var repo = _unitOfWork.Repository<ServiceRequest>();
 
         var request = await repo.GetAsync(x => x.RequestNumber == requestNumber)
-            ?? throw new AppEx.ValidationException("Request not found.", "REQUEST_NOT_FOUND");
+            ?? throw new AppEx.ValidationException("????? ??? ?????.", "REQUEST_NOT_FOUND");
 
         request.Status = status;
         request.LastUpdatedAt = DateTime.UtcNow;
@@ -86,7 +86,7 @@ public class ServiceRequestService : IServiceRequestService
     {
         if (string.IsNullOrWhiteSpace(citizenNationalId))
             citizenNationalId = _currentUser.NationalId
-                ?? throw new AppEx.ValidationException("NationalId not found.", "AUTH_MISSING_NATIONAL_ID");
+                ?? throw new AppEx.ValidationException("??? ?????? ??? ?????.", "AUTH_MISSING_NATIONAL_ID");
 
         var request = new ServiceRequest
         {
@@ -111,7 +111,7 @@ public class ServiceRequestService : IServiceRequestService
         var repo = _unitOfWork.Repository<ServiceRequest>();
 
         var request = await repo.GetAsync(x => x.RequestNumber == requestNumber)
-            ?? throw new AppEx.ValidationException("Request not found.", "REQUEST_NOT_FOUND");
+            ?? throw new AppEx.ValidationException("????? ??? ?????.", "REQUEST_NOT_FOUND");
 
         request.PaymentStatus = PaymentStatus.Paid;
         request.PaymentTransactionId = transactionId;

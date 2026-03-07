@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using AppEx = Morourak.Application.Exceptions;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
@@ -30,7 +30,7 @@ public class PaymentController : ControllerBase
     {
         var requestDto = await _serviceRequestService.GetByRequestNumberAsync(requestNumber);
         if (requestDto == null) 
-            throw new AppEx.ValidationException("Request not found.", "REQUEST_NOT_FOUND");
+            throw new AppEx.ValidationException("????? ??? ?????.", "REQUEST_NOT_FOUND");
 
         var request = new ServiceRequest { RequestNumber = requestDto.RequestNumber, ServiceType = Enum.Parse<Morourak.Domain.Enums.Request.ServiceType>(requestDto.ServiceType) };
 
@@ -47,3 +47,4 @@ public class PaymentController : ControllerBase
         return Ok();
     }
 }
+

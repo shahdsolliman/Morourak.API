@@ -4,7 +4,7 @@ using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums;
-using Morourak.Domain.Enums.Appointments;
+using Morourak.Domain.Enums.Common;
 using Morourak.Domain.Enums.Request;
 using Morourak.Domain.Enums.Vehicles;
 using Morourak.Domain.Enums.Violations;
@@ -18,7 +18,6 @@ namespace Morourak.Application.Services.Licenses
           IVehicleLicenseService
     {
         private readonly IRequestNumberGenerator _generator;
-        private readonly IUnitOfWork _unitOfWork;
 
         public VehicleLicenseService(
             IUnitOfWork unitOfWork,
@@ -26,11 +25,10 @@ namespace Morourak.Application.Services.Licenses
             IRequestNumberGenerator generator)
             : base(unitOfWork, serviceRequestService)
         {
-            _unitOfWork = unitOfWork;
             _generator = generator;
         }
 
-        #region ================= License Issuance =================
+        #region First-Time Process
 
         public async Task<VehicleLicenseApplicationDto> UploadInitialDocumentsAsync(
             string nationalId,
@@ -38,42 +36,28 @@ namespace Morourak.Application.Services.Licenses
         {
             var citizen = await GetCitizenAsync(nationalId);
 
-            var repo = _unitOfWork.Repository<VehicleLicenseApplication>();
+            var existingLicense = await _licenseRepo.GetAsync(
+                l => l.CitizenRegistryId == citizen.Id && l.IsReplaced == false);
 
-            // تحقق من وجود طلب معلق لنفس المواطن
-            var pendingApplication = (await repo.FindAsync(a =>
-                a.CitizenRegistryId == citizen.Id &&
-                a.Status == LicenseStatus.Pending)).FirstOrDefault();
+            if (existingLicense != null)
+            {
+                if (existingLicense.Status == LicenseStatus.Active)
+                    throw new AppEx.ValidationException("يمتلك المواطن رخصة سيارة سارية بالفعل.", "LICENSE_ACTIVE");
+                if (existingLicense.Status == LicenseStatus.Withdrawn)
+                    throw new AppEx.ValidationException("رخصة المواطن ملغاة. لا يمكن إصدار رخصة جديدة.", "LICENSE_WITHDRAWN");
+            }
+
+            var pendingApplication = (await _unitOfWork.Repository<VehicleLicenseApplication>()
+                .FindAsync(a => a.CitizenRegistryId == citizen.Id && a.Status == LicenseStatus.Pending))
+                .FirstOrDefault();
 
             if (pendingApplication != null)
-                throw new AppEx.ValidationException(
-                    "Citizen already has a pending vehicle license application.",
-                    "APPLICATION_PENDING");
+                throw new AppEx.ValidationException("يوجد طلب رخصة سيارة قيد الانتظار بالفعل.", "APPLICATION_PENDING");
 
-            // إنشاء التطبيق الجديد
-            var application = new VehicleLicenseApplication
-            {
-                CitizenRegistryId = citizen.Id,
-                VehicleType = dto.VehicleType,
-                Brand = dto.Brand,
-                Model = dto.Model,
-                ManufactureYear = dto.ManufactureYear,
-                Governorate = dto.Governorate,
-                OwnershipProofPath = await SaveFileAsync(dto.OwnershipProof, "OwnershipProofs"),
-                VehicleDataCertificatePath = await SaveFileAsync(dto.VehicleDataCertificate, "VehicleDataCertificates"),
-                IdCardPath = await SaveFileAsync(dto.IdCard, "IDCards"),
-                InsuranceCertificatePath = await SaveFileAsync(dto.InsuranceCertificate, "InsuranceCertificates"),
-                CustomClearancePath = dto.CustomClearance != null
-                    ? await SaveFileAsync(dto.CustomClearance, "CustomClearances")
-                    : null,
-                Status = LicenseStatus.Pending,
-                SubmittedAt = DateTime.UtcNow
-            };
+            ValidateDocuments(dto);
 
-            await repo.AddAsync(application);
-            await _unitOfWork.CommitAsync();
+            var application = await CreateApplicationAsync(citizen.Id, dto);
 
-            // إنشاء طلب الخدمة
             var serviceRequest = new ServiceRequest
             {
                 ReferenceId = application.Id,
@@ -91,21 +75,27 @@ namespace Morourak.Application.Services.Licenses
             return new VehicleLicenseApplicationDto
             {
                 Id = application.Id,
-                VehicleType = application.VehicleType,
+                VehicleType = application.VehicleType.GetDisplayName(),
                 Brand = application.Brand,
                 Model = application.Model,
-                ManufactureYear = application.ManufactureYear,
-                Governorate = application.Governorate,
-                Status = application.Status,
+                Status = application.Status.GetDisplayName(),
                 RequestNumber = serviceRequest.RequestNumber
             };
         }
 
+        public async Task<VehicleLicenseResponseDto> FinalizeLicenseAsync(
+            string requestNumber,
+            string nationalId,
+            DeliveryInfoDto delivery)
+        {
+            return await IssueVehicleLicenseAsync(requestNumber, nationalId, delivery);
+        }
+
         #endregion
 
-        #region ================= License Renewal =================
+        #region Renew License
 
-        public async Task<VehicleLicenseApplicationDto> RenewLicenseAsync(
+        public async Task<VehicleLicenseApplicationDto> SubmitRenewalRequestAsync(
             string nationalId,
             UploadVehicleDocsDto dto)
         {
@@ -116,29 +106,32 @@ namespace Morourak.Application.Services.Licenses
                      l.VehicleLicenseNumber == dto.VehicleLicenseNumber);
 
             if (license == null)
+                throw new AppEx.ValidationException("رخصة السيارة غير موجودة.", "LICENSE_NOT_FOUND");
+
+            var unpaidViolations = (await new TrafficViolationService(_unitOfWork)
+                    .GetViolationsByLicenseNumberAsync(license.VehicleLicenseNumber, LicenseType.Vehicle))
+                .Violations.Where(v => v.Status != "مدفوعة").ToList();
+
+            if (unpaidViolations.Any())
                 throw new AppEx.ValidationException(
-                    "Active vehicle license not found for renewal.",
-                    "LICENSE_NOT_FOUND");
+                    "لا يمكن تقديم طلب تجديد لوجود مخالفات غير مدفوعة.",
+                    "UNPAID_VIOLATIONS");
 
-            if (license.Status != LicenseStatus.Active &&
-                license.Status != LicenseStatus.Expired)
-                throw new AppEx.ValidationException(
-                    "This license is not eligible for renewal.",
-                    "LICENSE_NOT_ELIGIBLE");
+            if (license.Status != LicenseStatus.Expired)
+                throw new AppEx.ValidationException("الرخصة لا تزال سارية. لا يلزم التجديد.", "LICENSE_STILL_VALID");
 
-            var repo = _unitOfWork.Repository<VehicleLicenseApplication>();
+            if (license.Status == LicenseStatus.Withdrawn)
+                throw new AppEx.ValidationException("لا يمكن تجديد رخصة ملغاة.", "LICENSE_WITHDRAWN");
 
-            var pendingRenewal = (await repo.FindAsync(a =>
-                a.CitizenRegistryId == citizen.Id &&
-                a.VehicleLicenseId == license.Id &&
-                a.Status == LicenseStatus.Pending)).FirstOrDefault();
+            var pendingRenewal = (await _unitOfWork.Repository<VehicleLicenseApplication>()
+                .FindAsync(a => a.CitizenRegistryId == citizen.Id &&
+                                a.VehicleLicenseId == license.Id &&
+                                a.Status == LicenseStatus.Pending))
+                .FirstOrDefault();
 
             if (pendingRenewal != null)
-                throw new AppEx.ValidationException(
-                    "There is already a pending renewal request for this vehicle.",
-                    "RENEWAL_PENDING");
+                throw new AppEx.ValidationException("يوجد طلب تجديد قيد الانتظار بالفعل لهذه الرخصة.", "RENEWAL_PENDING");
 
-            // إنشاء طلب التجديد
             var application = new VehicleLicenseApplication
             {
                 CitizenRegistryId = citizen.Id,
@@ -146,20 +139,16 @@ namespace Morourak.Application.Services.Licenses
                 VehicleType = license.VehicleType,
                 Brand = license.Brand,
                 Model = license.Model,
-                ManufactureYear = license.ManufactureYear,
-                Governorate = dto.Governorate,
                 Status = LicenseStatus.Pending,
                 SubmittedAt = DateTime.UtcNow
             };
 
-            await repo.AddAsync(application);
+            await _unitOfWork.Repository<VehicleLicenseApplication>().AddAsync(application);
 
-            // تحديث حالة الرخصة بأنها في تجديد
             license.IsPendingRenewal = true;
             _licenseRepo.Update(license);
             await _unitOfWork.CommitAsync();
 
-            // إنشاء طلب الخدمة
             var serviceRequest = new ServiceRequest
             {
                 ReferenceId = application.Id,
@@ -177,41 +166,18 @@ namespace Morourak.Application.Services.Licenses
             return new VehicleLicenseApplicationDto
             {
                 Id = application.Id,
-                VehicleType = application.VehicleType,
+                VehicleType = application.VehicleType.GetDisplayName(),
                 Brand = application.Brand,
                 Model = application.Model,
-                ManufactureYear = application.ManufactureYear,
-                Governorate = application.Governorate,
-                Status = application.Status,
+                Status = application.Status.GetDisplayName(),
                 RequestNumber = serviceRequest.RequestNumber
             };
-        }
-
-        #endregion
-
-        #region ================= Finalize License / Renewal =================
-
-        public async Task<VehicleLicenseResponseDto> FinalizeLicenseAsync(
-            string requestNumber,
-            string nationalId,
-            DeliveryInfoDto delivery)
-        {
-            return await FinalizeVehicleLicenseInternal(requestNumber, nationalId, delivery, isRenewal: false);
         }
 
         public async Task<VehicleLicenseResponseDto> FinalizeRenewalAsync(
             string requestNumber,
             string nationalId,
             DeliveryInfoDto delivery)
-        {
-            return await FinalizeVehicleLicenseInternal(requestNumber, nationalId, delivery, isRenewal: true);
-        }
-
-        private async Task<VehicleLicenseResponseDto> FinalizeVehicleLicenseInternal(
-            string requestNumber,
-            string nationalId,
-            DeliveryInfoDto delivery,
-            bool isRenewal)
         {
             var citizen = await GetCitizenAsync(nationalId);
 
@@ -220,79 +186,50 @@ namespace Morourak.Application.Services.Licenses
                 .FirstOrDefault();
 
             if (serviceRequest == null)
-                throw new AppEx.ValidationException(
-                    "Service request not found.",
-                    "REQUEST_NOT_FOUND");
+                throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
 
             var application = await _unitOfWork.Repository<VehicleLicenseApplication>()
                 .GetAsync(a => a.Id == serviceRequest.ReferenceId);
+
             if (application == null)
+                throw new AppEx.ValidationException("طلب التجديد غير موجود.", "APPLICATION_NOT_FOUND");
+
+            if (!application.VehicleLicenseId.HasValue)
+                throw new AppEx.ValidationException("الرخصة الأصلية غير موجودة.", "LICENSE_NOT_FOUND");
+
+            var license = await _licenseRepo.GetAsync(l => l.Id == application.VehicleLicenseId.Value);
+
+            if (license == null)
+                throw new AppEx.ValidationException("الرخصة غير موجودة.", "LICENSE_NOT_FOUND");
+
+            ValidateDelivery(delivery);
+
+            if (!application.TechnicalInspectionPassed)
                 throw new AppEx.ValidationException(
-                    "Vehicle license application not found.",
-                    "APPLICATION_NOT_FOUND");
+                    "يجب اجتياز الفحص الفني قبل استكمال تجديد الرخصة.",
+                    "TECHNICAL_INSPECTION_NOT_PASSED");
 
-            // التحقق من المخالفات
-            var violationService = new TrafficViolationService(_unitOfWork);
-            var licenseNumber = application.VehicleLicenseId != null
-                ? (await _licenseRepo.GetAsync(l => l.Id == application.VehicleLicenseId.Value)).VehicleLicenseNumber
-                : "";
+            // التجديد: تحديث تاريخ الاصدار والانتهاء فقط، لا يتم إنشاء رخصة جديدة
+            license.IssueDate = DateTime.UtcNow;
+            license.ExpiryDate = DateTime.UtcNow.AddYears(1);
+            license.IsPendingRenewal = false;
 
-            var unpaidViolations = (await violationService.GetViolationsByLicenseNumberAsync(
-                    licenseNumber, LicenseType.Vehicle))
-                .Violations
-                .Where(v => v.Status != "مدفوعة")
-                .ToList();
+            DeliveryFactory.ApplyDelivery(license, delivery);
 
-            if (unpaidViolations.Any())
-                throw new AppEx.ValidationException(
-                    $"All traffic violations must be paid before finalizing {(isRenewal ? "renewal" : "issuance")} of license. Unpaid violations: {unpaidViolations.Count}",
-                    "UNPAID_VIOLATIONS");
-
-            // التحقق من الفحص الفني
-            var appointments = await _examRepo.FindAsync(a => a.ApplicationId == application.Id);
-            var techInspection = appointments.FirstOrDefault(a => a.Type == AppointmentType.Technical);
-
-            if (techInspection == null)
-                throw new AppEx.ValidationException(
-                    "Technical inspection not scheduled.",
-                    "INSPECTION_NOT_SCHEDULED");
-            if (techInspection.Status != AppointmentStatus.Passed)
-                throw new AppEx.ValidationException(
-                    "Technical inspection must be passed before finalizing license.",
-                    "INSPECTION_NOT_PASSED");
-
-            var newLicenseNumber = await GenerateVehicleLicenseNumberAsync();
-            var plateNumber = await GeneratePlateNumberAsync();
-
-            var newLicense = new VehicleLicense
-            {
-                CitizenRegistryId = citizen.Id,
-                VehicleLicenseNumber = newLicenseNumber,
-                PlateNumber = plateNumber,
-                VehicleType = application.VehicleType,
-                Brand = application.Brand,
-                Model = application.Model,
-                ManufactureYear = application.ManufactureYear,
-                Governorate = application.Governorate,
-                IssueDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddYears(1),
-                DeliveryMethod = delivery.Method
-            };
-
-            DeliveryFactory.ApplyDelivery(newLicense, delivery);
-            await _licenseRepo.AddAsync(newLicense);
+            _licenseRepo.Update(license);
 
             application.Status = LicenseStatus.Completed;
             serviceRequest.Status = RequestStatus.Completed;
+            serviceRequest.LastUpdatedAt = DateTime.UtcNow;
 
             await _unitOfWork.CommitAsync();
 
-            return await MapToDtoAsync(newLicense);
+            return MapToDto(license);
         }
 
         #endregion
 
-        #region ================= Replacement =================
+        #region Replacement
 
         public async Task<VehicleLicenseResponseDto> IssueReplacementAsync(
             string nationalId,
@@ -307,54 +244,51 @@ namespace Morourak.Application.Services.Licenses
                      l.VehicleLicenseNumber == vehicleLicenseNumber);
 
             if (oldLicense == null)
-                throw new AppEx.ValidationException("Vehicle license not found.", "LICENSE_NOT_FOUND");
+                throw new AppEx.ValidationException("رخصة السيارة غير موجودة.", "LICENSE_NOT_FOUND");
 
-            if (oldLicense.Status != LicenseStatus.Active)
-                throw new AppEx.ValidationException("Only active licenses can be replaced.", "LICENSE_NOT_ELIGIBLE");
+            if (oldLicense.Status == LicenseStatus.Withdrawn)
+                throw new AppEx.ValidationException("لا يمكن إصدار بدل لهذه الرخصة لأنها ملغاة.", "LICENSE_WITHDRAWN");
+
+            var unpaidViolations = (await new TrafficViolationService(_unitOfWork)
+                    .GetViolationsByLicenseNumberAsync(oldLicense.VehicleLicenseNumber, LicenseType.Vehicle))
+                .Violations.Where(v => v.Status != "مدفوعة").ToList();
+
+            if (unpaidViolations.Any())
+                throw new AppEx.ValidationException("توجد مخالفات غير مدفوعة على هذه الرخصة تمنع إصدار البدل.", "UNPAID_VIOLATIONS");
+
+            ValidateReplacementEligibility(oldLicense);
+            ValidateDelivery(delivery);
 
             var normalizedType = replacementType.Trim().ToLower();
             var serviceType = normalizedType switch
             {
                 "lost" => ServiceType.VehicleLicenseReplacementLost,
                 "damaged" => ServiceType.VehicleLicenseReplacementDamaged,
-                _ => throw new AppEx.ValidationException(
-                    "Replacement type must be 'lost' or 'damaged'.",
-                    "INVALID_REPLACEMENT_TYPE")
+                _ => throw new AppEx.ValidationException("نوع البدل يجب أن يكون 'lost' أو 'damaged'.", "INVALID_REPLACEMENT_TYPE")
             };
 
             oldLicense.IsReplaced = true;
             _licenseRepo.Update(oldLicense);
 
-            var allVL = await _licenseRepo.FindAsync(l => l.VehicleLicenseNumber.StartsWith("VL"));
-            var lastLicense = allVL
-                .OrderByDescending(l => l.VehicleLicenseNumber)
-                .FirstOrDefault();
-
-            long nextNumber = 200001;
-            if (lastLicense != null)
-            {
-                var parts = lastLicense.VehicleLicenseNumber.Split('-');
-                if (parts.Length == 2 && long.TryParse(parts[1], out long lastNum))
-                    nextNumber = lastNum + 1;
-            }
+            var newLicenseNumber = await GenerateVehicleLicenseNumberAsync();
+            var plateNumber = await GeneratePlateNumberAsync();
 
             var newLicense = new VehicleLicense
             {
                 CitizenRegistryId = citizen.Id,
-                VehicleLicenseNumber = $"VL-{nextNumber}",
+                VehicleLicenseNumber = newLicenseNumber,
+                PlateNumber = plateNumber,
                 VehicleType = oldLicense.VehicleType,
                 Brand = oldLicense.Brand,
                 Model = oldLicense.Model,
-                ManufactureYear = oldLicense.ManufactureYear,
-                Governorate = oldLicense.Governorate,
                 IssueDate = DateTime.UtcNow,
                 ExpiryDate = oldLicense.ExpiryDate,
-                DeliveryMethod = delivery.Method,
                 IsReplaced = false
             };
 
             DeliveryFactory.ApplyDelivery(newLicense, delivery);
 
+            // نقل المخالفات للرخصة الجديدة
             var violations = await _unitOfWork.Repository<TrafficViolation>()
                 .FindAsync(v => v.RelatedLicenseId == oldLicense.Id);
             foreach (var v in violations)
@@ -363,79 +297,19 @@ namespace Morourak.Application.Services.Licenses
             await _licenseRepo.AddAsync(newLicense);
             await _unitOfWork.CommitAsync();
 
-            var serviceRequest = new ServiceRequest
-            {
-                ReferenceId = newLicense.Id,
-                ServiceType = serviceType,
-                Status = RequestStatus.Completed,
-                CitizenNationalId = citizen.NationalId,
-                RequestNumber = await _generator.GenerateAsync(serviceType),
-                SubmittedAt = DateTime.UtcNow,
-                LastUpdatedAt = DateTime.UtcNow
-            };
+            await CreateServiceRequestAsync(newLicense.Id, serviceType, RequestStatus.Completed, citizen.NationalId);
 
-            await _unitOfWork.Repository<ServiceRequest>().AddAsync(serviceRequest);
-            await _unitOfWork.CommitAsync();
-
-            return await MapToDtoAsync(newLicense);
+            return MapToDto(newLicense);
         }
 
         #endregion
 
-        #region ================= Helpers =================
 
-        private async Task<string> GenerateVehicleLicenseNumberAsync()
-        {
-            var lastLicense = (await _licenseRepo.GetAllAsync())
-                .OrderByDescending(l => l.Id)
-                .FirstOrDefault();
-
-            long nextNumber = 200001;
-            if (lastLicense != null && !string.IsNullOrEmpty(lastLicense.VehicleLicenseNumber))
-            {
-                var parts = lastLicense.VehicleLicenseNumber.Split('-');
-                if (parts.Length > 1 && long.TryParse(parts.Last(), out var parsed))
-                    nextNumber = parsed + 1;
-            }
-
-            return $"VL-{nextNumber}";
-        }
-
-        private async Task<string> GeneratePlateNumberAsync()
-        {
-            return await Task.FromResult("ABC-" + new Random().Next(1000, 9999));
-        }
-
-        private async Task<VehicleLicenseResponseDto> MapToDtoAsync(VehicleLicense license)
-        {
-            var citizen = license.Citizen ?? await _citizenRepo.GetAsync(c => c.Id == license.CitizenRegistryId);
-
-            return new VehicleLicenseResponseDto
-            {
-                Id = license.Id,
-                VehicleLicenseNumber = license.VehicleLicenseNumber,
-                PlateNumber = license.PlateNumber,
-                VehicleType = license.VehicleType.GetDisplayName(),
-                Brand = license.Brand,
-                Model = license.Model,
-                ManufactureYear = license.ManufactureYear,
-                Status = license.Status.GetDisplayName(),
-                Governorate = license.Governorate,
-                IssueDate = license.IssueDate,
-                ExpiryDate = license.ExpiryDate,
-                CitizenNationalId = citizen?.NationalId ?? "",
-                CitizenName = citizen != null ? $"{citizen.FirstName} {citizen.LastName}".Trim() : ""
-            };
-        }
-
-        #endregion
-
-        #region Interface Implementations
+        #region Queries
 
         public async Task<VehicleLicenseApplication?> GetApplicationByIdAsync(int id, string nationalId)
         {
             var citizen = await GetCitizenAsync(nationalId);
-
             return await _unitOfWork.Repository<VehicleLicenseApplication>()
                 .GetAsync(a => a.Id == id && a.CitizenRegistryId == citizen.Id);
         }
@@ -443,7 +317,6 @@ namespace Morourak.Application.Services.Licenses
         public async Task<IEnumerable<VehicleLicenseDto>> GetAllLicensesByCitizenAsync(string nationalId)
         {
             var citizen = await GetCitizenAsync(nationalId);
-
             var licenses = await _licenseRepo.FindAsync(l => l.CitizenRegistryId == citizen.Id);
 
             return licenses.Select(l => new VehicleLicenseDto
@@ -454,9 +327,7 @@ namespace Morourak.Application.Services.Licenses
                 VehicleType = l.VehicleType.GetDisplayName(),
                 Brand = l.Brand,
                 Model = l.Model,
-                ManufactureYear = l.ManufactureYear,
                 Status = l.Status.GetDisplayName(),
-                Governorate = l.Governorate,
                 IssueDate = l.IssueDate,
                 ExpiryDate = l.ExpiryDate,
                 CitizenNationalId = citizen.NationalId
@@ -485,6 +356,227 @@ namespace Morourak.Application.Services.Licenses
                             }).ToList()
                         }).ToList()
                 });
+        }
+
+        #endregion
+
+        #region Private Helpers
+
+        private static readonly string ArabicLetters = "أبتثجحخدذرزسشصضطظعغفقكلمنهوي";
+
+        private string GenerateRandomPlateNumber()
+        {
+            var random = new Random();
+
+            var letters = new List<string>();
+            for (int i = 0; i < 3; i++)
+            {
+                var letter = ArabicLetters[random.Next(ArabicLetters.Length)];
+                letters.Add(letter.ToString());
+            }
+
+            int number = random.Next(1000, 10000); 
+
+            return $"{string.Join(" ", letters)} {number}";
+        }
+
+       
+
+        private async Task<VehicleLicenseResponseDto> IssueVehicleLicenseAsync(
+        string requestNumber,
+        string nationalId,
+        DeliveryInfoDto delivery)
+        {
+            var citizen = await GetCitizenAsync(nationalId);
+
+            var serviceRequest = (await _unitOfWork.Repository<ServiceRequest>()
+                .FindAsync(r => r.RequestNumber == requestNumber && r.CitizenNationalId == nationalId))
+                .FirstOrDefault();
+
+            if (serviceRequest == null)
+                throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
+
+            var application = await _unitOfWork.Repository<VehicleLicenseApplication>()
+                .GetAsync(a => a.Id == serviceRequest.ReferenceId);
+
+            if (application == null)
+                throw new AppEx.ValidationException("طلب الرخصة غير موجود.", "APPLICATION_NOT_FOUND");
+
+            ValidateDelivery(delivery);
+
+            var newLicenseNumber = await GenerateVehicleLicenseNumberAsync();
+            var plateNumber = GenerateRandomPlateNumber();
+
+            var lastLicense = (await _licenseRepo.GetAllAsync())
+                .OrderByDescending(l => l.Id)
+                .FirstOrDefault();
+
+            int lastSeq = 200000;
+            if (lastLicense != null && !string.IsNullOrEmpty(lastLicense.ChassisNumber))
+                lastSeq = int.Parse(lastLicense.ChassisNumber.Substring(3));
+
+            int newSeq = lastSeq + 1;
+
+            var license = new VehicleLicense
+            {
+                CitizenRegistryId = citizen.Id,
+                VehicleLicenseNumber = newLicenseNumber,
+                PlateNumber = plateNumber,
+                VehicleType = application.VehicleType,
+                Brand = application.Brand,
+                Model = application.Model,
+                IssueDate = DateTime.UtcNow,
+                ExpiryDate = DateTime.UtcNow.AddYears(1),
+                ChassisNumber = $"CHS{newSeq:D6}",
+                EngineNumber = $"ENG{newSeq:D6}",
+            };
+
+            DeliveryFactory.ApplyDelivery(license, delivery);
+
+            await _licenseRepo.AddAsync(license);
+
+            application.Status = LicenseStatus.Completed;
+            serviceRequest.Status = RequestStatus.Completed;
+            serviceRequest.LastUpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.CommitAsync();
+
+            return MapToDto(license);
+        }
+
+
+        private async Task<VehicleLicenseApplication> CreateApplicationAsync(
+            int citizenId,
+            UploadVehicleDocsDto dto)
+        {
+            var application = new VehicleLicenseApplication
+            {
+                CitizenRegistryId = citizenId,
+                VehicleType = dto.VehicleType,
+                Brand = dto.Brand,
+                Model = dto.Model,
+                OwnershipProofPath = await SaveFileAsync(dto.OwnershipProof!, "OwnershipProofs"),
+                VehicleDataCertificatePath = await SaveFileAsync(dto.VehicleDataCertificate!, "VehicleDataCertificates"),
+                IdCardPath = await SaveFileAsync(dto.IdCard!, "IDCards"),
+                InsuranceCertificatePath = await SaveFileAsync(dto.InsuranceCertificate!, "InsuranceCertificates"),
+                CustomClearancePath = dto.CustomClearance != null
+                    ? await SaveFileAsync(dto.CustomClearance, "CustomClearances")
+                    : null,
+                Status = LicenseStatus.Pending,
+                SubmittedAt = DateTime.UtcNow
+            };
+
+            var repo = _unitOfWork.Repository<VehicleLicenseApplication>();
+            await repo.AddAsync(application);
+            await _unitOfWork.CommitAsync();
+
+            return application;
+        }
+
+        private async Task<string> GenerateVehicleLicenseNumberAsync()
+        {
+            var allLicenses = await _licenseRepo.GetAllAsync();
+
+            long maxNumber = 200000; 
+
+            foreach (var license in allLicenses)
+            {
+                if (string.IsNullOrEmpty(license.VehicleLicenseNumber)) continue;
+
+                var parts = license.VehicleLicenseNumber.Split('-');
+                if (parts.Length == 2 && long.TryParse(parts[1], out var num))
+                {
+                    if (num > maxNumber)
+                        maxNumber = num;
+                }
+            }
+
+            return $"VL-{maxNumber + 1}";
+        }
+
+        private async Task<string> GeneratePlateNumberAsync()
+        {
+            var allLicenses = await _licenseRepo.GetAllAsync();
+            var lastLicense = allLicenses
+                .Where(l => !string.IsNullOrEmpty(l.PlateNumber) && l.PlateNumber.StartsWith("PL-"))
+                .OrderByDescending(l => l.Id)
+                .FirstOrDefault();
+
+            long nextNumber = 10000;
+            if (lastLicense != null)
+            {
+                var parts = lastLicense.PlateNumber.Split('-');
+                if (parts.Length > 1 && long.TryParse(parts[1], out var parsed))
+                    nextNumber = parsed + 1;
+            }
+
+            return $"PL-{nextNumber}";
+        }
+
+        private VehicleLicenseResponseDto MapToDto(VehicleLicense license)
+        {
+            return new VehicleLicenseResponseDto
+            {
+                Id = license.Id,
+                VehicleLicenseNumber = license.VehicleLicenseNumber,
+                PlateNumber = license.PlateNumber,
+                VehicleType = license.VehicleType.GetDisplayName(),
+                Brand = license.Brand,
+                Model = license.Model,
+                Status = license.Status.GetDisplayName(),
+                IssueDate = DateOnly.FromDateTime(license.IssueDate),
+                ExpiryDate = DateOnly.FromDateTime(license.ExpiryDate),
+                CitizenNationalId = license.Citizen?.NationalId ?? "",
+                CitizenName = $"{license.Citizen?.FirstName ?? ""} {license.Citizen?.LastName ?? ""}".Trim(),
+                Delivery = new DeliveryInfoDto
+                {
+                    Method = license.DeliveryMethod,
+                    Address = license.DeliveryAddress == null ? null : new AddressDto
+                    {
+                        Governorate = license.DeliveryAddress.Governorate,
+                        City = license.DeliveryAddress.City,
+                        Details = license.DeliveryAddress.Details
+                    }
+                }
+            };
+        }
+
+        private void ValidateDocuments(UploadVehicleDocsDto dto)
+        {
+            if (dto.OwnershipProof == null)
+                throw new AppEx.ValidationException("وثيقة إثبات الملكية مطلوبة.", "DOCUMENT_MISSING");
+            if (dto.VehicleDataCertificate == null)
+                throw new AppEx.ValidationException("شهادة بيانات المركبة مطلوبة.", "DOCUMENT_MISSING");
+            if (dto.IdCard == null)
+                throw new AppEx.ValidationException("بطاقة الهوية مطلوبة.", "DOCUMENT_MISSING");
+            if (dto.InsuranceCertificate == null)
+                throw new AppEx.ValidationException("شهادة التأمين مطلوبة.", "DOCUMENT_MISSING");
+        }
+
+        private void ValidateDelivery(DeliveryInfoDto delivery)
+        {
+            if (delivery == null)
+                throw new AppEx.ValidationException("بيانات التسليم مطلوبة.", "DELIVERY_MISSING");
+            if (delivery.Method == DeliveryMethod.HomeDelivery)
+            {
+                if (delivery.Address == null)
+                    throw new AppEx.ValidationException("العنوان مطلوب عند اختيار التسليم المنزلي.", "ADDRESS_MISSING");
+                if (string.IsNullOrWhiteSpace(delivery.Address.Governorate))
+                    throw new AppEx.ValidationException("المحافظة مطلوبة.", "ADDRESS_INCOMPLETE");
+                if (string.IsNullOrWhiteSpace(delivery.Address.City))
+                    throw new AppEx.ValidationException("المدينة مطلوبة.", "ADDRESS_INCOMPLETE");
+                if (string.IsNullOrWhiteSpace(delivery.Address.Details))
+                    throw new AppEx.ValidationException("تفاصيل العنوان مطلوبة.", "ADDRESS_INCOMPLETE");
+            }
+        }
+
+        private void ValidateReplacementEligibility(VehicleLicense license)
+        {
+            if (license.Status != LicenseStatus.Active)
+                throw new AppEx.ValidationException("لا يمكن إصدار بدل لرخصة منتهية أو ملغاة أو مستبدلة بالفعل.", "LICENSE_NOT_REPLACEABLE");
+
+            if (license.ExpiryDate < DateTime.UtcNow)
+                throw new AppEx.ValidationException("لا يمكن إصدار بدل لرخصة منتهية الصلاحية.", "LICENSE_EXPIRED");
         }
 
         #endregion

@@ -13,7 +13,6 @@ using Morourak.Domain.Enums.Driving;
 using Morourak.Domain.Enums.Request;
 using Morourak.Domain.Enums.Violations;
 using Morourak.Domain.Extensions;
-using System.Reflection.Emit;
 using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services.Licenses
@@ -375,12 +374,6 @@ namespace Morourak.Application.Services.Licenses
             await _unitOfWork.CommitAsync();
         }
 
-        private async Task<byte[]> ConvertToBytesAsync(IFormFile file)
-        {
-            using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            return ms.ToArray();
-        }
 
         public async Task<DrivingLicenseApplication> GetApplicationByIdAsync(int applicationId, string nationalId)
         {

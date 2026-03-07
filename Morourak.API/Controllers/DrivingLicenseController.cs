@@ -1,16 +1,22 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.API.DTOs.DrivingLicenses;
 using Morourak.Application.DTOs.Delivery;
 using Morourak.Application.DTOs.DrivingLicenses;
+using Morourak.Application.DTOs.Licenses;
 using Morourak.Application.Interfaces;
-using AppEx = Morourak.Application.Exceptions; 
+using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.API.Controllers
 {
+    /// <summary>
+    /// Controller for managing driving license operations including applications, renewals, and replacements.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = "CITIZEN")]
+    [Tags("Driving Licenses")]
     public class DrivingLicenseController : ControllerBase
     {
         private readonly IDrivingLicenseService _service;
@@ -33,7 +39,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = User.FindFirst("NationalId")?.Value;
             if (string.IsNullOrEmpty(nationalId))
-                throw new AppEx.ValidationException("National ID not found in token.", "AUTH_MISSING_NATIONAL_ID");
+                throw new AppEx.ValidationException("رقم الهوية غير موجود في رمز التحقق.", "AUTH_MISSING_NATIONAL_ID");
             return nationalId;
         }
 
@@ -41,11 +47,18 @@ namespace Morourak.API.Controllers
 
         #region Upload Initial Documents
 
+        /// <summary>
+        /// Upload initial documents for a first-time driving license application.
+        /// </summary>
+        /// <param name="apiDto">The document data and license category info.</param>
+        /// <returns>The created application details.</returns>
         [HttpPost("upload-documents")]
+        [ProducesResponseType(typeof(DrivingLicenseApplicationDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UploadDocuments([FromForm] UploadDrivingLicenseDocumentsApiDto apiDto)
         {
             if (apiDto == null)
-                throw new AppEx.ValidationException("No data received.");
+                throw new AppEx.ValidationException("لم يتم استلام أي بيانات.");
 
             var nationalId = GetNationalId();
 
@@ -68,7 +81,16 @@ namespace Morourak.API.Controllers
 
         #region Finalize License
 
+        /// <summary>
+        /// Finalize the driving license process by providing delivery information.
+        /// </summary>
+        /// <param name="requestNumber">The service request number.</param>
+        /// <param name="delivery">Delivery method and address details.</param>
+        /// <returns>The issued driving license details.</returns>
         [HttpPost("finalize/{requestNumber}")]
+        [ProducesResponseType(typeof(DrivingLicenseResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> FinalizeLicense(string requestNumber, [FromBody] DeliveryInfoDto delivery)
         {
             try
@@ -96,7 +118,14 @@ namespace Morourak.API.Controllers
 
         #region Renew License
 
+        /// <summary>
+        /// Submit a request for driving license renewal.
+        /// </summary>
+        /// <param name="apiDto">Renewal request data (e.g., new category).</param>
+        /// <returns>The renewal application details.</returns>
         [HttpPost("renewal-request")]
+        [ProducesResponseType(typeof(DrivingLicenseApplicationDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> SubmitRenewalRequest([FromForm] SubmitRenewalRequestApiDto apiDto)
         {
             try
@@ -125,7 +154,16 @@ namespace Morourak.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Finalize the driving license renewal by providing delivery information.
+        /// </summary>
+        /// <param name="requestNumber">The service request number.</param>
+        /// <param name="delivery">Delivery method and address details.</param>
+        /// <returns>The renewed driving license details.</returns>
         [HttpPost("finalize-renewal/{requestNumber}")]
+        [ProducesResponseType(typeof(DrivingLicenseResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> FinalizeRenewal(string requestNumber, [FromBody] DeliveryInfoDto delivery)
         {
             try
@@ -151,9 +189,15 @@ namespace Morourak.API.Controllers
 
         #endregion
 
-        #region Get All Licenses By Citizen
+        #region Get My Licenses
 
+        /// <summary>
+        /// Get all driving licenses belonging to the authenticated citizen.
+        /// </summary>
+        /// <returns>List of driving licenses.</returns>
         [HttpGet("my-licenses")]
+        [ProducesResponseType(typeof(IEnumerable<DrivingLicenseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetMyLicenses()
         {
             try
@@ -185,13 +229,22 @@ namespace Morourak.API.Controllers
 
         #region Issue Replacement
 
+        /// <summary>
+        /// Issue a replacement for a lost or damaged driving license.
+        /// </summary>
+        /// <param name="drivingLicenseNumber">The license number to replace.</param>
+        /// <param name="apiDto">Replacement type (Lost/Damaged) and delivery info.</param>
+        /// <returns>The new driving license details.</returns>
         [HttpPost("issue-replacement/{drivingLicenseNumber}")]
+        [ProducesResponseType(typeof(DrivingLicenseResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> IssueReplacement(string drivingLicenseNumber, [FromBody] IssueReplacementDrivingLicenseApiDto apiDto)
         {
             try
             {
                 if (apiDto.ReplacementType != "Lost" && apiDto.ReplacementType != "Damaged")
-                    throw new AppEx.ValidationException("Replacement type must be 'Lost' or 'Damaged'.");
+                    throw new AppEx.ValidationException("نوع البدل يجب أن يكون 'Lost' أو 'Damaged'.");
 
                 var nationalId = GetNationalId();
 
