@@ -8,6 +8,7 @@ using Morourak.Domain.Enums.Appointments;
 using Morourak.Infrastructure.Identity.Constants;
 using System.Security.Claims;
 using Morourak.API.Errors;
+using System.Globalization;
 
 namespace Morourak.API.Controllers
 {
@@ -29,33 +30,40 @@ namespace Morourak.API.Controllers
 
         #region Helpers
 
-        private موعدDto MapToBookedArabic(BookedAppointmentDto a)
+        private static bool TryParseArabicDate(string value, out DateOnly date)
         {
+            // Produced by AppointmentService.FormatArabicDate: "d MMMM yyyy" with ar-EG culture.
+            return DateOnly.TryParseExact(value, "d MMMM yyyy", new CultureInfo("ar-EG"), DateTimeStyles.None, out date);
+        }
+
+        private static bool TryParseArabicTime(string value, out TimeOnly time)
+        {
+            // Produced by AppointmentService.FormatArabicTime: "hh:mm tt" then AM/PM replaced with صباحاً/مساءً.
+            var normalized = value
+                .Replace("صباحاً", "AM", StringComparison.Ordinal)
+                .Replace("مساءً", "PM", StringComparison.Ordinal)
+                .Trim();
+
+            return TimeOnly.TryParseExact(normalized, "hh:mm tt", CultureInfo.GetCultureInfo("en-US"), DateTimeStyles.None, out time);
+        }
+
+        private موعدDto MapToBookedArabic(BookingConfirmationDto c)
+        {
+            if (!TryParseArabicDate(c.Appointment.DateFormatted, out var date))
+                date = DateOnly.FromDateTime(DateTime.Today);
+
+            if (!TryParseArabicTime(c.Appointment.TimeFormatted, out var time))
+                time = default;
+
             return new موعدDto
             {
-                رقم_الخدمة = a.ServiceNumber,
-                Id = a.ApplicationId,
-                التاريخ = a.Date,
-                وقت_البدء = a.StartTime,
-                الحالة = a.Status switch
-                {
-                    AppointmentStatus.Pending => "قيد الانتظار",
-                    AppointmentStatus.Scheduled => "محجوز",
-                    AppointmentStatus.Completed => "مكتمل",
-                    AppointmentStatus.Cancelled => "ملغى",
-                    AppointmentStatus.Passed => "ناجح",
-                    AppointmentStatus.Available => "متاح",
-                    AppointmentStatus.Failed => "راسب",
-                    _ => a.Status.ToString()
-                },
-                الرقم_القومي = a.NationalId,
-                نوع_الموعد = a.Type switch
-                {
-                    AppointmentType.Medical => "كشف طبي",
-                    AppointmentType.Technical => "فحص فني",
-                    AppointmentType.Driving => "اختبار قيادة عملي",
-                    _ => a.Type.ToString()
-                }
+                رقم_الخدمة = c.ServiceRequest.RequestNumber,
+                Id = c.Appointment.ApplicationId,
+                التاريخ = date,
+                وقت_البدء = time,
+                الحالة = "محجوز",
+                الرقم_القومي = c.ServiceRequest.CitizenNationalId,
+                نوع_الموعد = c.Appointment.ServiceName
             };
         }
 

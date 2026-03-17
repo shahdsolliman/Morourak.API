@@ -60,7 +60,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetDrivingLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Driving);
-            var arabicResult = result.Select(MapToArabic);
+            var arabicResult = result.Violations.Select(MapToArabic);
             return Ok(arabicResult);
         }
 
@@ -81,7 +81,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetVehicleLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Vehicle);
-            var arabicResult = result.Select(MapToArabic);
+            var arabicResult = result.Violations.Select(MapToArabic);
             return Ok(arabicResult);
         }
 
@@ -103,11 +103,11 @@ namespace Morourak.API.Controllers
             [FromQuery] LicenseType licenseType)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, licenseType);
-            var arabicResult = result.Select(MapToArabic);
+            var arabicResult = result.Violations.Select(MapToArabic);
             return Ok(arabicResult);
         }
 
         #endregion
 
     }
-}
+}
