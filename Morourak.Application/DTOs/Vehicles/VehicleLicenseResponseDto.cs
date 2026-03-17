@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Morourak.Application.DTOs.Delivery;
 
 namespace Morourak.Application.DTOs.Vehicles
@@ -7,64 +8,40 @@ namespace Morourak.Application.DTOs.Vehicles
     /// </summary>
     public class VehicleLicenseResponseDto
     {
-        /// <summary>
-        /// Internal identifier.
-        /// </summary>
+        [JsonPropertyName("المعرف")]
         public int Id { get; set; }
 
-        /// <summary>
-        /// Official vehicle license number.
-        /// </summary>
+        [JsonPropertyName("رقم_رخصة_المركبة")]
         public string VehicleLicenseNumber { get; set; } = null!;
 
-        /// <summary>
-        /// Vehicle license plate number.
-        /// </summary>
+        [JsonPropertyName("رقم_اللوحة")]
         public string PlateNumber { get; set; } = null!;
 
-        /// <summary>
-        /// Vehicle type.
-        /// </summary>
+        [JsonPropertyName("نوع_المركبة")]
         public string VehicleType { get; set; } = null!;
 
-        /// <summary>
-        /// Vehicle brand.
-        /// </summary>
+        [JsonPropertyName("الماركة")]
         public string Brand { get; set; } = null!;
 
-        /// <summary>
-        /// Vehicle model.
-        /// </summary>
+        [JsonPropertyName("الموديل")]
         public string Model { get; set; } = null!;
 
-        /// <summary>
-        /// License status.
-        /// </summary>
+        [JsonPropertyName("الحالة")]
         public string Status { get; set; } = null!;
 
-        /// <summary>
-        /// Date of issuance.
-        /// </summary>
+        [JsonPropertyName("تاريخ_الإصدار")]
         public DateOnly IssueDate { get; set; }
 
-        /// <summary>
-        /// Date of expiration.
-        /// </summary>
+        [JsonPropertyName("تاريخ_الانتهاء")]
         public DateOnly ExpiryDate { get; set; }
 
-        /// <summary>
-        /// Owner's national ID.
-        /// </summary>
+        [JsonPropertyName("الرقم_القومي_للمالك")]
         public string CitizenNationalId { get; set; } = null!;
 
-        /// <summary>
-        /// Owner's full name.
-        /// </summary>
+        [JsonPropertyName("اسم_المالك")]
         public string CitizenName { get; set; } = null!;
 
-        /// <summary>
-        /// Delivery details for the physical license.
-        /// </summary>
+        [JsonPropertyName("بيانات_التوصيل")]
         public DeliveryInfoDto Delivery { get; set; } = null!;
     }
 }

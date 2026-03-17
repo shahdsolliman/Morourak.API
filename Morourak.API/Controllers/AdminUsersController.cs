@@ -13,9 +13,9 @@ namespace Morourak.API.Controllers;
 /// </summary>
 [Authorize(Roles = AppIdentityConstants.Roles.Admin)]
 [ApiController]
-[Route("api/admin/users")]
+[Route("api/v1/admin/users")]
 [Tags("User Management")]
-public class AdminUsersController : ControllerBase
+public class AdminUsersController : BaseApiController
 {
     private readonly IAdminUserService _adminUserService;
 

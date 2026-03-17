@@ -8,79 +8,49 @@ namespace Morourak.Application.DTOs.Appointments
     /// </summary>
     public class AppointmentDto
     {
-        /// <summary>
-        /// National ID of the citizen who booked the appointment.
-        /// </summary>
+        [JsonPropertyName("الرق_القومي_للمواطن")]
         public string CitizenNationalId { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Associated application ID.
-        /// </summary>
+        [JsonPropertyName("معرف_الطلب")]
         public int ApplicationId { get; set; }
 
-        /// <summary>
-        /// Type of appointment as an enum.
-        /// </summary>
+        [JsonPropertyName("نوع_الموعد")]
         public AppointmentType Type { get; set; }
 
-        /// <summary>
-        /// Human-readable type name.
-        /// </summary>
+        [JsonPropertyName("اسم_النوع")]
         public string TypeName { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Name of the service related to this appointment.
-        /// </summary>
+        [JsonPropertyName("اسم_الخدمة")]
         public string ServiceName { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Scheduled date of the appointment.
-        /// </summary>
+        [JsonPropertyName("التاريخ")]
         public DateOnly Date { get; set; }
 
-        /// <summary>
-        /// Formatted date string for display.
-        /// </summary>
+        [JsonPropertyName("التاريخ_منسق")]
         public string DateFormatted { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Scheduled start time.
-        /// </summary>
+        [JsonPropertyName("وقت_البدء")]
         public TimeOnly StartTime { get; set; }
 
-        /// <summary>
-        /// Formatted time string for display.
-        /// </summary>
+        [JsonPropertyName("الوقت_منسق")]
         public string TimeFormatted { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Scheduled end time (optional).
-        /// </summary>
+        [JsonPropertyName("وقت_الانتهاء")]
         public TimeOnly? EndTime { get; set; }
 
-        /// <summary>
-        /// Current appointment status (e.g., Scheduled, Completed).
-        /// </summary>
+        [JsonPropertyName("الحالة")]
         public AppointmentStatus Status { get; set; }
 
-        /// <summary>
-        /// Timestamp when the appointment was created.
-        /// </summary>
+        [JsonPropertyName("تاريخ_الإنشاء")]
         public string CreatedAt { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Timestamp when the appointment was completed (optional).
-        /// </summary>
+        [JsonPropertyName("تاريخ_الاكتمال")]
         public string? CompletedAt { get; set; }
 
-        /// <summary>
-        /// Tracking number of the related service request.
-        /// </summary>
+        [JsonPropertyName("رقم_الطلب_المرتبط")]
         public string? RequestNumberRelated { get; set; }
 
-        /// <summary>
-        /// ID of the staff member assigned to this appointment.
-        /// </summary>
+        [JsonPropertyName("معرف_الموظف_المسؤول")]
         public string AssignedToUserId { get; set; } = string.Empty;
 
         /// <summary>
@@ -95,14 +65,10 @@ namespace Morourak.Application.DTOs.Appointments
         [JsonIgnore]
         public int TrafficUnitId { get; set; }
 
-        /// <summary>
-        /// Name of the governorate where the appointment is located.
-        /// </summary>
+        [JsonPropertyName("اسم_المحافظة")]
         public string GovernorateName { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Name of the traffic unit where the appointment is located.
-        /// </summary>
+        [JsonPropertyName("اسم_وحدة_المرور")]
         public string TrafficUnitName { get; set; } = string.Empty;
     }
 }

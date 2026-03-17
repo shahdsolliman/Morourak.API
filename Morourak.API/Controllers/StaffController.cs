@@ -15,9 +15,9 @@ namespace Morourak.API.Controllers
     /// </summary>
     [Authorize(Roles = $"{AppIdentityConstants.Roles.Inspector},{AppIdentityConstants.Roles.Examinator},{AppIdentityConstants.Roles.Doctor}")]
     [ApiController]
-    [Route("api/staff/examinations")]
+    [Route("api/v1/staff/examinations")]
     [Tags("Staff Operations")]
-    public class StaffController : ControllerBase
+    public class StaffController : BaseApiController
     {
         private readonly IAppointmentService _service;
         private readonly IArabicDataService _arabicDataService;

@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.API.Common;
 using Morourak.Application.DTOs.Auth;
-using Morourak.Application.DTOs.Auth.Arabic;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Infrastructure.Identity;
 using System.Security.Claims;
@@ -85,16 +84,7 @@ namespace Morourak.API.Controllers
             if (!result.IsSuccess)
                 return Unauthorized(ApiResponseArabic.Fail(result.Message, result.ErrorCode));
 
-            // Map to Arabic DTO for consistency
-            var arabicResult = new نتيجة_التوثيقDto
-            {
-                ناجح = true,
-                التوكين = result.Token,
-                رمز_التحديث = result.RefreshToken,
-                الأدوار = result.Roles
-            };
-
-            return Ok(ApiResponseArabic.Success(arabicResult, "تم تسجيل الدخول بنجاح"));
+            return Ok(ApiResponseArabic.Success(result, "تم تسجيل الدخول بنجاح"));
         }
 
         // ================= REFRESH TOKEN =================
@@ -111,15 +101,7 @@ namespace Morourak.API.Controllers
             if (!result.IsSuccess)
                 return Unauthorized(ApiResponseArabic.Fail(result.Message, result.ErrorCode));
 
-            var arabicResult = new نتيجة_التوثيقDto
-            {
-                ناجح = true,
-                التوكين = result.Token,
-                رمز_التحديث = result.RefreshToken,
-                الأدوار = result.Roles
-            };
-
-            return Ok(ApiResponseArabic.Success(arabicResult, "تم تحديث التوكين بنجاح"));
+            return Ok(ApiResponseArabic.Success(result, "تم تحديث التوكين بنجاح"));
         }
 
         // ================= FORGOT PASSWORD (FROM TOKEN) =================

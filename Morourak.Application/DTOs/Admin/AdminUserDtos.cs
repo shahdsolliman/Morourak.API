@@ -1,43 +1,32 @@
 using Morourak.Domain.Enums.Auth;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Morourak.Application.DTOs.Admin;
 
 /// <summary>
 /// Basic information about a system user.
 /// </summary>
-public class UserDto
-{
-    /// <summary>
-    /// Unique identifier for the user.
-    /// </summary>
-    public string Id { get; set; } = null!;
+    public class UserDto
+    {
+        [JsonPropertyName("المعرف")]
+        public string Id { get; set; } = null!;
 
-    /// <summary>
-    /// Full name of the user.
-    /// </summary>
-    public string Name { get; set; } = null!;
+        [JsonPropertyName("الاسم")]
+        public string Name { get; set; } = null!;
 
-    /// <summary>
-    /// User's email address.
-    /// </summary>
-    public string Email { get; set; } = null!;
+        [JsonPropertyName("البريد_الإلكتروني")]
+        public string Email { get; set; } = null!;
 
-    /// <summary>
-    /// The user's role (e.g., Admin, Staff).
-    /// </summary>
-    public string Role { get; set; } = null!;
+        [JsonPropertyName("الدور")]
+        public string Role { get; set; } = null!;
 
-    /// <summary>
-    /// Whether the user account is active.
-    /// </summary>
-    public bool IsActive { get; set; }
+        [JsonPropertyName("نشط")]
+        public bool IsActive { get; set; }
 
-    /// <summary>
-    /// Date and time when the user was created.
-    /// </summary>
-    public DateTime CreatedAt { get; set; }
-}
+        [JsonPropertyName("تاريخ_الإنشاء")]
+        public DateTime CreatedAt { get; set; }
+    }
 
 /// <summary>
 /// Data required to create a new user.

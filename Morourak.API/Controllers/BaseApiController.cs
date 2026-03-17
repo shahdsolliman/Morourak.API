@@ -8,7 +8,7 @@ namespace Morourak.API.Controllers;
 /// Base class for all API controllers in Morourak.
 /// Centeralizes common logic like identity extraction and shared helpers.
 /// </summary>
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public abstract class BaseApiController : ControllerBase
 {
     protected string NationalId

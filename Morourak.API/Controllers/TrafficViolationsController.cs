@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.API.Common;
-using Morourak.Application.DTOs.Violations.Arabic;
+using Morourak.Application.DTOs.Violations;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Enums.Violations;
 
@@ -11,9 +11,9 @@ namespace Morourak.API.Controllers
     /// Controller for querying and paying traffic violations for both driving and vehicle licenses.
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [Tags("Traffic Violations")]
-    public class TrafficViolationsController : ControllerBase
+    public class TrafficViolationsController : BaseApiController
     {
         private readonly ITrafficViolationService _service;
 
@@ -22,28 +22,6 @@ namespace Morourak.API.Controllers
             _service = service;
         }
 
-        #region Helpers
-
-        private مخالفةDto MapToArabic(Morourak.Application.DTOs.Violations.ViolationDto v)
-        {
-            return new مخالفةDto
-            {
-                Id = v.ViolationId,
-                رقم_المخالفة = v.ViolationNumber,
-                نوع_المخالفة = v.ViolationType,
-                المادة_القانونية = v.LegalReference,
-                الوصف = v.Description,
-                الموقع = v.Location,
-                تاريخ_ووقت_المخالفة = v.ViolationDateTime,
-                قيمة_الغرامة = v.FineAmount,
-                المبلغ_المدفوع = v.PaidAmount,
-                المبلغ_المتبقي = v.RemainingAmount,
-                الحالة = v.StatusAr,
-                قابلة_للدفع = v.IsPayable
-            };
-        }
-
-        #endregion
 
         #region Query — Driving License
 
@@ -57,8 +35,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetDrivingLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Driving);
-            var arabicResult = result.Violations.Select(MapToArabic);
-            return Ok(ApiResponseArabic.Success(arabicResult));
+            return Ok(ApiResponseArabic.Success(result));
         }
 
         #endregion
@@ -75,8 +52,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetVehicleLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Vehicle);
-            var arabicResult = result.Violations.Select(MapToArabic);
-            return Ok(ApiResponseArabic.Success(arabicResult));
+            return Ok(ApiResponseArabic.Success(result));
         }
 
         #endregion
@@ -94,8 +70,7 @@ namespace Morourak.API.Controllers
             [FromQuery] LicenseType licenseType)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, licenseType);
-            var arabicResult = result.Violations.Select(MapToArabic);
-            return Ok(ApiResponseArabic.Success(arabicResult));
+            return Ok(ApiResponseArabic.Success(result));
         }
 
         #endregion

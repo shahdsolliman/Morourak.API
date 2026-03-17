@@ -1,12 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.API.Common;
-using Morourak.API.DTOs.DrivingLicenses;
 using Morourak.Application.DTOs.Delivery;
 using Morourak.Application.DTOs.DrivingLicenses;
-using Morourak.Application.DTOs.DrivingLicenses.Arabic;
-using Morourak.Application.DTOs.Licenses;
-using Morourak.Application.DTOs.Requests.Arabic;
 using Morourak.Application.Interfaces;
 using Morourak.Domain.Enums;
 using Morourak.Application.Exceptions;
@@ -54,18 +50,7 @@ namespace Morourak.API.Controllers
             };
 
             var result = await _service.UploadInitialDocumentsAsync(nationalId, dto);
-            
-            var arabicResult = new طلب_رخصة_قيادةDto
-            {
-                Id = result.Id,
-                الفئة = result.Category,
-                المحافظة = result.Governorate,
-                وحدة_الترخيص = result.LicensingUnit,
-                الحالة = result.Status,
-                رقم_الطلب = result.RequestNumber
-            };
-
-            return Ok(ApiResponseArabic.Success(arabicResult, "تم رفع المستندات بنجاح"));
+            return Ok(ApiResponseArabic.Success(result, "تم رفع المستندات بنجاح"));
         }
 
         // ================= FINALIZE LICENSE =================
@@ -79,37 +64,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var result = await _service.FinalizeLicenseAsync(requestNumber, nationalId, delivery);
-            
-            var arabicResult = new طلب_خدمةDto
-            {
-                رقم_الطلب = result.RequestNumber,
-                الرقم_القومي = result.CitizenNationalId,
-                نوع_الخدمة = result.ServiceType,
-                الحالة = result.Status,
-                تاريخ_التقديم = result.SubmittedAt,
-                تاريخ_آخر_تحديث = result.LastUpdatedAt.GetValueOrDefault(),
-                الرقم_المرجعي = result.ReferenceId.ToString(),
-                الرسوم = new رسوم_طلب_الخدمةDto
-                {
-                    الرسوم_الأساسية = result.Fees.BaseFee,
-                    رسوم_التوصيل = result.Fees.DeliveryFee,
-                    المبلغ_الإجمالي = result.Fees.TotalAmount
-                },
-                التوصيل = new توصيل_طلب_الخدمةDto
-                {
-                    طريقة_التوصيل = result.Delivery.Method ?? string.Empty,
-                    العنوان = result.Delivery.Address ?? string.Empty
-                },
-                الدفع = new دفع_طلب_الخدمةDto
-                {
-                    الحالة = result.Payment.Status,
-                    رقم_العملية = result.Payment.TransactionId,
-                    المبلغ = result.Payment.Amount ?? 0m,
-                    الوقت = result.Payment.Timestamp
-                }
-            };
-
-            return Ok(ApiResponseArabic.Success(arabicResult, "تم إصدار الرخصة بنجاح"));
+            return Ok(ApiResponseArabic.Success(result, "تم إصدار الرخصة بنجاح"));
         }
 
         // ================= RENEW LICENSE =================
@@ -128,31 +83,7 @@ namespace Morourak.API.Controllers
             };
 
             var result = await _service.SubmitRenewalRequestAsync(nationalId, dto);
-            
-            var arabicResult = new طلب_رخصة_قيادةDto
-            {
-                Id = result.Id,
-                الفئة = result.RequestedCategory,
-                المحافظة = result.CurrentCategory,
-                الحالة = result.Status switch
-                {
-                    LicenseStatus.Pending => "قيد الإنتظار",
-                    LicenseStatus.Active => "سارية",
-                    LicenseStatus.Expired => "منتهية",
-                    LicenseStatus.Approved => "تمت الموافقة",
-                    LicenseStatus.Completed => "مكتملة",
-                    LicenseStatus.Rejected => "مرفوضة",
-                    LicenseStatus.Replaced => "تم الاستبدال",
-                    LicenseStatus.DocumentsUploaded => "تم رفع المستندات",
-                    LicenseStatus.PendingRenewal => "تجديد جاري",
-                    LicenseStatus.Withdrawn => "مسحوبة",
-                    LicenseStatus.Suspended => "موقوفة",
-                    _ => result.Status.ToString()
-                },
-                رقم_الطلب = result.RequestNumber
-            };
-
-            return Ok(ApiResponseArabic.Success(arabicResult, "تم تقديم طلب التجديد بنجاح"));
+            return Ok(ApiResponseArabic.Success(result, "تم تقديم طلب التجديد بنجاح"));
         }
 
         /// <summary>
@@ -164,37 +95,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var result = await _service.FinalizeRenewalAsync(requestNumber, nationalId, delivery);
-            
-            var arabicResult = new طلب_خدمةDto
-            {
-                رقم_الطلب = result.RequestNumber,
-                الرقم_القومي = result.CitizenNationalId,
-                نوع_الخدمة = result.ServiceType,
-                الحالة = result.Status,
-                تاريخ_التقديم = result.SubmittedAt,
-                تاريخ_آخر_تحديث = result.LastUpdatedAt.GetValueOrDefault(),
-                الرقم_المرجعي = result.ReferenceId.ToString(),
-                الرسوم = new رسوم_طلب_الخدمةDto
-                {
-                    الرسوم_الأساسية = result.Fees.BaseFee,
-                    رسوم_التوصيل = result.Fees.DeliveryFee,
-                    المبلغ_الإجمالي = result.Fees.TotalAmount
-                },
-                التوصيل = new توصيل_طلب_الخدمةDto
-                {
-                    طريقة_التوصيل = result.Delivery.Method ?? string.Empty,
-                    العنوان = result.Delivery.Address ?? string.Empty
-                },
-                الدفع = new دفع_طلب_الخدمةDto
-                {
-                    الحالة = result.Payment.Status,
-                    رقم_العملية = result.Payment.TransactionId,
-                    المبلغ = result.Payment.Amount ?? 0m,
-                    الوقت = result.Payment.Timestamp
-                }
-            };
-
-            return Ok(ApiResponseArabic.Success(arabicResult, "تم تجديد الرخصة بنجاح"));
+            return Ok(ApiResponseArabic.Success(result, "تم تجديد الرخصة بنجاح"));
         }
 
         // ================= GET MY LICENSES =================
@@ -208,20 +109,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var licenses = await _service.GetAllLicensesByCitizenAsync(nationalId);
-
-            var arabicLicenses = licenses.Select(l => new رخصة_قيادةDto
-            {
-                رقم_الرخصة = l.LicenseNumber,
-                الفئة = l.Category,
-                الحالة = l.Status,
-                الرقم_القومي = l.CitizenNationalId,
-                وحدة_الترخيص = l.LicensingUnit,
-                المحافظة = l.Governorate,
-                تاريخ_الإصدار = l.IssueDate,
-                تاريخ_الانتهاء = l.ExpiryDate
-            });
-
-            return Ok(ApiResponseArabic.Success(arabicLicenses));
+            return Ok(ApiResponseArabic.Success(licenses));
         }
 
         // ================= ISSUE REPLACEMENT =================
@@ -244,36 +132,7 @@ namespace Morourak.API.Controllers
                 apiDto.Delivery
             );
 
-            var arabicResult = new طلب_خدمةDto
-            {
-                رقم_الطلب = result.RequestNumber,
-                الرقم_القومي = result.CitizenNationalId,
-                نوع_الخدمة = result.ServiceType,
-                الحالة = result.Status,
-                تاريخ_التقديم = result.SubmittedAt,
-                تاريخ_آخر_تحديث = result.LastUpdatedAt.GetValueOrDefault(),
-                الرقم_المرجعي = result.ReferenceId.ToString(),
-                الرسوم = new رسوم_طلب_الخدمةDto
-                {
-                    الرسوم_الأساسية = result.Fees.BaseFee,
-                    رسوم_التوصيل = result.Fees.DeliveryFee,
-                    المبلغ_الإجمالي = result.Fees.TotalAmount
-                },
-                التوصيل = new توصيل_طلب_الخدمةDto
-                {
-                    طريقة_التوصيل = result.Delivery.Method ?? string.Empty,
-                    العنوان = result.Delivery.Address ?? string.Empty
-                },
-                الدفع = new دفع_طلب_الخدمةDto
-                {
-                    الحالة = result.Payment.Status,
-                    رقم_العملية = result.Payment.TransactionId,
-                    المبلغ = result.Payment.Amount ?? 0m,
-                    الوقت = result.Payment.Timestamp
-                }
-            };
-
-            return Ok(ApiResponseArabic.Success(arabicResult, "تم استخراج بدل الرخصة بنجاح"));
+            return Ok(ApiResponseArabic.Success(result, "تم استخراج بدل الرخصة بنجاح"));
         }
     }
 }

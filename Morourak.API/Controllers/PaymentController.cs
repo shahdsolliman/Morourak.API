@@ -8,8 +8,8 @@ using System.Text.Json;
 namespace Morourak.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public class PaymentController : ControllerBase
+[Route("api/v1/[controller]")]
+public class PaymentController : BaseApiController
 {
     private readonly IPayMobService _payMobService;
     private readonly IServiceRequestService _serviceRequestService;

@@ -7,19 +7,19 @@ namespace Morourak.Application.DTOs.Appointments
     /// </summary>
     public class ArabicAppointmentDto
     {
-        [JsonPropertyName("رقم الطلب")]
+        [JsonPropertyName("رقم_الطلب")]
         public string RequestNumber { get; set; } = string.Empty;
 
-        [JsonPropertyName("اسم المتقدم")]
+        [JsonPropertyName("اسم_المتقدم")]
         public string ApplicantName { get; set; } = string.Empty;
 
-        [JsonPropertyName("نوع الاختبار")]
+        [JsonPropertyName("نوع_الاختبار")]
         public string TestType { get; set; } = string.Empty;
 
-        [JsonPropertyName("الرقم القومي")]
+        [JsonPropertyName("الرقم_القومي")]
         public string NationalId { get; set; } = string.Empty;
 
-        [JsonPropertyName("تاريخ ووقت الحجز")]
+        [JsonPropertyName("تاريخ_ووقت_الحجز")]
         public string ReservationDateTime { get; set; } = string.Empty;
     }
 }

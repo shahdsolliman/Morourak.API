@@ -6,8 +6,8 @@ using Morourak.Application.Interfaces.Services;
 namespace Morourak.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class ArabicDataController : ControllerBase
+    [Route("api/v1/[controller]")]
+    public class ArabicDataController : BaseApiController
     {
         private readonly IArabicDataService _arabicDataService;
 

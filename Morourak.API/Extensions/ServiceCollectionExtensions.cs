@@ -9,8 +9,8 @@ using Morourak.Infrastructure.Identity;
 using Morourak.Infrastructure.Persistence;
 using Morourak.Infrastructure.Settings;
 using Morourak.Infrastructure.UnitOfWork;
-using Microsoft.Extensions.Logging;
 using Morourak.Infrastructure.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Morourak.API.Extensions
 {
@@ -19,9 +19,11 @@ namespace Morourak.API.Extensions
         private static string ResolveConnectionString(
             IConfiguration configuration,
             IWebHostEnvironment environment,
-            string name)
+            string name,
+            ILogger? logger = null)
         {
             var value = configuration.GetConnectionString(name);
+            string? source = "appsettings.json";
 
             // If configuration has a value that starts with ENV_, treat the rest as the env var name.
             string? envVarName = null;
@@ -29,6 +31,7 @@ namespace Morourak.API.Extensions
                 value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
             {
                 envVarName = value.Substring("ENV_".Length);
+                source = $"Environment Variable ({envVarName})";
             }
 
             // Optional naming convention fallback (e.g. PERSISTENCE_CONNECTION_STRING)
@@ -47,7 +50,8 @@ namespace Morourak.API.Extensions
                 var fromEnv = Environment.GetEnvironmentVariable(envVarName);
                 if (!string.IsNullOrWhiteSpace(fromEnv))
                 {
-                    return fromEnv!;
+                    source = $"Environment Variable ({envVarName})";
+                    value = fromEnv;
                 }
             }
 
@@ -57,6 +61,9 @@ namespace Morourak.API.Extensions
                 if (!string.IsNullOrWhiteSpace(value) &&
                     !value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Log the resolution details (masking password)
+                    var logValue = MaskConnectionString(value);
+                    logger?.LogInformation("Resolved connection string '{Name}' from {Source}: {Value}", name, source, logValue);
                     return value!;
                 }
 
@@ -66,9 +73,30 @@ namespace Morourak.API.Extensions
             }
 
             // In non‑development environments, we require environment variables.
-            throw new InvalidOperationException(
-                $"Connection string '{name}' is not configured for environment '{environment.EnvironmentName}'. " +
-                $"Expected environment variable '{envVarName ?? "[ENV_VAR_NAME]"}'.");
+            if (string.IsNullOrWhiteSpace(value) || value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Connection string '{name}' is not configured for environment '{environment.EnvironmentName}'. " +
+                    $"Expected environment variable '{envVarName ?? "[ENV_VAR_NAME]"}'.");
+            }
+
+            return value;
+        }
+
+        private static string MaskConnectionString(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString)) return string.Empty;
+            
+            var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i].Contains("Password", StringComparison.OrdinalIgnoreCase) || 
+                    parts[i].Contains("Pwd", StringComparison.OrdinalIgnoreCase))
+                {
+                    parts[i] = "Password=********";
+                }
+            }
+            return string.Join(";", parts);
         }
 
         public static IServiceCollection AddApplicationServices(
@@ -76,15 +104,17 @@ namespace Morourak.API.Extensions
     IConfiguration configuration,
     IWebHostEnvironment env)
         {
+            var logger = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseConfiguration");
+
             // Identity Database
             services.AddDbContext<IdentityDbContext>(options =>
-                options.UseSqlServer(ResolveConnectionString(configuration, env, "IdentityConnection"))
+                options.UseSqlServer(ResolveConnectionString(configuration, env, "IdentityConnection", logger))
             );
 
             // Persistence Database
             services.AddDbContext<PersistenceDbContext>(options =>
             {
-                options.UseSqlServer(ResolveConnectionString(configuration, env, "PersistenceConnection"));
+                options.UseSqlServer(ResolveConnectionString(configuration, env, "PersistenceConnection", logger));
 
                 if (env.IsDevelopment())
                 {

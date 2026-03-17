@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Morourak.API.Common;
@@ -57,6 +58,25 @@ namespace Morourak.API
             builder.Services.AddApplicationServices(builder.Configuration, builder.Environment);
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddSwaggerServices();
+            
+            // API Versioning
+            builder.Services.AddApiVersioning(options =>
+            {
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.DefaultApiVersion = new ApiVersion(1, 0);
+                options.ReportApiVersions = true;
+            });
+
+            // CORS Policy
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("DefaultPolicy", policy =>
+                {
+                    policy.WithOrigins(builder.Configuration["AllowedOrigins"]?.Split(',') ?? new[] { "http://localhost:3000" })
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
 
             var app = builder.Build();
 
@@ -71,6 +91,7 @@ namespace Morourak.API
 
             if (!app.Environment.IsDevelopment())
             {
+                app.UseHsts();
                 app.UseHttpsRedirection();
             }
             else
@@ -83,6 +104,7 @@ namespace Morourak.API
                     app.UseHttpsRedirection();
             }
             app.UseStaticFiles();
+            app.UseCors("DefaultPolicy");
             app.UseGlobalExceptionHandler();
 
             app.UseAuthentication();

@@ -1,4 +1,5 @@
 using Morourak.Domain.Enums.Violations;
+using System.Text.Json.Serialization;
 
 namespace Morourak.Application.DTOs.Violations
 {
@@ -10,43 +11,43 @@ namespace Morourak.Application.DTOs.Violations
     /// </summary>
     public class ViolationDto
     {
-        /// <summary>Internal unique identifier for the violation.</summary>
+        [JsonPropertyName("المعرف")]
         public int ViolationId { get; set; }
 
-        /// <summary>Official violation number or code.</summary>
+        [JsonPropertyName("رقم_المخالفة")]
         public string ViolationNumber { get; set; } = null!;
 
-        /// <summary>Category or type of the violation (e.g., Speeding).</summary>
+        [JsonPropertyName("نوع_المخالفة")]
         public string ViolationType { get; set; } = null!;
 
-        /// <summary>The legal article or law referenced by this violation.</summary>
+        [JsonPropertyName("السند_القانوني")]
         public string LegalReference { get; set; } = null!;
 
-        /// <summary>Detailed description of the violation event.</summary>
+        [JsonPropertyName("الوصف")]
         public string Description { get; set; } = null!;
 
-        /// <summary>Physical location where the violation occurred.</summary>
+        [JsonPropertyName("الموقع")]
         public string Location { get; set; } = null!;
 
-        /// <summary>Date and time the violation was recorded.</summary>
+        [JsonPropertyName("تاريخ_ووقت_المخالفة")]
         public string ViolationDateTime { get; set; } = null!;
 
-        /// <summary>Total fine amount in EGP.</summary>
+        [JsonPropertyName("مبلغ_الغرامة")]
         public decimal FineAmount { get; set; }
 
-        /// <summary>Amount already paid towards this fine.</summary>
+        [JsonPropertyName("المبلغ_المدفوع")]
         public decimal PaidAmount { get; set; }
 
-        /// <summary>Remaining amount to be paid.</summary>
+        [JsonPropertyName("المبلغ_المتبقي")]
         public decimal RemainingAmount => FineAmount - PaidAmount;
 
-        /// <summary>Status of the violation (e.g., Unpaid, Paid).</summary>
+        [JsonPropertyName("الحالة")]
         public ViolationStatus Status { get; set; }
 
-        /// <summary>Status in Arabic.</summary>
+        [JsonPropertyName("الحالة_بالعربي")]
         public string StatusAr { get; set; } = null!;
 
-        /// <summary>Indicates if the violation can be paid online.</summary>
+        [JsonPropertyName("قابل_للدفع")]
         public bool IsPayable { get; set; }
     }
 }

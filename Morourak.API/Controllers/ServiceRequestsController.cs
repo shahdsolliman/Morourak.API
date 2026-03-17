@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Morourak.API.Common;
 using AppEx = Morourak.Application.Exceptions;
 using Morourak.Application.Interfaces.Services;
-using Morourak.Application.DTOs.Requests.Arabic;
 
 namespace Morourak.API.Controllers
 {
@@ -12,9 +11,9 @@ namespace Morourak.API.Controllers
     /// </summary>
     [Authorize]
     [ApiController]
-    [Route("api/service-requests")]
+    [Route("api/v1/service-requests")]
     [Tags("Service Requests")]
-    public class ServiceRequestsController : ControllerBase
+    public class ServiceRequestsController : BaseApiController
     {
         private readonly IServiceRequestService _serviceRequestService;
 
@@ -23,41 +22,6 @@ namespace Morourak.API.Controllers
             _serviceRequestService = serviceRequestService;
         }
 
-        #region Helpers
-
-        private طلب_خدمةDto MapToArabic(Morourak.Application.DTOs.ServiceRequestDto request)
-        {
-            return new طلب_خدمةDto
-            {
-                رقم_الطلب = request.RequestNumber,
-                الرقم_القومي = request.CitizenNationalId,
-                نوع_الخدمة = request.ServiceType,
-                الحالة = request.Status,
-                تاريخ_التقديم = request.SubmittedAt,
-                تاريخ_آخر_تحديث = request.LastUpdatedAt.GetValueOrDefault(),
-                الرقم_المرجعي = request.ReferenceId.ToString(),
-                الرسوم = new رسوم_طلب_الخدمةDto
-                {
-                    الرسوم_الأساسية = request.Fees.BaseFee,
-                    رسوم_التوصيل = request.Fees.DeliveryFee,
-                    المبلغ_الإجمالي = request.Fees.TotalAmount
-                },
-                التوصيل = new توصيل_طلب_الخدمةDto
-                {
-                    طريقة_التوصيل = request.Delivery.Method ?? string.Empty,
-                    العنوان = request.Delivery.Address ?? string.Empty
-                },
-                الدفع = new دفع_طلب_الخدمةDto
-                {
-                    الحالة = request.Payment.Status,
-                    رقم_العملية = request.Payment.TransactionId,
-                    المبلغ = request.Payment.Amount ?? 0m,
-                    الوقت = request.Payment.Timestamp
-                }
-            };
-        }
-
-        #endregion
 
         /// <summary>
         /// Retrieves all service requests submitted by the currently authenticated citizen.
@@ -67,8 +31,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetMyRequests()
         {
             var requests = await _serviceRequestService.GetCitizenRequestsAsync();
-            var arabicRequests = requests.Select(MapToArabic);
-            return Ok(ApiResponseArabic.Success(arabicRequests));
+            return Ok(ApiResponseArabic.Success(requests));
         }
 
         /// <summary>
@@ -83,7 +46,7 @@ namespace Morourak.API.Controllers
             if (request == null)
                 throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
 
-            return Ok(ApiResponseArabic.Success(MapToArabic(request)));
+            return Ok(ApiResponseArabic.Success(request));
         }
     }
 }

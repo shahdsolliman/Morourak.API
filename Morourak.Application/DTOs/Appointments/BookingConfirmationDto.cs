@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Morourak.Application.DTOs.Appointments
 {
     /// <summary>
@@ -5,10 +7,10 @@ namespace Morourak.Application.DTOs.Appointments
     /// </summary>
     public class BookingConfirmationDto
     {
-        /// <summary>Detailed information about the scheduled appointment.</summary>
+        [JsonPropertyName("الموعد")]
         public BookingAppointmentDto Appointment { get; set; } = new();
 
-        /// <summary>Summary of the created service request.</summary>
+        [JsonPropertyName("طلب_الخدمة")]
         public BookingServiceRequestDto ServiceRequest { get; set; } = new();
     }
 
@@ -17,46 +19,46 @@ namespace Morourak.Application.DTOs.Appointments
     /// </summary>
     public class BookingAppointmentDto
     {
-        /// <summary>Success message or guidance for the citizen.</summary>
+        [JsonPropertyName("الرسالة")]
         public string Message { get; set; } = string.Empty;
 
-        /// <summary>Unique booking identifier.</summary>
+        [JsonPropertyName("رقم_الحجز")]
         public string BookingNumber { get; set; } = string.Empty;
 
-        /// <summary>Internal application ID.</summary>
+        [JsonPropertyName("معرف_الطلب")]
         public int ApplicationId { get; set; }
 
-        /// <summary>Public request number.</summary>
+        [JsonPropertyName("رقم_الطلب")]
         public string RequestNumber { get; set; } = string.Empty;
 
-        /// <summary>Name of the requested service.</summary>
+        [JsonPropertyName("اسم_الخدمة")]
         public string ServiceName { get; set; } = string.Empty;
 
-        /// <summary>Scheduled date as string.</summary>
+        [JsonPropertyName("التاريخ")]
         public string Date { get; set; } = string.Empty;
 
-        /// <summary>Scheduled time as string.</summary>
+        [JsonPropertyName("الوقت")]
         public string Time { get; set; } = string.Empty;
 
-        /// <summary>Formatted date for display.</summary>
+        [JsonPropertyName("التاريخ_منسق")]
         public string DateFormatted { get; set; } = string.Empty;
 
-        /// <summary>Formatted time for display.</summary>
+        [JsonPropertyName("الوقت_منسق")]
         public string TimeFormatted { get; set; } = string.Empty;
 
-        /// <summary>Name of the traffic unit.</summary>
+        [JsonPropertyName("اسم_وحدة_المرور")]
         public string TrafficUnitName { get; set; } = string.Empty;
 
-        /// <summary>Physical address of the traffic unit.</summary>
+        [JsonPropertyName("عنوان_وحدة_المرور")]
         public string TrafficUnitAddress { get; set; } = string.Empty;
 
-        /// <summary>Governorate name.</summary>
+        [JsonPropertyName("اسم_المحافظة")]
         public string GovernorateName { get; set; } = string.Empty;
 
-        /// <summary>Traffic unit working hours.</summary>
+        [JsonPropertyName("ساعات_العمل")]
         public string WorkingHours { get; set; } = string.Empty;
 
-        /// <summary>ID of the assigned staff member.</summary>
+        [JsonPropertyName("معرف_الموظف_المسؤول")]
         public string AssignedToUserId { get; set; } = string.Empty;
     }
 
@@ -65,25 +67,25 @@ namespace Morourak.Application.DTOs.Appointments
     /// </summary>
     public class BookingServiceRequestDto
     {
-        /// <summary>The public tracking number.</summary>
+        [JsonPropertyName("رقم_الطلب")]
         public string RequestNumber { get; set; } = string.Empty;
 
-        /// <summary>National ID of the citizen.</summary>
+        [JsonPropertyName("الرق_القومي_للمواطن")]
         public string CitizenNationalId { get; set; } = string.Empty;
 
-        /// <summary>The type of service requested.</summary>
+        [JsonPropertyName("نوع_الخدمة")]
         public string ServiceType { get; set; } = string.Empty;
 
-        /// <summary>Current request status.</summary>
+        [JsonPropertyName("الحالة")]
         public string Status { get; set; } = string.Empty;
 
-        /// <summary>Current payment status.</summary>
+        [JsonPropertyName("حالة_الدفع")]
         public string PaymentStatus { get; set; } = string.Empty;
 
-        /// <summary>Timestamp of submission.</summary>
+        [JsonPropertyName("تاريخ_التقديم")]
         public string SubmittedAt { get; set; } = string.Empty;
 
-        /// <summary>Timestamp of last update.</summary>
+        [JsonPropertyName("تاريخ_آخر_تحديث")]
         public string LastUpdatedAt { get; set; } = string.Empty;
     }
 }

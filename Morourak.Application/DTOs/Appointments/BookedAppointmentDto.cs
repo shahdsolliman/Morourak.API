@@ -1,4 +1,5 @@
-﻿using Morourak.Domain.Enums.Appointments;
+using Morourak.Domain.Enums.Appointments;
+using System.Text.Json.Serialization;
 
 namespace Morourak.Application.DTOs.Appointments;
 

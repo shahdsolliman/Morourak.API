@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace Morourak.Application.DTOs.Vehicles
 {
@@ -7,54 +8,34 @@ namespace Morourak.Application.DTOs.Vehicles
     /// </summary>
     public class VehicleLicenseDto
     {
-        /// <summary>
-        /// Internal unique identifier.
-        /// </summary>
+        [JsonPropertyName("المعرف")]
         public int Id { get; set; }
 
-        /// <summary>
-        /// Unique vehicle license number.
-        /// </summary>
+        [JsonPropertyName("رقم_رخصة_المركبة")]
         public string VehicleLicenseNumber { get; set; } = null!;
 
-        /// <summary>
-        /// The vehicle's license plate number.
-        /// </summary>
+        [JsonPropertyName("رقم_اللوحة")]
         public string PlateNumber { get; set; } = null!;
 
-        /// <summary>
-        /// Type of vehicle (e.g., Car, Motorcycle).
-        /// </summary>
+        [JsonPropertyName("نوع_المركبة")]
         public string VehicleType { get; set; } = null!;
 
-        /// <summary>
-        /// Vehicle manufacturer brand.
-        /// </summary>
+        [JsonPropertyName("الماركة")]
         public string Brand { get; set; } = null!;
 
-        /// <summary>
-        /// Vehicle model name.
-        /// </summary>
+        [JsonPropertyName("الموديل")]
         public string Model { get; set; } = null!;
 
-        /// <summary>
-        /// Current status of the license.
-        /// </summary>
+        [JsonPropertyName("الحالة")]
         public string Status { get; set; } = null!;
 
-        /// <summary>
-        /// Date the license was issued.
-        /// </summary>
+        [JsonPropertyName("تاريخ_الإصدار")]
         public DateTime IssueDate { get; set; }
 
-        /// <summary>
-        /// Date the license expires.
-        /// </summary>
+        [JsonPropertyName("تاريخ_الانتهاء")]
         public DateTime ExpiryDate { get; set; }
 
-        /// <summary>
-        /// National ID of the vehicle owner.
-        /// </summary>
+        [JsonPropertyName("الرقم_القومي_للمالك")]
         public string CitizenNationalId { get; set; } = null!;
     }
 }

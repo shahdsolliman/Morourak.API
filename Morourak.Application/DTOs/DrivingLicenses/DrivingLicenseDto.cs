@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Driving;
 
@@ -8,44 +9,28 @@ namespace Morourak.Application.DTOs.Licenses
     /// </summary>
     public class DrivingLicenseDto
     {
-        /// <summary>
-        /// Unique license identification number.
-        /// </summary>
+        [JsonPropertyName("رقم_الرخصة")]
         public string LicenseNumber { get; set; } = null!;
 
-        /// <summary>
-        /// The category of the license (e.g., Private, Professional).
-        /// </summary>
+        [JsonPropertyName("الفئة")]
         public string Category { get; set; } = default!;
 
-        /// <summary>
-        /// Current status of the license (e.g., Active, Expired, Suspended).
-        /// </summary>
+        [JsonPropertyName("الحالة")]
         public string Status { get; set; } = default!;
 
-        /// <summary>
-        /// The national ID of the license holder.
-        /// </summary>
+        [JsonPropertyName("الرقم_القومي_للمواطن")]
         public string CitizenNationalId { get; set; } = null!;
 
-        /// <summary>
-        /// The traffic unit that issued the license.
-        /// </summary>
+        [JsonPropertyName("وحدة_الترخيص")]
         public string LicensingUnit { get; set; } = null!;
 
-        /// <summary>
-        /// The governorate where the license was issued.
-        /// </summary>
+        [JsonPropertyName("المحافظة")]
         public string Governorate { get; set; } = null!;
 
-        /// <summary>
-        /// The date the license was issued.
-        /// </summary>
+        [JsonPropertyName("تاريخ_الإصدار")]
         public DateOnly IssueDate { get; set; }
 
-        /// <summary>
-        /// The date the license expires.
-        /// </summary>
+        [JsonPropertyName("تاريخ_الانتهاء")]
         public DateOnly ExpiryDate { get; set; }
     }
 }
