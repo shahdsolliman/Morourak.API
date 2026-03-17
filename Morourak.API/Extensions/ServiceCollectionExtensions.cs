@@ -16,6 +16,28 @@ namespace Morourak.API.Extensions
 {
     public static class ServiceCollectionExtensions
     {
+        private static string ResolveConnectionString(IConfiguration configuration, string name)
+        {
+            var value = configuration.GetConnectionString(name);
+
+            if (string.IsNullOrWhiteSpace(value))
+                throw new InvalidOperationException($"Connection string '{name}' is missing or empty.");
+
+            // appsettings.json uses placeholders like "ENV_IDENTITY_CONNECTION_STRING".
+            // If so, read the real connection string from environment variables.
+            if (value.StartsWith("ENV_", StringComparison.Ordinal))
+            {
+                var envValue = Environment.GetEnvironmentVariable(value);
+                if (string.IsNullOrWhiteSpace(envValue))
+                    throw new InvalidOperationException(
+                        $"Connection string '{name}' is set to placeholder '{value}'. Set the environment variable '{value}' to a valid SQL Server connection string.");
+
+                return envValue;
+            }
+
+            return value;
+        }
+
         public static IServiceCollection AddApplicationServices(
     this IServiceCollection services,
     IConfiguration configuration,
@@ -23,13 +45,13 @@ namespace Morourak.API.Extensions
         {
             // Identity Database
             services.AddDbContext<IdentityDbContext>(options =>
-                options.UseSqlServer(configuration.GetConnectionString("IdentityConnection"))
+                options.UseSqlServer(ResolveConnectionString(configuration, "IdentityConnection"))
             );
 
             // Persistence Database
             services.AddDbContext<PersistenceDbContext>(options =>
             {
-                options.UseSqlServer(configuration.GetConnectionString("PersistenceConnection"));
+                options.UseSqlServer(ResolveConnectionString(configuration, "PersistenceConnection"));
 
                 // ── FIX: Sensitive data logging ONLY in Development ──────────
                 // In Production, EF Core logs must NEVER contain SQL parameter

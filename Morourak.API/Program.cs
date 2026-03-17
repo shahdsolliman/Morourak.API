@@ -76,7 +76,19 @@ namespace Morourak.API
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
+            else
+            {
+                var urls = app.Configuration["ASPNETCORE_URLS"];
+                var hasHttpsUrl = urls?.Contains("https://", StringComparison.OrdinalIgnoreCase) == true;
+                var httpsPort = app.Configuration.GetValue<int?>("ASPNETCORE_HTTPS_PORT");
+
+                if (hasHttpsUrl || httpsPort.HasValue)
+                    app.UseHttpsRedirection();
+            }
             app.UseStaticFiles();
             app.UseGlobalExceptionHandler();
 
