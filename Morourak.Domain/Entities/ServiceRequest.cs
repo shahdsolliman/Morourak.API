@@ -1,5 +1,6 @@
 ﻿using Morourak.Domain.Common;
 using Morourak.Domain.Enums.Request;
+using Morourak.Domain.Enums.Common;
 
 namespace Morourak.Domain.Entities;
 
@@ -26,4 +27,11 @@ public class ServiceRequest: BaseEntity<int>
     public decimal? PaymentAmount { get; set; }
 
     public DateTime? PaymentTimestamp { get; set; }
+
+    // New Delivery and Fee Fields
+    public DeliveryMethod? DeliveryMethod { get; set; }
+    public string? DeliveryAddressDetail { get; set; }
+    public decimal BaseFee { get; set; }
+    public decimal DeliveryFee { get; set; }
+    public decimal TotalAmount { get; set; }
 }

@@ -16,14 +16,17 @@ namespace Morourak.Domain.Enums.Request
         [Display(Name = "ملغى")]
         Cancelled = 4,
 
-        [Display(Name = "ناجح")]
-        Passed = 5,
 
         [Display(Name = "فشل")]
-        Failed = 6,
+        Failed = 5,
 
         [Display(Name = "جاهز للتنفيذ")]
-        ReadyForProcessing = 7
+        ReadyForProcessing = 6,
 
+        [Display(Name = "في انتظار الدفع")]
+        AwaitingPayment = 7,
+
+        [Display(Name = "تم الدفع")]
+        Paid = 8
     }
 }

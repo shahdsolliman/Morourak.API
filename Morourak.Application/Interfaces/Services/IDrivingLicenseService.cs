@@ -17,7 +17,7 @@ namespace Morourak.Application.Interfaces
             UploadDrivingLicenseDocumentsDto dto);
 
 
-        Task<DrivingLicenseResponseDto> FinalizeLicenseAsync(string requestNumber, string nationalId, DeliveryInfoDto delivery);
+        Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeLicenseAsync(string requestNumber, string nationalId, DeliveryInfoDto delivery);
 
         #endregion
 
@@ -27,7 +27,7 @@ namespace Morourak.Application.Interfaces
     string nationalId,
     SubmitRenewalRequestDto dto);
 
-        Task<DrivingLicenseResponseDto> FinalizeRenewalAsync(
+        Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeRenewalAsync(
             string requestNumber,
             string nationalId,
             DeliveryInfoDto delivery);
@@ -36,11 +36,17 @@ namespace Morourak.Application.Interfaces
 
         #region Replacement
 
-        Task<DrivingLicenseResponseDto> IssueReplacementAsync(
+        Task<Morourak.Application.DTOs.ServiceRequestDto> IssueReplacementAsync(
             string nationalId,
             string drivingLicenseNumber,
             string replacementType,
             DeliveryInfoDto delivery);
+
+        #endregion
+
+        #region Issuance
+
+        Task<DrivingLicenseResponseDto> CompleteIssuanceAsync(string requestNumber);
 
         #endregion
 

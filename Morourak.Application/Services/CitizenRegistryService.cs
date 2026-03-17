@@ -33,7 +33,7 @@ namespace Morourak.Application.Services
                 result.Errors.Add(new ErrorDetail
                 {
                     Field = "nationalId",
-                    Error = "No citizen record found"
+                    Error = "لا يوجد سجل لهذا المواطن."
                 });
 
                 return result;
@@ -42,13 +42,13 @@ namespace Morourak.Application.Services
             result.Citizen = citizen;
 
             if (!string.Equals(firstName?.Trim(), citizen.FirstName?.Trim(), StringComparison.OrdinalIgnoreCase))
-                result.Errors.Add(new ErrorDetail { Field = "firstName", Error = "First name does not match official records" });
+                result.Errors.Add(new ErrorDetail { Field = "firstName", Error = "الاسم الأول غير مطابق للسجلات الرسمية." });
 
             if (!string.Equals(lastName?.Trim(), citizen.LastName?.Trim(), StringComparison.OrdinalIgnoreCase))
-                result.Errors.Add(new ErrorDetail { Field = "lastName", Error = "Last name does not match official records" });
+                result.Errors.Add(new ErrorDetail { Field = "lastName", Error = "اسم العائلة غير مطابق للسجلات الرسمية." });
 
             if (NormalizePhoneNumber(mobileNumber) != NormalizePhoneNumber(citizen.MobileNumber))
-                result.Errors.Add(new ErrorDetail { Field = "mobileNumber", Error = "Mobile number does not match official records" });
+                result.Errors.Add(new ErrorDetail { Field = "mobileNumber", Error = "رقم الهاتف المحمول غير مطابق للسجلات الرسمية." });
 
             result.IsMatch = !result.Errors.Any();
 

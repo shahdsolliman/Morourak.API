@@ -39,5 +39,10 @@ namespace Morourak.Application.Interfaces.Services
         /// يُحدث حالة الدفع للطلب ويغير حالته إلى "جاهز للمعالجة" إذا تم الدفع بنجاح
         /// </summary>
         Task<ServiceRequestDto> MarkAsPaidAsync(string requestNumber, string transactionId, decimal amount);
+
+        /// <summary>
+        /// يُحدد طريقة التوصيل ويحسب الرسوم الإجمالية للطلب
+        /// </summary>
+        Task<ServiceRequestDto> SetDeliveryAndFeesAsync(string requestNumber, Morourak.Domain.Enums.Common.DeliveryMethod method, string? address);
     }
 }

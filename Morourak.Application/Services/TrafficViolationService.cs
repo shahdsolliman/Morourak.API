@@ -4,6 +4,7 @@ using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Violations;
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services
@@ -11,13 +12,13 @@ namespace Morourak.Application.Services
     public class TrafficViolationService : ITrafficViolationService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<TrafficViolationService> _logger;
 
-        public TrafficViolationService(IUnitOfWork unitOfWork)
+        public TrafficViolationService(IUnitOfWork unitOfWork, ILogger<TrafficViolationService> logger)
         {
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
-
-        #region Query Operations
 
         public async Task<ViolationListResponseDto> GetViolationsByLicenseNumberAsync(string licenseNumber, LicenseType licenseType)
         {
@@ -107,149 +108,38 @@ namespace Morourak.Application.Services
             return MapToDetailsDto(violation);
         }
 
-        #endregion
-
-        #region Payment Operations
-
-        public async Task<PaymentResultDto> PaySingleViolationAsync(int violationId, decimal amount)
+        public Task<PaymentResultDto> PaySingleViolationAsync(int violationId, decimal amount)
         {
-            var repo = _unitOfWork.Repository<TrafficViolation>();
-            var violation = await repo.GetByIdAsync(violationId);
-
-            if (violation == null)
-                throw new AppEx.ValidationException("المخالفة غير موجودة.", "VIOLATION_NOT_FOUND");
-            if (!violation.IsPayable)
-                throw new AppEx.ValidationException("هذه المخالفة لا يمكن سدادها عبر الإنترنت.", "VIOLATION_NOT_PAYABLE");
-            if (violation.Status == ViolationStatus.Paid)
-                throw new AppEx.ValidationException("تم سداد هذه المخالفة بالفعل.", "VIOLATION_ALREADY_PAID");
-
-            var remaining = violation.FineAmount - violation.PaidAmount;
-            if (amount > remaining)
-                throw new AppEx.ValidationException($"المبلغ المدفوع ({amount:F2}) أكبر من المتبقي ({remaining:F2}).", "PAYMENT_EXCEEDS_BALANCE");
-
-            violation.PaidAmount += amount;
-            violation.Status = violation.PaidAmount >= violation.FineAmount
-                ? ViolationStatus.Paid
-                : ViolationStatus.PartiallyPaid;
-            violation.UpdatedAt = DateTime.UtcNow;
-
-            repo.Update(violation);
-            await _unitOfWork.CommitAsync();
-
-            var newRemaining = violation.FineAmount - violation.PaidAmount;
-
-            return new PaymentResultDto
+            _logger.LogWarning("Direct payment attempted for violation {ViolationId}. Redirecting to PaymentService.", violationId);
+            return Task.FromResult(new PaymentResultDto
             {
-                Success = true,
-                MessageAr = violation.Status == ViolationStatus.Paid
-                    ? "تم سداد المخالفة بالكامل."
-                    : $"تم تسجيل دفعة جزئية. المتبقي: {newRemaining:F2} جنيه مصري.",
-                ViolationsPaid = 1,
-                TotalAmountPaid = amount,
-                RemainingBalance = newRemaining
-            };
+                Success = false,
+                MessageAr = "يرجى استخدام خدمة الدفع الموحدة لإتمام العملية.",
+                Message = "Please use the unified payment service to complete this operation."
+            });
         }
 
-        public async Task<PaymentResultDto> PaySelectedViolationsAsync(List<int> violationIds)
+        public Task<PaymentResultDto> PaySelectedViolationsAsync(List<int> violationIds)
         {
-            var repo = _unitOfWork.Repository<TrafficViolation>();
-            decimal totalPaid = 0;
-            int paidCount = 0;
-
-            foreach (var id in violationIds)
+            _logger.LogWarning("Direct payment attempted for selected violations. Redirecting to PaymentService.");
+            return Task.FromResult(new PaymentResultDto
             {
-                var violation = await repo.GetByIdAsync(id);
-                if (violation == null) continue;
-                if (!violation.IsPayable) continue;
-                if (violation.Status == ViolationStatus.Paid) continue;
-
-                var remaining = violation.FineAmount - violation.PaidAmount;
-                violation.PaidAmount = violation.FineAmount;
-                violation.Status = ViolationStatus.Paid;
-                violation.UpdatedAt = DateTime.UtcNow;
-
-                repo.Update(violation);
-                totalPaid += remaining;
-                paidCount++;
-            }
-
-            await _unitOfWork.CommitAsync();
-
-            return new PaymentResultDto
-            {
-                Success = true,
-                MessageAr = $"تم سداد {paidCount} مخالفة. الإجمالي: {totalPaid:F2} جنيه مصري.",
-                ViolationsPaid = paidCount,
-                TotalAmountPaid = totalPaid,
-                RemainingBalance = 0
-            };
+                Success = false,
+                MessageAr = "يرجى استخدام خدمة الدفع الموحدة لإتمام العملية.",
+                Message = "Please use the unified payment service to complete this operation."
+            });
         }
 
-        public async Task<PaymentResultDto> PayAllViolationsAsync(string licenseNumber, LicenseType licenseType)
+        public Task<PaymentResultDto> PayAllViolationsAsync(string licenseNumber, LicenseType licenseType)
         {
-            if (string.IsNullOrWhiteSpace(licenseNumber))
-                throw new AppEx.ValidationException("رقم الرخصة مطلوب.", "LICENSE_NUMBER_REQUIRED");
-
-            int licenseId;
-            if (licenseType == LicenseType.Vehicle)
+            _logger.LogWarning("Direct payment attempted for all violations on license {LicenseNumber}. Redirecting to PaymentService.", licenseNumber);
+            return Task.FromResult(new PaymentResultDto
             {
-                var license = await _unitOfWork.Repository<VehicleLicense>()
-                    .FindAsync(l => l.VehicleLicenseNumber == licenseNumber);
-                var first = license.FirstOrDefault();
-                if (first == null)
-                    throw new AppEx.ValidationException("رخصة المركبة غير موجودة.", "VEHICLE_LICENSE_NOT_FOUND");
-                licenseId = first.Id;
-            }
-            else
-            {
-                var license = await _unitOfWork.Repository<DrivingLicense>()
-                    .FindAsync(l => l.LicenseNumber == licenseNumber);
-                var first = license.FirstOrDefault();
-                if (first == null)
-                    throw new AppEx.ValidationException("رخصة القيادة غير موجودة.", "DRIVING_LICENSE_NOT_FOUND");
-                licenseId = first.Id;
-            }
-
-            var repo = _unitOfWork.Repository<TrafficViolation>();
-            var violations = await repo.FindAsync(v => v.RelatedLicenseId == licenseId && v.LicenseType == licenseType && v.Status != ViolationStatus.Paid && v.IsPayable);
-
-            if (!violations.Any())
-                return new PaymentResultDto
-                {
-                    Success = true,
-                    MessageAr = "لا توجد مخالفات غير مدفوعة.",
-                    ViolationsPaid = 0,
-                    TotalAmountPaid = 0,
-                    RemainingBalance = 0
-                };
-
-            decimal totalPaid = 0;
-            foreach (var v in violations)
-            {
-                var remaining = v.FineAmount - v.PaidAmount;
-                v.PaidAmount = v.FineAmount;
-                v.Status = ViolationStatus.Paid;
-                v.UpdatedAt = DateTime.UtcNow;
-
-                repo.Update(v);
-                totalPaid += remaining;
-            }
-
-            await _unitOfWork.CommitAsync();
-
-            return new PaymentResultDto
-            {
-                Success = true,
-                MessageAr = $"تم سداد جميع المخالفات ({violations.Count} مخالفة). الإجمالي: {totalPaid:F2} جنيه مصري.",
-                ViolationsPaid = violations.Count,
-                TotalAmountPaid = totalPaid,
-                RemainingBalance = 0
-            };
+                Success = false,
+                MessageAr = "يرجى استخدام خدمة الدفع الموحدة لإتمام العملية.",
+                Message = "Please use the unified payment service to complete this operation."
+            });
         }
-
-        #endregion
-
-        #region Mapping Helpers
 
         private static ViolationDto MapToDto(TrafficViolation v)
         {
@@ -264,7 +154,7 @@ namespace Morourak.Application.Services
                 ViolationDateTime = v.ViolationDateTime.ToString("d MMMM yyyy - hh:mm tt", new CultureInfo("ar-EG")),
                 FineAmount = v.FineAmount,
                 PaidAmount = v.PaidAmount,
-                Status = v.Status.ToString(),
+                Status = v.Status,
                 StatusAr = GetStatusArabic(v.Status),
                 IsPayable = v.IsPayable
             };
@@ -289,10 +179,9 @@ namespace Morourak.Application.Services
                 ViolationDateTime = v.ViolationDateTime.ToString("hh:mm tt - d/M/yyyy", new CultureInfo("ar-EG")),
                 FineAmount = v.FineAmount,
                 PaidAmount = v.PaidAmount,
-                Status = v.Status.ToString(),
+                Status = v.Status,
                 StatusAr = GetStatusArabic(v.Status),
                 IsPayable = v.IsPayable
-                
             };
         }
 
@@ -316,7 +205,5 @@ namespace Morourak.Application.Services
             ViolationType.UnauthorizedModification => "تعديلات غير مصرح بها على المركبة",
             _ => "مخالفة مرورية"
         };
-
-        #endregion
     }
 }

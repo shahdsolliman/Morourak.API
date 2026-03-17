@@ -1,6 +1,7 @@
 using Morourak.Application.DTOs.Delivery;
 using Morourak.Application.DTOs.Vehicles;
 using Morourak.Domain.Entities;
+using Morourak.Domain.Enums.Appointments;
 
 namespace Morourak.Application.Interfaces
 {
@@ -12,7 +13,7 @@ namespace Morourak.Application.Interfaces
             string nationalId,
             UploadVehicleDocsDto dto);
 
-        Task<VehicleLicenseResponseDto> FinalizeLicenseAsync(
+        Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeLicenseAsync(
             string requestNumber,
             string nationalId,
             DeliveryInfoDto delivery);
@@ -25,7 +26,7 @@ namespace Morourak.Application.Interfaces
             string nationalId,
             UploadVehicleDocsDto dto);
 
-        Task<VehicleLicenseResponseDto> FinalizeRenewalAsync(
+        Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeRenewalAsync(
             string requestNumber,
             string nationalId,
             DeliveryInfoDto delivery);
@@ -34,11 +35,19 @@ namespace Morourak.Application.Interfaces
 
         #region Replacement
 
-        Task<VehicleLicenseResponseDto> IssueReplacementAsync(
+        Task<Morourak.Application.DTOs.ServiceRequestDto> IssueReplacementAsync(
             string nationalId,
             string vehicleLicenseNumber,
             string replacementType,
             DeliveryInfoDto delivery);
+
+        Task SubmitAppointmentResultAsync(int applicationId, AppointmentType type, bool passed, string? notes);
+
+        #endregion
+
+        #region Issuance
+
+        Task<VehicleLicenseResponseDto> CompleteIssuanceAsync(string requestNumber);
 
         #endregion
 

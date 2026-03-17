@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Morourak.API.Errors;
 using Morourak.API.Extensions;
+using Morourak.API.Extensions.JsonConverters;
 using Morourak.API.Middleware;
 using Morourak.Application.Exceptions;
 using Morourak.Infrastructure.Settings;
@@ -22,9 +23,9 @@ namespace Morourak.API
                 .AddControllers()
                 .AddJsonOptions(options =>
                 {
-                    // Allow enums as string or int
+                    // Global Arabic Enum Converter
                     options.JsonSerializerOptions.Converters.Add(
-                        new JsonStringEnumConverter());
+                        new ArabicEnumConverter());
 
                     // Support DateOnly
                     options.JsonSerializerOptions.Converters.Add(
@@ -60,7 +61,7 @@ namespace Morourak.API
                 });
 
             builder.Services.AddMemoryCache();
-            builder.Services.AddApplicationServices(builder.Configuration);
+            builder.Services.AddApplicationServices(builder.Configuration, builder.Environment);
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddSwaggerServices();
 

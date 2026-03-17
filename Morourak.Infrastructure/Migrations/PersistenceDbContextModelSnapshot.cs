@@ -360,6 +360,117 @@ namespace Morourak.Infrastructure.Migrations
                     b.ToTable("Locations");
                 });
 
+            modelBuilder.Entity("Morourak.Domain.Entities.Payment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CitizenNationalId")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("nvarchar(14)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("MerchantOrderId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymobOrderId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ServiceRequestNumber")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantOrderId")
+                        .IsUnique();
+
+                    b.HasIndex("ServiceRequestNumber");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique()
+                        .HasFilter("[TransactionId] IS NOT NULL");
+
+                    b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.PaymentItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaymentId");
+
+                    b.ToTable("PaymentItem");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.PaymentViolation", b =>
+                {
+                    b.Property<int>("PaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TrafficViolationId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("PaymentId", "TrafficViolationId");
+
+                    b.HasIndex("TrafficViolationId");
+
+                    b.ToTable("PaymentViolations");
+                });
+
             modelBuilder.Entity("Morourak.Domain.Entities.RenewalApplication", b =>
                 {
                     b.Property<int>("Id")
@@ -409,6 +520,9 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<string>("RequestNumber")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<decimal>("BaseFee")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("CitizenNationalId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -416,7 +530,13 @@ namespace Morourak.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("Id")
+                    b.Property<string>("DeliveryAddressDetail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("DeliveryFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("DeliveryMethod")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("LastUpdatedAt")
@@ -445,6 +565,9 @@ namespace Morourak.Infrastructure.Migrations
 
                     b.Property<DateTime>("SubmittedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -911,6 +1034,46 @@ namespace Morourak.Infrastructure.Migrations
                     b.Navigation("TrafficUnit");
                 });
 
+            modelBuilder.Entity("Morourak.Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("Morourak.Domain.Entities.ServiceRequest", "ServiceRequest")
+                        .WithMany()
+                        .HasForeignKey("ServiceRequestNumber")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ServiceRequest");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.PaymentItem", b =>
+                {
+                    b.HasOne("Morourak.Domain.Entities.Payment", "Payment")
+                        .WithMany("PaymentItems")
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Payment");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.PaymentViolation", b =>
+                {
+                    b.HasOne("Morourak.Domain.Entities.Payment", "Payment")
+                        .WithMany("PaymentViolations")
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Morourak.Domain.Entities.TrafficViolation", "TrafficViolation")
+                        .WithMany()
+                        .HasForeignKey("TrafficViolationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Payment");
+
+                    b.Navigation("TrafficViolation");
+                });
+
             modelBuilder.Entity("Morourak.Domain.Entities.RenewalApplication", b =>
                 {
                     b.HasOne("Morourak.Domain.Entities.CitizenRegistry", "Citizen")
@@ -1037,6 +1200,13 @@ namespace Morourak.Infrastructure.Migrations
             modelBuilder.Entity("Morourak.Domain.Entities.Governorate", b =>
                 {
                     b.Navigation("TrafficUnits");
+                });
+
+            modelBuilder.Entity("Morourak.Domain.Entities.Payment", b =>
+                {
+                    b.Navigation("PaymentItems");
+
+                    b.Navigation("PaymentViolations");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.RenewalApplication", b =>

@@ -17,8 +17,13 @@ namespace Morourak.API.Extensions
                     Description = "API for Morourak traffic services (Driving and Vehicle Licenses)."
                 });
 
-                var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
+                var apiXmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var apiXmlPath = Path.Combine(AppContext.BaseDirectory, apiXmlFile);
+                options.IncludeXmlComments(apiXmlPath);
+
+                var applicationXmlFile = "Morourak.Application.xml";
+                var applicationXmlPath = Path.Combine(AppContext.BaseDirectory, applicationXmlFile);
+                options.IncludeXmlComments(applicationXmlPath);
             });
             return services;
         }

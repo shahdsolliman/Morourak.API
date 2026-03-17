@@ -1,16 +1,20 @@
-using Morourak.Domain.Entities;
+using Morourak.Application.DTOs.Paymob;
 
 namespace Morourak.Application.Interfaces.Services;
 
 public interface IPayMobService
 {
-    /// <summary>
-    /// Authenticates with PayMob, creates an order, and returns a payment key token (Step 3 of PayMob flow).
-    /// </summary>
-    Task<string> GetPaymentTokenAsync(ServiceRequest request, decimal amount);
+    Task<PaymobPaymentResponse> InitiatePaymentAsync(
+        decimal amount,
+        string merchantOrderId,
+        string firstName,
+        string lastName,
+        string email,
+        string phoneNumber,
+        string country,
+        string city,
+        string street,
+        string building);
 
-    /// <summary>
-    /// Validates the HMAC signature of a PayMob webhook callback.
-    /// </summary>
-    Task<bool> ValidateWebhookSignatureAsync(IDictionary<string, string> payload, string hmac);
+    bool ValidateWebhookSignature(string hmacHeader, string requestBody);
 }

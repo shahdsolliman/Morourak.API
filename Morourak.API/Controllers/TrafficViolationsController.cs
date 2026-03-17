@@ -1,13 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Morourak.Application.DTOs.Violations;
+using Morourak.API.Errors;
+using Morourak.Application.DTOs.Violations.Arabic;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Enums.Violations;
 
 namespace Morourak.API.Controllers
 {
+    /// <summary>
+    /// Controller for querying and paying traffic violations for both driving and vehicle licenses.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Tags("Traffic Violations")]
     public class TrafficViolationsController : ControllerBase
     {
         private readonly ITrafficViolationService _service;
@@ -17,90 +22,92 @@ namespace Morourak.API.Controllers
             _service = service;
         }
 
+        #region Helpers
+
+        private مخالفةDto MapToArabic(Morourak.Application.DTOs.Violations.ViolationDto v)
+        {
+            return new مخالفةDto
+            {
+                Id = v.ViolationId,
+                رقم_المخالفة = v.ViolationNumber,
+                نوع_المخالفة = v.ViolationType,
+                المادة_القانونية = v.LegalReference,
+                الوصف = v.Description,
+                الموقع = v.Location,
+                تاريخ_ووقت_المخالفة = v.ViolationDateTime,
+                قيمة_الغرامة = v.FineAmount,
+                المبلغ_المدفوع = v.PaidAmount,
+                المبلغ_المتبقي = v.RemainingAmount,
+                الحالة = v.StatusAr,
+                قابلة_للدفع = v.IsPayable
+            };
+        }
+
+        #endregion
+
         #region Query — Driving License
 
+        /// <summary>
+        /// Retrieves all violations associated with a specific driving license.
+        /// </summary>
+        /// <param name="licenseNumber">The driving license number to query.</param>
+        /// <response code="200">A list of violations retrieved successfully.</response>
+        /// <response code="404">License not found.</response>
         [Authorize(Roles = "CITIZEN")]
         [HttpGet("driving-license/{licenseNumber}")]
+        [ProducesResponseType(typeof(IEnumerable<مخالفةDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetDrivingLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Driving);
-            return Ok(result);
+            var arabicResult = result.Select(MapToArabic);
+            return Ok(arabicResult);
         }
 
         #endregion
 
         #region Query — Vehicle License
 
+        /// <summary>
+        /// Retrieves all violations associated with a specific vehicle license.
+        /// </summary>
+        /// <param name="licenseNumber">The vehicle license number to query.</param>
+        /// <response code="200">A list of violations retrieved successfully.</response>
+        /// <response code="404">License not found.</response>
         [Authorize(Roles = "CITIZEN")]
         [HttpGet("vehicle-license/{licenseNumber}")]
+        [ProducesResponseType(typeof(IEnumerable<مخالفةDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetVehicleLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Vehicle);
-            return Ok(result);
+            var arabicResult = result.Select(MapToArabic);
+            return Ok(arabicResult);
         }
 
         #endregion
 
         #region Violation Details
 
+        /// <summary>
+        /// Retrieves detailed violation information for a license of a specific type.
+        /// </summary>
+        /// <param name="licenseNumber">The license number to query.</param>
+        /// <param name="licenseType">The type of license (Driving or Vehicle).</param>
+        /// <response code="200">Violation details retrieved successfully.</response>
         [Authorize(Roles = "CITIZEN")]
         [HttpGet("license/{licenseNumber}/details")]
+        [ProducesResponseType(typeof(IEnumerable<مخالفةDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetViolationDetailsByLicenseNumber(
-    string licenseNumber,
-    [FromQuery] LicenseType licenseType)
+            string licenseNumber,
+            [FromQuery] LicenseType licenseType)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, licenseType);
-            return Ok(result);
+            var arabicResult = result.Select(MapToArabic);
+            return Ok(arabicResult);
         }
 
         #endregion
 
-        #region Payment — Single
-
-        [Authorize(Roles = "CITIZEN")]
-        [HttpPost("{violationId}/pay")]
-        public async Task<IActionResult> PaySingleViolation(int violationId, [FromBody] PaySingleViolationDto dto)
-        {
-            var result = await _service.PaySingleViolationAsync(violationId, dto.Amount);
-            return Ok(result);
-        }
-
-        #endregion
-
-        #region Payment — Selected
-
-        [Authorize(Roles = "CITIZEN")]
-        [HttpPost("pay-selected")]
-        public async Task<IActionResult> PaySelectedViolations([FromBody] PaySelectedViolationsDto dto)
-        {
-            var result = await _service.PaySelectedViolationsAsync(dto.ViolationIds);
-            return Ok(result);
-        }
-
-        #endregion
-
-        #region Payment — All Driving
-
-        [Authorize(Roles = "CITIZEN")]
-        [HttpPost("driving-license/{licenseNumber}/pay-all")]
-        public async Task<IActionResult> PayAllDrivingViolations(string licenseNumber)
-        {
-            var result = await _service.PayAllViolationsAsync(licenseNumber, LicenseType.Driving);
-            return Ok(result);
-        }
-
-        #endregion
-
-        #region Payment — All Vehicle
-
-        [Authorize(Roles = "CITIZEN")]
-        [HttpPost("vehicle-license/{licenseNumber}/pay-all")]
-        public async Task<IActionResult> PayAllVehicleViolations(string licenseNumber)
-        {
-            var result = await _service.PayAllViolationsAsync(licenseNumber, LicenseType.Vehicle);
-            return Ok(result);
-        }
-
-        #endregion
     }
-}
+}

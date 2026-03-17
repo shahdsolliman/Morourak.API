@@ -9,6 +9,7 @@ namespace Morourak.Infrastructure.Persistence.Configurations
         public void Configure(EntityTypeBuilder<ServiceRequest> builder)
         {
             builder.HasKey(x => x.RequestNumber);
+            builder.Ignore(x => x.Id); // Fix PK ambiguity from BaseEntity
         }
     }
 }

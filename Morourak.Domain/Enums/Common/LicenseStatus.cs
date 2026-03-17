@@ -24,6 +24,7 @@ namespace Morourak.Domain.Enums
 
         [Display(Name = "تم الاستبدال")]
         Replaced = 6,
+        [Display(Name = "تم رفع المستندات")]
         DocumentsUploaded = 7,
 
         [Display(Name = " تجديد جاري")]

@@ -1,4 +1,4 @@
-﻿using Morourak.Application.Interfaces.Repositories;
+using Morourak.Application.Interfaces.Repositories;
 
 namespace Morourak.Application.Interfaces
 {
@@ -7,5 +7,9 @@ namespace Morourak.Application.Interfaces
         IGenericRepository<TEntity> Repository<TEntity>() where TEntity : class;
 
         Task<int> CommitAsync();
+
+        Task BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
     }
 }

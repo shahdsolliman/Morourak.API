@@ -2,13 +2,29 @@
 
 namespace Morourak.Application.DTOs.Appointments;
 
+/// <summary>
+/// Simplified DTO representing a newly booked appointment.
+/// </summary>
 public class BookedAppointmentDto
 {
-    public string ServiceNumber { get; set; }       
-    public int ApplicationId { get; set; }          
-    public DateOnly Date { get; set; }              
-    public TimeOnly StartTime { get; set; }         
-    public AppointmentStatus Status { get; set; }   
-    public string NationalId { get; set; }          
+    /// <summary>The tracking number of the associated service request.</summary>
+    public string ServiceNumber { get; set; } = null!;
+
+    /// <summary>The internal application identifier.</summary>
+    public int ApplicationId { get; set; }
+
+    /// <summary>The booked date.</summary>
+    public DateOnly Date { get; set; }
+
+    /// <summary>The booked start time.</summary>
+    public TimeOnly StartTime { get; set; }
+
+    /// <summary>Initial status of the appointment.</summary>
+    public AppointmentStatus Status { get; set; }
+
+    /// <summary>National ID of the citizen.</summary>
+    public string NationalId { get; set; } = null!;
+
+    /// <summary>Type of appointment.</summary>
     public AppointmentType Type { get; set; }
 }

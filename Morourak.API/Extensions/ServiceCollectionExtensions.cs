@@ -10,6 +10,7 @@ using Morourak.Infrastructure.Persistence;
 using Morourak.Infrastructure.Settings;
 using Morourak.Infrastructure.UnitOfWork;
 using Microsoft.Extensions.Logging;
+using Morourak.Infrastructure.Services;
 
 namespace Morourak.API.Extensions
 {
@@ -17,7 +18,8 @@ namespace Morourak.API.Extensions
     {
         public static IServiceCollection AddApplicationServices(
     this IServiceCollection services,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IWebHostEnvironment env)
         {
             // Identity Database
             services.AddDbContext<IdentityDbContext>(options =>
@@ -28,8 +30,16 @@ namespace Morourak.API.Extensions
             services.AddDbContext<PersistenceDbContext>(options =>
             {
                 options.UseSqlServer(configuration.GetConnectionString("PersistenceConnection"));
-                options.EnableSensitiveDataLogging();
-                options.LogTo(Console.WriteLine, LogLevel.Information);
+
+                // ── FIX: Sensitive data logging ONLY in Development ──────────
+                // In Production, EF Core logs must NEVER contain SQL parameter
+                // values (National IDs, amounts, personal data) — PDPL violation.
+                // ─────────────────────────────────────────────────────────────
+                if (env.IsDevelopment())
+                {
+                    options.EnableSensitiveDataLogging();
+                    options.LogTo(Console.WriteLine, LogLevel.Information);
+                }
             });
 
             // Identity Configuration
@@ -63,9 +73,10 @@ namespace Morourak.API.Extensions
             services.AddScoped<IDrivingLicenseService, DrivingLicenseService>();
             services.AddScoped<IApplicationValidationService, ApplicationValidationService>();
             services.AddScoped<ITrafficViolationService, TrafficViolationService>();
+            services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IAdminUserService, Morourak.Infrastructure.Services.AdminUserService>();
-            // قائمة المحافظات ووحدات المرور — بيانات مرجعية للفروند إند
             services.AddScoped<IGovernorateService, GovernorateService>();
+            services.AddScoped<IArabicDataService, ArabicDataService>();
             // EmailSettings
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 

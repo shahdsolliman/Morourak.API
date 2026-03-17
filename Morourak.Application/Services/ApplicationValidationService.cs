@@ -1,4 +1,4 @@
-﻿using Morourak.Application.Interfaces;
+using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Appointments;
@@ -42,10 +42,10 @@ namespace Morourak.Application.Services
                 .FirstOrDefault();
 
             if (serviceRequest == null)
-                return (false, "Invalid request number", 0);
+                return (false, "رقم الطلب غير صحيح.", 0);
 
             if (serviceRequest.ReferenceId <= 0)
-                return (false, "Service request is not linked to an application", 0);
+                return (false, "طلب الخدمة غير مرتبط بطلب رسمي.", 0);
 
             var applicationId = serviceRequest.ReferenceId;
 
@@ -65,18 +65,18 @@ namespace Morourak.Application.Services
             }
 
             if (applicationExists == null)
-                return (false, "Application not found for this citizen", 0);
+                return (false, "الطلب غير موجود لهذا المواطن.", 0);
 
             if (AppointmentPrerequisites.TryGetValue(type, out var requiredServices))
             {
                 foreach (var service in requiredServices)
                 {
                     if (!await IsServiceRequestPassedAsync(applicationId, service))
-                        return (false, $"Must pass {service} first", 0);
+                        return (false, $"يجب اجتياز {service} أولاً.", 0);
                 }
             }
 
-            return (true, "Valid", applicationId);
+            return (true, "صالح", applicationId);
         }
 
         private async Task<bool> IsServiceRequestPassedAsync(int applicationId, ServiceType type)
@@ -89,7 +89,11 @@ namespace Morourak.Application.Services
                 .OrderByDescending(r => r.SubmittedAt)
                 .FirstOrDefault();
 
-            return request != null && request.Status == RequestStatus.Passed;
+            return request != null && (
+                                       request.Status == RequestStatus.ReadyForProcessing ||
+                                       request.Status == RequestStatus.AwaitingPayment ||
+                                       request.Status == RequestStatus.Paid ||
+                                       request.Status == RequestStatus.Completed);
         }
     }
 }

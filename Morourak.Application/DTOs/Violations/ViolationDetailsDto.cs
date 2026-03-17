@@ -1,3 +1,5 @@
+using Morourak.Domain.Enums.Violations;
+
 namespace Morourak.Application.DTOs.Violations
 {
     /// <summary>
@@ -21,7 +23,7 @@ namespace Morourak.Application.DTOs.Violations
         public decimal FineAmount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal RemainingAmount => FineAmount - PaidAmount;
-        public string Status { get; set; } = null!;
+        public ViolationStatus Status { get; set; }
         public string StatusAr { get; set; } = null!;
         public bool IsPayable { get; set; }
     }

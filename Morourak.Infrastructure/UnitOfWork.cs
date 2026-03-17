@@ -1,4 +1,4 @@
-﻿using Morourak.Application.Interfaces;
+using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Repositories;
 using Morourak.Infrastructure.Persistence;
 using Morourak.Infrastructure.Repositories;
@@ -39,6 +39,23 @@ namespace Morourak.Infrastructure.UnitOfWork
         public async Task<int> CommitAsync()
         {
             return await _context.SaveChangesAsync();
+        }
+
+        public async Task BeginTransactionAsync()
+        {
+            await _context.Database.BeginTransactionAsync();
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            if (_context.Database.CurrentTransaction != null)
+                await _context.Database.CurrentTransaction.CommitAsync();
+        }
+
+        public async Task RollbackTransactionAsync()
+        {
+            if (_context.Database.CurrentTransaction != null)
+                await _context.Database.CurrentTransaction.RollbackAsync();
         }
 
         public void Dispose()

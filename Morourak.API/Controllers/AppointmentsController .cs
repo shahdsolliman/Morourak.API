@@ -1,17 +1,23 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.Application.DTOs.Appointments;
+using Morourak.Application.DTOs.Appointments.Arabic;
 using AppEx = Morourak.Application.Exceptions;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Enums.Appointments;
 using Morourak.Infrastructure.Identity.Constants;
 using System.Security.Claims;
+using Morourak.API.Errors;
 
 namespace Morourak.API.Controllers
 {
+    /// <summary>
+    /// Controller for managing citizen appointments (Medical, Technical, Driving tests).
+    /// </summary>
     [ApiController]
     [Route("api/appointments")]
     [Authorize]
+    [Tags("Appointments")]
     public class AppointmentsController : ControllerBase
     {
         private readonly IAppointmentService _service;
@@ -21,14 +27,88 @@ namespace Morourak.API.Controllers
             _service = service;
         }
 
-        // =====================================================================
-        // GET /api/appointments/available-slots
-        // Public — no authentication required
-        // Returns available time slots for a given date and appointment type.
-        // Does NOT write to the database.
-        // =====================================================================
+        #region Helpers
+
+        private موعدDto MapToBookedArabic(BookedAppointmentDto a)
+        {
+            return new موعدDto
+            {
+                رقم_الخدمة = a.ServiceNumber,
+                Id = a.ApplicationId,
+                التاريخ = a.Date,
+                وقت_البدء = a.StartTime,
+                الحالة = a.Status switch
+                {
+                    AppointmentStatus.Pending => "قيد الانتظار",
+                    AppointmentStatus.Scheduled => "محجوز",
+                    AppointmentStatus.Completed => "مكتمل",
+                    AppointmentStatus.Cancelled => "ملغى",
+                    AppointmentStatus.Passed => "ناجح",
+                    AppointmentStatus.Available => "متاح",
+                    AppointmentStatus.Failed => "راسب",
+                    _ => a.Status.ToString()
+                },
+                الرقم_القومي = a.NationalId,
+                نوع_الموعد = a.Type switch
+                {
+                    AppointmentType.Medical => "كشف طبي",
+                    AppointmentType.Technical => "فحص فني",
+                    AppointmentType.Driving => "اختبار قيادة عملي",
+                    _ => a.Type.ToString()
+                }
+            };
+        }
+
+        private بيانات_موعدDto MapToDetailsArabic(AppointmentDto a)
+        {
+            return new بيانات_موعدDto
+            {
+                الرقم_القومي_للمواطن = a.CitizenNationalId,
+                Id = a.ApplicationId,
+                نوع_الموعد = a.Type switch
+                {
+                    AppointmentType.Medical => "كشف طبي",
+                    AppointmentType.Technical => "فحص فني",
+                    AppointmentType.Driving => "اختبار قيادة عملي",
+                    _ => a.TypeName
+                },
+                اسم_الخدمة = a.ServiceName,
+                التاريخ = a.Date,
+                التاريخ_المنسق = a.DateFormatted,
+                وقت_البدء = a.StartTime,
+                الوقت_المنسق = a.TimeFormatted,
+                الحالة = a.Status switch
+                {
+                    AppointmentStatus.Pending => "قيد الانتظار",
+                    AppointmentStatus.Scheduled => "محجوز",
+                    AppointmentStatus.Completed => "مكتمل",
+                    AppointmentStatus.Cancelled => "ملغى",
+                    AppointmentStatus.Passed => "ناجح",
+                    AppointmentStatus.Available => "متاح",
+                    AppointmentStatus.Failed => "راسب",
+                    _ => a.Status.ToString()
+                },
+                تاريخ_الإنشاء = a.CreatedAt,
+                رقم_الطلب_المرتبط = a.RequestNumberRelated,
+                المحافظة = a.GovernorateName,
+                وحدة_المرور = a.TrafficUnitName
+            };
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Retrieves available time slots for a specific date, appointment type, and traffic unit.
+        /// </summary>
+        /// <param name="date">The requested date for the appointment.</param>
+        /// <param name="type">The type of appointment (e.g., Medical, technical_examination).</param>
+        /// <param name="trafficUnitId">The ID of the traffic unit.</param>
+        /// <response code="200">Returns a list of available time slots.</response>
+        /// <response code="400">Invalid parameters or date.</response>
         [HttpGet("available-slots")]
         [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAvailableSlots(
         [FromQuery] DateOnly date,
         [FromQuery] AppointmentType type,
@@ -46,38 +126,47 @@ namespace Morourak.API.Controllers
             });
         }
 
-        // =====================================================================
-        // POST /api/appointments/book
-        // Citizen only — creates ServiceRequest + Appointment in one transaction.
-        // =====================================================================
+        /// <summary>
+        /// Confirms and books an appointment in a single operation.
+        /// </summary>
+        /// <remarks>
+        /// This endpoint creates both a Service Request and an Appointment record atomically.
+        /// </remarks>
+        /// <param name="request">The booking details (Date, Time, Location, Service Type).</param>
+        /// <response code="200">Appointment booked successfully.</response>
+        /// <response code="400">Time slot no longer available or invalid data.</response>
         [HttpPost("book")]
         [Authorize(Roles = AppIdentityConstants.Roles.Citizen)]
+        [ProducesResponseType(typeof(موعدDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Book([FromBody] ConfirmAppointmentRequestDto request)
         {
             var nationalId = User.FindFirstValue("NationalId");
             if (string.IsNullOrEmpty(nationalId))
-                throw new AppEx.ValidationException("???????? ??? ???? ??????.", "AUTH_ERROR");
+                throw new AppEx.ValidationException("رقم الهوية غير موجود في رمز التحقق.", "AUTH_ERROR");
 
             var result = await _service.ConfirmBookingAsync(nationalId, request);
 
             return Ok(new
             {
                 IsSuccess = true,
-                Data = result
+                Data = MapToBookedArabic(result)
             });
         }
 
-        // =====================================================================
-        // GET /api/appointments/my
-        // Citizen only — returns the authenticated citizen's appointments.
-        // =====================================================================
+        /// <summary>
+        /// Retrieves all appointments booked by the currently authenticated citizen.
+        /// </summary>
+        /// <response code="200">List of citizen's appointments retrieved successfully.</response>
         [HttpGet("my")]
         [Authorize(Roles = AppIdentityConstants.Roles.Citizen)]
+        [ProducesResponseType(typeof(IEnumerable<بيانات_موعدDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> MyAppointments()
         {
             var nationalId = User.FindFirstValue("NationalId");
             if (string.IsNullOrEmpty(nationalId))
-                throw new AppEx.ValidationException("???????? ??? ???? ??????.", "AUTH_ERROR");
+                throw new AppEx.ValidationException("رقم الهوية غير موجود في رمز التحقق.", "AUTH_ERROR");
 
             var result = await _service.GetMyAppointmentsAsync(nationalId);
 
@@ -85,7 +174,7 @@ namespace Morourak.API.Controllers
             {
                 IsSuccess = true,
                 Count = result.Count(),
-                Data = result
+                Data = result.Select(MapToDetailsArabic)
             });
         }
     }

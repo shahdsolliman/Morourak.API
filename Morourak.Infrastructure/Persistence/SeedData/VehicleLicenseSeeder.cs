@@ -37,11 +37,25 @@ namespace Morourak.Infrastructure.Persistence.SeedData
                 .Select(v => v.VehicleLicenseNumber)
                 .ToListAsync();
 
-            // ? ????? Id ??????? ???? ?????? int
             var citizenByNationalId = await context.CitizenRegistries
                 .ToDictionaryAsync(c => c.NationalId, c => c.Id);
 
             var toAdd = new List<VehicleLicense>();
+
+            var lastLicense = await context.VehicleLicenses
+                .OrderByDescending(l => l.Id)
+                .FirstOrDefaultAsync();
+
+            int lastSeq = 200000;
+
+            if (lastLicense != null && !string.IsNullOrEmpty(lastLicense.ChassisNumber))
+            {
+                var chassisStr = lastLicense.ChassisNumber;
+                if (chassisStr.StartsWith("CHS") && int.TryParse(chassisStr.Substring(3), out var parsedSeq))
+                {
+                    lastSeq = parsedSeq;
+                }
+            }
 
             foreach (var l in licenses)
             {
@@ -56,20 +70,22 @@ namespace Morourak.Infrastructure.Persistence.SeedData
                     continue;
                 }
 
+                lastSeq++; 
+
                 toAdd.Add(new VehicleLicense
                 {
                     VehicleLicenseNumber = l.VehicleLicenseNumber,
-                    CitizenRegistryId = citizenId, // ? int ??? ????
-
+                    CitizenRegistryId = citizenId,
                     PlateNumber = l.PlateNumber,
                     Brand = l.Brand,
                     Model = l.Model,
                     IssueDate = l.IssueDate,
                     ExpiryDate = l.ExpiryDate,
-                    ChassisNumber = l.ChassisNumber,
-                    EngineNumber = l.EngineNumber,
-                    ExaminationId = null,
 
+                    ChassisNumber = $"CHS{lastSeq:D6}",
+                    EngineNumber = $"ENG{lastSeq:D6}",
+
+                    ExaminationId = null,
                     VehicleType = ParseEnumOrDefault(l.VehicleType, VehicleType.PrivateCar),
                     DeliveryMethod = ParseEnumOrDefault(l.DeliveryMethod, DeliveryMethod.HomeDelivery)
                 });

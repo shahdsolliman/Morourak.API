@@ -1,0 +1,236 @@
+{
+	"info": {
+		"_postman_id": "4b6842e4-c28b-4b1a-8c1a-1a2b3c4d5e6f",
+		"name": "Morourak API",
+		"description": "API for Morourak traffic services (Driving and Vehicle Licenses). Generated from OpenAPI spec.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register Citizen",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nationalId\": \"29001011234567\",\n  \"mobileNumber\": \"01234567890\",\n  \"username\": \"johndoe\",\n  \"email\": \"john.doe@example.com\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"password\": \"P@ssword123\",\n  \"confirmPassword\": \"P@ssword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"Auth",
+								"register"
+							]
+						},
+						"description": "Registers a new citizen account."
+					}
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mobileNumber\": \"01234567890\",\n  \"password\": \"P@ssword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"Auth",
+								"login"
+							]
+						},
+						"description": "Authenticates a user and returns security tokens."
+					}
+				},
+				{
+					"name": "Verify OTP",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Auth/verify-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"Auth",
+								"verify-otp"
+							]
+						},
+						"description": "Verifies the OTP code for account activation or password reset."
+					}
+				}
+			]
+		},
+		{
+			"name": "Appointments",
+			"item": [
+				{
+					"name": "Get Available Slots",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/appointments/available-slots?date=2025-12-01&type=كشف طبي&trafficUnitId=1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"appointments",
+								"available-slots"
+							],
+							"query": [
+								{
+									"key": "date",
+									"value": "2025-12-01"
+								},
+								{
+									"key": "type",
+									"value": "كشف طبي"
+								},
+								{
+									"key": "trafficUnitId",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Retrieves available time slots for a specific date, appointment type, and traffic unit."
+					}
+				},
+				{
+					"name": "Book Appointment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"serviceType\": \"كشف طبي\",\n  \"date\": \"2025-12-01\",\n  \"time\": \"09:00\",\n  \"governorateId\": 1,\n  \"trafficUnitId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/appointments/book",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"appointments",
+								"book"
+							]
+						},
+						"description": "Confirms and books an appointment in a single operation."
+					}
+				}
+			]
+		},
+		{
+			"name": "Driving Licenses",
+			"item": [
+				{
+					"name": "Upload Documents",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "Category",
+									"value": "خاصة",
+									"type": "text"
+								},
+								{
+									"key": "EducationalCertificate",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "PersonalPhoto",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "IdCard",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "ResidenceProof",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "Governorate",
+									"value": "Cairo",
+									"type": "text"
+								},
+								{
+									"key": "LicensingUnit",
+									"value": "Nasr City Unit",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/DrivingLicense/upload-documents",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"DrivingLicense",
+								"upload-documents"
+							]
+						},
+						"description": "Uploads initial required documents for a new driving license application."
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:7021",
+			"type": "string"
+		}
+	]
+}

@@ -10,14 +10,18 @@ namespace Morourak.Application.DTOs.Appointments
         /// <summary>نوع الخدمة المطلوبة — مثال: "كشف طبي" | "فحص فني" | "اختبار قيادة"</summary>
         public string ServiceType { get; set; } = string.Empty;
 
+        /// <summary>Scheduled date for the appointment.</summary>
+        /// <example>2025-12-01</example>
         public DateOnly Date { get; set; }
 
+        /// <summary>Scheduled start time for the appointment.</summary>
+        /// <example>09:00</example>
         public TimeOnly Time { get; set; }
 
-        /// <summary>المحافظة المختارة</summary>
+        /// <summary>The ID of the selected governorate.</summary>
         public int GovernorateId { get; set; }
 
-        /// <summary>وحدة المرور المختارة — يجب أن تنتمي للمحافظة المختارة</summary>
+        /// <summary>The ID of the selected traffic unit (must belong to the selected governorate).</summary>
         public int TrafficUnitId { get; set; }
     }
 }

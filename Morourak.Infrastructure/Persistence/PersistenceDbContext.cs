@@ -30,6 +30,8 @@ namespace Morourak.Infrastructure.Persistence
         public DbSet<RenewalApplication> RenewalApplications { get; set; }
         public DbSet<VehicleViolation> VehicleViolations { get; set; }
         public DbSet<TrafficViolation> TrafficViolations { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<PaymentViolation> PaymentViolations { get; set; }
 
         /// <summary>
         /// جداول المحافظات ووحدات المرور — تُستخدم كبيانات مرجعية لقوائم الاختيار.
@@ -78,8 +80,7 @@ namespace Morourak.Infrastructure.Persistence
                 .IsRequired(false);
 
 
-            modelBuilder.Entity<ServiceRequest>()
-                .HasKey(x => x.RequestNumber);
+            // ServiceRequest PK is configured in ServiceRequestConfiguration
 
 
             modelBuilder.Entity<DrivingLicense>(entity =>
