@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Morourak.API.Errors;
+using Morourak.API.Common;
 using Morourak.Application.DTOs.Governorates.Arabic;
 using Morourak.Application.Interfaces.Services;
 
@@ -23,9 +23,8 @@ namespace Morourak.API.Controllers
         /// <summary>
         /// Retrieves all available governorates in Egypt.
         /// </summary>
-        /// <response code="200">A list of all governorates retrieved successfully.</response>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<المحافظةDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseArabic), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetGovernoratesAsync()
         {
             var governorates = await _governorateService.GetAllGovernoratesAsync();
@@ -34,18 +33,15 @@ namespace Morourak.API.Controllers
                 Id = g.Id,
                 الاسم = g.Name
             });
-            return Ok(arabicGovernorates);
+            return Ok(ApiResponseArabic.Success(arabicGovernorates));
         }
 
         /// <summary>
         /// Retrieves all traffic units belonging to a specific governorate.
         /// </summary>
-        /// <param name="governorateId">The unique identifier of the governorate.</param>
-        /// <response code="200">A list of traffic units for the specified governorate.</response>
-        /// <response code="404">Governorate not found.</response>
         [HttpGet("{governorateId}/traffic-units")]
-        [ProducesResponseType(typeof(IEnumerable<وحدة_المرورDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponseArabic), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseArabic), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetTrafficUnitsAsync(int governorateId)
         {
             var units = await _governorateService.GetTrafficUnitsByGovernorateAsync(governorateId);
@@ -56,7 +52,7 @@ namespace Morourak.API.Controllers
                 العنوان = u.Address,
                 مواعيد_العمل = u.WorkingHours
             });
-            return Ok(arabicUnits);
+            return Ok(ApiResponseArabic.Success(arabicUnits));
         }
     }
 }

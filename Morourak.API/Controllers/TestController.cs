@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Morourak.API.Common;
 
 namespace Morourak.API.Controllers
 {
@@ -12,11 +13,10 @@ namespace Morourak.API.Controllers
         [HttpGet("secure")]
         public IActionResult SecureEndpoint()
         {
-            return Ok(new
+            return Ok(ApiResponseArabic.Success(new
             {
-                Message = "You are authenticated",
                 User = User.Identity!.Name
-            });
+            }, "أنت مسجل الدخول"));
         }
 
         // Citizen only
@@ -24,7 +24,7 @@ namespace Morourak.API.Controllers
         [HttpGet("citizen")]
         public IActionResult CitizenOnly()
         {
-            return Ok("Citizen endpoint accessed");
+            return Ok(ApiResponseArabic.Success(null, "تم الوصول لنقطة المواطن بنجاح"));
         }
 
         // Examinator only
@@ -32,9 +32,7 @@ namespace Morourak.API.Controllers
         [HttpGet("examinator")]
         public IActionResult ExaminatorOnly()
         {
-            return Ok("Examinator endpoint accessed");
+            return Ok(ApiResponseArabic.Success(null, "تم الوصول لنقطة الفاحص بنجاح"));
         }
-
-
     }
 }

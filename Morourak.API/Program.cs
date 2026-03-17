@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Morourak.API.Errors;
+using Morourak.API.Common;
 using Morourak.API.Extensions;
 using Morourak.API.Extensions.JsonConverters;
 using Morourak.API.Middleware;
@@ -47,14 +47,7 @@ namespace Morourak.API
                                 Error = error.ErrorMessage
                             })).ToList();
 
-                        var response = new ApiErrorResponse
-                        {
-                            IsSuccess = false,
-                            ErrorCode = "VALIDATION_ERROR",
-                            Message = "One or more validation errors occurred.",
-                            Details = details,
-                            TraceId = context.HttpContext.TraceIdentifier
-                        };
+                        var response = ApiResponseArabic.ValidationFail(details);
 
                         return new BadRequestObjectResult(response);
                     };

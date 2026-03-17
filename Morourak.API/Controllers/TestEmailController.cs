@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Morourak.API.Common;
 using Morourak.Application.Exceptions;
 using System.Net;
 using System.Net.Mail;
@@ -27,7 +28,7 @@ public class TestEmailController : ControllerBase
 
             await client.SendMailAsync(mail);
 
-            return Ok(new { IsSuccess = true, Message = "Email sent successfully!" });
+            return Ok(ApiResponseArabic.Success(null, "تم إرسال البريد الإلكتروني بنجاح!"));
         }
         catch (System.Exception ex)
         {

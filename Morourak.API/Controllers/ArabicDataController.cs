@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Morourak.API.Common;
 using Morourak.Application.DTOs.Appointments;
 using Morourak.Application.Interfaces.Services;
 
@@ -21,10 +22,10 @@ namespace Morourak.API.Controllers
         /// <param name="id">Appointment ID.</param>
         /// <returns>Appointment and citizen details in Arabic.</returns>
         [HttpGet("appointment/{id}")]
-        public async Task<ActionResult<ArabicAppointmentDto>> GetAppointmentArabic(int id)
+        public async Task<IActionResult> GetAppointmentArabic(int id)
         {
             var result = await _arabicDataService.GetArabicAppointmentByIdAsync(id);
-            return Ok(result);
+            return Ok(ApiResponseArabic.Success(result));
         }
     }
 }

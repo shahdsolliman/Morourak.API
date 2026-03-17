@@ -16,26 +16,59 @@ namespace Morourak.API.Extensions
 {
     public static class ServiceCollectionExtensions
     {
-        private static string ResolveConnectionString(IConfiguration configuration, string name)
+        private static string ResolveConnectionString(
+            IConfiguration configuration,
+            IWebHostEnvironment environment,
+            string name)
         {
             var value = configuration.GetConnectionString(name);
 
-            if (string.IsNullOrWhiteSpace(value))
-                throw new InvalidOperationException($"Connection string '{name}' is missing or empty.");
-
-            // appsettings.json uses placeholders like "ENV_IDENTITY_CONNECTION_STRING".
-            // If so, read the real connection string from environment variables.
-            if (value.StartsWith("ENV_", StringComparison.Ordinal))
+            // If configuration has a value that starts with ENV_, treat the rest as the env var name.
+            string? envVarName = null;
+            if (!string.IsNullOrWhiteSpace(value) &&
+                value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
             {
-                var envValue = Environment.GetEnvironmentVariable(value);
-                if (string.IsNullOrWhiteSpace(envValue))
-                    throw new InvalidOperationException(
-                        $"Connection string '{name}' is set to placeholder '{value}'. Set the environment variable '{value}' to a valid SQL Server connection string.");
-
-                return envValue;
+                envVarName = value.Substring("ENV_".Length);
             }
 
-            return value;
+            // Optional naming convention fallback (e.g. PERSISTENCE_CONNECTION_STRING)
+            if (string.IsNullOrWhiteSpace(envVarName))
+            {
+                envVarName = name.ToUpperInvariant() switch
+                {
+                    "IDENTITYCONNECTION" => "IDENTITY_CONNECTION_STRING",
+                    "PERSISTENCECONNECTION" => "PERSISTENCE_CONNECTION_STRING",
+                    _ => null
+                };
+            }
+
+            if (!string.IsNullOrWhiteSpace(envVarName))
+            {
+                var fromEnv = Environment.GetEnvironmentVariable(envVarName);
+                if (!string.IsNullOrWhiteSpace(fromEnv))
+                {
+                    return fromEnv!;
+                }
+            }
+
+            // In Development, allow falling back to appsettings if it's not an ENV_ placeholder.
+            if (environment.IsDevelopment())
+            {
+                if (!string.IsNullOrWhiteSpace(value) &&
+                    !value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
+                {
+                    return value!;
+                }
+
+                throw new InvalidOperationException(
+                    $"Connection string '{name}' is not configured. " +
+                    $"In Development you must set a real value for '{name}' in 'appsettings.Development.json'.");
+            }
+
+            // In non‑development environments, we require environment variables.
+            throw new InvalidOperationException(
+                $"Connection string '{name}' is not configured for environment '{environment.EnvironmentName}'. " +
+                $"Expected environment variable '{envVarName ?? "[ENV_VAR_NAME]"}'.");
         }
 
         public static IServiceCollection AddApplicationServices(
@@ -45,18 +78,14 @@ namespace Morourak.API.Extensions
         {
             // Identity Database
             services.AddDbContext<IdentityDbContext>(options =>
-                options.UseSqlServer(ResolveConnectionString(configuration, "IdentityConnection"))
+                options.UseSqlServer(ResolveConnectionString(configuration, env, "IdentityConnection"))
             );
 
             // Persistence Database
             services.AddDbContext<PersistenceDbContext>(options =>
             {
-                options.UseSqlServer(ResolveConnectionString(configuration, "PersistenceConnection"));
+                options.UseSqlServer(ResolveConnectionString(configuration, env, "PersistenceConnection"));
 
-                // ── FIX: Sensitive data logging ONLY in Development ──────────
-                // In Production, EF Core logs must NEVER contain SQL parameter
-                // values (National IDs, amounts, personal data) — PDPL violation.
-                // ─────────────────────────────────────────────────────────────
                 if (env.IsDevelopment())
                 {
                     options.EnableSensitiveDataLogging();
@@ -99,10 +128,10 @@ namespace Morourak.API.Extensions
             services.AddScoped<IAdminUserService, Morourak.Infrastructure.Services.AdminUserService>();
             services.AddScoped<IGovernorateService, GovernorateService>();
             services.AddScoped<IArabicDataService, ArabicDataService>();
-            // EmailSettings
+            services.AddScoped<IIdentityService, IdentityService>();
+            
+            // Settings & Configurations
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
-
-            // PayMob Settings
             services.Configure<PayMobSettings>(configuration.GetSection("PayMob"));
             services.AddHttpClient<IPayMobService, Morourak.Infrastructure.Services.PayMobService>();
 

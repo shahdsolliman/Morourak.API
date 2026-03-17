@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Morourak.API.Common;
 using Morourak.Application.DTOs.Vehicles;
 using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
@@ -23,13 +24,12 @@ namespace Morourak.API.Controllers
         /// <summary>
         /// Retrieves a list of all supported vehicle types in the system.
         /// </summary>
-        /// <response code="200">A list of vehicle types retrieved successfully.</response>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<VehicleTypeDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseArabic), StatusCodes.Status200OK)]
         public async Task<IActionResult> Get()
         {
             var types = await _service.GetVehicleTypesAsync();
-            return Ok(types);
+            return Ok(ApiResponseArabic.Success(types));
         }
     }
 }

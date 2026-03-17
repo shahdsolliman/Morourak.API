@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Morourak.API.Common;
 using Morourak.Application.DTOs.Paymob;
 using Morourak.Application.Interfaces.Services;
 using System.Text.Json;
@@ -50,7 +51,7 @@ public class PaymentController : ControllerBase
             request.ViolationIds?.Count ?? 0);
 
         var response = await _paymentService.CreatePaymentAsync(request);
-        return Ok(response);
+        return Ok(ApiResponseArabic.Success(response, "تم إنشاء عملية الدفع بنجاح"));
     }
 
     /// <summary>
@@ -64,11 +65,11 @@ public class PaymentController : ControllerBase
 
         var status = await _paymentService.GetStatusAsync(merchantOrderId);
 
-        return Ok(new
+        return Ok(ApiResponseArabic.Success(new
         {
             Status = status.ToString(),
             MerchantOrderId = merchantOrderId
-        });
+        }));
     }
 
     /// <summary>
@@ -82,7 +83,7 @@ public class PaymentController : ControllerBase
 
         var receipt = await _paymentService.GetReceiptAsync(merchantOrderId);
 
-        return Ok(receipt);
+        return Ok(ApiResponseArabic.Success(receipt));
     }
 
     /// <summary>
@@ -127,8 +128,6 @@ public class PaymentController : ControllerBase
 
             if (!skipValidation && !_payMobService.ValidateWebhookSignature(hmacHeader!, body))
             {
-                // 401 Unauthorized: the request is cryptographically unverifiable.
-                // 400 Bad Request would reveal that the server partially processed it.
                 _logger.LogWarning(
                     "INVALID_HMAC_REJECTED: Webhook rejected due to HMAC mismatch. Possible spoofing attempt. IP={IP}",
                     HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
@@ -138,13 +137,10 @@ public class PaymentController : ControllerBase
             using var payload = JsonDocument.Parse(body);
             var obj = payload.RootElement.GetProperty("obj");
 
-            // Log sanitised webhook summary (no raw body to avoid PII leakage)
             _logger.LogInformation(
                 "Paymob webhook obj keys: {Keys}",
                 string.Join(", ", obj.EnumerateObject().Select(p => p.Name)));
 
-            // Null-safe success field — TryGetProperty guards against webhooks
-            // that omit the field entirely (e.g. refund/void notifications)
             bool success = false;
             if (obj.TryGetProperty("success", out var successProp))
             {
@@ -156,15 +152,6 @@ public class PaymentController : ControllerBase
                     _                    => false
                 };
             }
-
-            // ── FIX: corrected Paymob field names ────────────────────────────
-            //   BEFORE (broken):  obj["paymentId"]         → KeyNotFoundException
-            //                     obj["order"]["paymobOrderId"]
-            //                     obj["order"]["merchantOrderId"]
-            //   AFTER  (correct): obj["id"]
-            //                     obj["order"]["id"]
-            //                     obj["order"]["merchant_order_id"]
-            // ─────────────────────────────────────────────────────────────────
 
             if (!obj.TryGetProperty("id", out var transactionIdProp))
             {
@@ -210,7 +197,6 @@ public class PaymentController : ControllerBase
                 errorOccured,
                 failureMessage ?? "N/A");
 
-            // Ensure we handle different types of success values or potential string variations if they occur
             var isSuccess = success; 
 
             var finalized = await _paymentService.FinalizePaymentAsync(paymobOrderId, transactionId, isSuccess, merchantOrderId);

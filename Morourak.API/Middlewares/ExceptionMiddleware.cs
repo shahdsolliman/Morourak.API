@@ -1,6 +1,6 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
-using Morourak.API.Errors;
+using Morourak.API.Common;
 using Morourak.Application.Exceptions;
 
 namespace Morourak.API.Middleware
@@ -36,14 +36,11 @@ namespace Morourak.API.Middleware
 
         private async Task HandleBusinessExceptionAsync(HttpContext context, AppException ex)
         {
-            var response = new ApiErrorResponse
-            {
-                IsSuccess = false,
-                ErrorCode = ex.ErrorCode,
-                Message = ex.Message,
-                Details = ex.Details,
-                TraceId = context.TraceIdentifier
-            };
+            var response = ApiResponseArabic.Fail(
+                ex.Message,
+                ex.ErrorCode,
+                ex.Details
+            );
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
@@ -54,13 +51,10 @@ namespace Morourak.API.Middleware
 
         private async Task HandleSystemExceptionAsync(HttpContext context, Exception ex)
         {
-            var response = new ApiErrorResponse
-            {
-                IsSuccess = false,
-                ErrorCode = "SERVER_ERROR",
-                Message = "An unexpected error occurred. Please try again later or contact support.",
-                TraceId = context.TraceIdentifier
-            };
+            var response = ApiResponseArabic.Fail(
+                "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني.",
+                "SERVER_ERROR"
+            );
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;

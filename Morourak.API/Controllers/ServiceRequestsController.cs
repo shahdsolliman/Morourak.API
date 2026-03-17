@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Morourak.API.Common;
 using AppEx = Morourak.Application.Exceptions;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Application.DTOs.Requests.Arabic;
-using Morourak.API.Errors;
 
 namespace Morourak.API.Controllers
 {
@@ -62,33 +62,28 @@ namespace Morourak.API.Controllers
         /// <summary>
         /// Retrieves all service requests submitted by the currently authenticated citizen.
         /// </summary>
-        /// <response code="200">A list of user's service requests retrieved successfully.</response>
         [HttpGet("my-requests")]
-        [ProducesResponseType(typeof(IEnumerable<طلب_خدمةDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseArabic), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyRequests()
         {
             var requests = await _serviceRequestService.GetCitizenRequestsAsync();
             var arabicRequests = requests.Select(MapToArabic);
-            return Ok(arabicRequests);
+            return Ok(ApiResponseArabic.Success(arabicRequests));
         }
 
         /// <summary>
         /// Retrieves full details of a specific service request by its tracking number.
         /// </summary>
-        /// <param name="requestNumber">The unique tracking number of the request.</param>
-        /// <response code="200">The service request details retrieved successfully.</response>
-        /// <response code="404">Service request not found or does not belong to the user.</response>
         [HttpGet("{requestNumber}")]
-        [ProducesResponseType(typeof(طلب_خدمةDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponseArabic), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseArabic), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetRequestDetails(string requestNumber)
         {
             var request = await _serviceRequestService.GetByRequestNumberAsync(requestNumber);
             if (request == null)
                 throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
 
-            return Ok(MapToArabic(request));
+            return Ok(ApiResponseArabic.Success(MapToArabic(request)));
         }
     }
 }
-
