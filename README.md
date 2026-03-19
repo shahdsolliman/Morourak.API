@@ -1,102 +1,78 @@
 # Morourak API
 
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512bd4.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
+[![CQRS](https://img.shields.io/badge/Architecture-CQRS-blue.svg)](https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs)
+[![Redis](https://img.shields.io/badge/Cache-Redis-red.svg)](https://redis.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+## 🌟 Overview
 
-**Morourak API** is a comprehensive backend solution for digitalizing traffic services. It provides a robust set of features for citizens to manage their driving and vehicle licenses, book appointments at traffic units, and pay traffic violations online. The system aims to streamline administrative processes and reduce physical queues at traffic departments.
+**Morourak API** is a high-performance, production-grade .NET 8 Web API designed to digitalize traffic services. Built with **Clean Architecture** and **CQRS**, it provides a scalable backend for managing licenses, appointments, and payments.
 
-## Features
+## 🚀 Key Features
 
-- **🛡️ Secure Authentication**: JWT-based authentication with role-based access control (Citizen, Staff, Admin).
-- **🪪 Driving License Management**: Digital workflows for issuing, renewing, and replacing lost or damaged driving licenses.
-- **🚗 Vehicle License Management**: Comprehensive vehicle services including license renewal, technical inspections, and document uploads.
-- **📅 Smart Appointment System**: Real-time booking for medical examinations and technical tests across various traffic units and governorates.
-- **💳 Payment Integration**: Fully integrated with **Paymob Payment Gateway** for secure online transactions.
-- **⚖️ Traffic Violations**: Query outstanding violations by license number and process immediate online payments.
-- **📈 Admin & Staff Dashboards**: Specialized endpoints for managing users, approving requests, and updating reference data.
+- **🛡️ Secure Authentication**: JWT-based auth with Role-Based Access Control (RBAC).
+- **🪪 License Lifecycle**: End-to-end workflows for Issuance, Renewal, and Replacement.
+- **📅 Smart Appointments**: Advanced booking system with Arabic localization and traffic unit specific metadata.
+- **💳 Payment Integration**: Robust **Paymob** gateway integration with atomic transactions and webhook idempotency.
+- **⚡ Performance Caching**: Distributed **Redis** caching using MediatR Pipeline Behaviors for read-heavy queries.
+- **⚖️ Violation Management**: Real-time query and payment of traffic fines.
+- **🌐 Localization**: Full support for Arabic date/time formatting and localized validation messages.
 
-## Architecture
+## 🏗️ Architecture & Design Patterns
 
-The project follows a **Clean Architecture** (Layered) pattern to ensure separation of concerns, maintainability, and testability.
+The project is architected to be resilient, maintainable, and highly decoupled:
 
-- **Morourak.API**: The presentation layer containing Controllers, API-specific DTOs, and Middleware.
-- **Morourak.Application**: The business logic layer containing Services, Application DTOs, Interfaces, and AutoMapper profiles.
-- **Morourak.Domain**: The core layer containing Entities, Enums, and Constants. This layer has zero dependencies on other projects.
-- **Morourak.Infrastructure**: Implementation of data persistence (EF Core + SQL Server), Identity Management, and external service clients (Paymob).
+- **Clean Architecture**: Domain-centric design with clear separation between API, Application, Domain, and Infrastructure layers.
+- **CQRS (MediatR)**: Uses Command Query Responsibility Segregation to separate read and write operations.
+- **Pipeline Behaviors**: Cross-cutting concerns like **Caching**, **Validation**, and **Logging** are handled via MediatR pipelines.
+- **Unit of Work & Repository**: Abstracted data access to ensure atomic transactions and testability.
+- **Idempotency**: Webhook and payment processing logic designed to handle duplicate deliveries gracefully.
 
-## Technologies Used
+## 🛠️ Technology Stack
 
-- **Framework**: .NET 8.0
-- **Language**: C# 12
-- **Persistence**: Entity Framework Core 8.0
-- **Database**: SQL Server
-- **Documentation**: Swagger / OpenAPI (Swashbuckle)
+- **Framework**: .NET 8.0 (C# 12)
+- **Persistence**: EF Core 8 (SQL Server)
+- **Caching**: StackExchange.Redis (Distributed Cache)
+- **Messaging**: MediatR (In-process mediator)
 - **Integration**: Paymob Payment API
-- **Tooling**: AutoMapper, FluentValidation, System.Text.Json
+- **Tooling**: AutoMapper, FluentValidation, Serilog
 
-## Getting Started
+## ⚙️ Configuration
+
+### Redis Settings
+The system includes built-in resilience for Redis. If Redis is unavailable, the application continues to function by falling back to the database.
+```json
+"RedisSettings": {
+  "ConnectionString": "localhost:6379,abortConnect=false",
+  "DefaultExpirationMinutes": 60
+}
+```
+
+### Paymob Settings
+Supports Sandbox and Production environments with HMAC signature validation for secure callbacks.
+
+## 🚦 Getting Started
 
 ### Prerequisites
+- .NET 8 SDK
+- SQL Server
+- Redis (Optional but recommended for performance)
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (Express or higher)
-- [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) or VS Code
-
-### Installation
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/Morourak.API.git
-   cd Morourak.API
-   ```
-
-2. **Configure the database**:
-   Update the `DefaultConnection` string in `Morourak.API/appsettings.json` to point to your SQL Server instance.
-
-3. **Apply Migrations**:
-   Run the following command in the root directory:
+### Fast Track
+1. **Update Connection Strings** in `appsettings.json`.
+2. **Apply Migrations**:
    ```bash
    dotnet ef database update --project Morourak.Infrastructure --startup-project Morourak.API
    ```
-
-4. **Run the project**:
+3. **Run Application**:
    ```bash
    dotnet run --project Morourak.API
    ```
 
-## API Documentation
+## 📖 Documentation
+Interactive Swagger documentation is available at:
+`https://localhost:7021/swagger`
 
-The API includes comprehensive **Swagger** documentation. Once the project is running, you can access the interactive documentation at:
-
-👉 [https://localhost:7021/swagger/index.html](https://localhost:7021/swagger/index.html) *(Port may vary)*
-
-Every endpoint is documented with its purpose, request body schema, and possible HTTP response codes.
-
-## Environment Configuration
-
-Configuration is managed via `appsettings.json`. Key settings include:
-
-- **ConnectionStrings**: SQL Server connection settings.
-- **JwtSettings**: Token secret key and expiration duration.
-- **Paymob**: Sandbox/Live API keys and integration IDs.
-
-> [!IMPORTANT]
-> For production environments, never commit sensitive keys to the repository. Use **Environment Variables** or **Azure Key Vault**.
-
-## Error Handling
-
-The system uses a centralized error handling strategy with structured exceptions. Validation errors are returned using `AppEx.ValidationException`, which provides clear error codes and localized messages.
-
-## Contributing
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+---
+*Developed with focus on Clean Code and SOLID principles.*
