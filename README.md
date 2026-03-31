@@ -9,6 +9,14 @@
 
 **Morourak API** is a high-performance, production-grade .NET 8 Web API designed to digitalize traffic services. Built with **Clean Architecture** and **CQRS**, it provides a scalable backend for managing licenses, appointments, and payments.
 
+## 🌐 Live API & Documentation
+
+The **Morourak API** is deployed and fully accessible for testing. You can explore the interactive documentation and try out the endpoints directly from the live Swagger UI:
+
+- **[Live API Explorer (Swagger)](http://morourak.runasp.net/)**
+
+---
+
 ## 🚀 Key Features
 
 - **🛡️ Secure Authentication**: JWT-based auth with Role-Based Access Control (RBAC).
@@ -71,8 +79,11 @@ Supports Sandbox and Production environments with HMAC signature validation for 
    ```
 
 ## 📖 Documentation
-Interactive Swagger documentation is available at:
-`https://localhost:7021/swagger`
+
+Interactive Swagger documentation is available for both development and production environments:
+
+- **Production:** [http://morourak.runasp.net/](http://morourak.runasp.net/)
+- **Local Development:** `https://localhost:7021/swagger` (Run the API locally to access)
 
 ---
 *Developed with focus on Clean Code and SOLID principles.*
