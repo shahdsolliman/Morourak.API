@@ -57,39 +57,36 @@ namespace Morourak.API.Controllers
             });
         }
 
-        // ================= VERIFY OTP =================
-
+        // ================= VERIFY REGISTRATION OTP =================
+ 
         /// <summary>
-        /// Verifies the OTP code for account activation or password reset.
+        /// Verifies the OTP code for account activation for a new registration.
         /// </summary>
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
         {
-            var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null) return Unauthorized();
-
-            var isValid = await _otpService.ValidateAsync(dto.Email, dto.Code);
-            if (!isValid)
+            var result = await _identityService.ConfirmRegistrationAsync(dto.Email, dto.Code);
+            
+            if (!result.IsSuccess)
+            {
                 return BadRequest(new
                 {
                     isSuccess = false,
-                    message = "رمز التحقق غير صحيح.",
-                    errorCode = "INVALID_OTP",
+                    message = result.Message,
+                    errorCode = result.ErrorCode,
                 });
-
-            user.IsVerified = true;
-            await _userManager.UpdateAsync(user);
-
+            }
+ 
             return Ok(new
             {
                 isSuccess = true,
-                message = "تم تفعيل الحساب بنجاح.",
+                message = result.Message,
                 details = (object?)null
             });
         }
-
+ 
         // ================= LOGIN =================
-
+ 
         /// <summary>
         /// Authenticates a user and returns security tokens.
         /// </summary>
@@ -97,7 +94,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
             var result = await _identityService.LoginAsync(request.MobileNumber, request.Password);
-
+ 
             if (!result.IsSuccess)
                 return Unauthorized(new
                 {
@@ -105,7 +102,7 @@ namespace Morourak.API.Controllers
                     message = result.Message,
                     errorCode = result.ErrorCode,
                 });
-
+ 
             return Ok(new
             {
                 isSuccess = true,
@@ -113,9 +110,9 @@ namespace Morourak.API.Controllers
                 details = result
             });
         }
-
+ 
         // ================= REFRESH TOKEN =================
-
+ 
         /// <summary>
         /// Obtains a new access token using a refresh token.
         /// </summary>
@@ -123,7 +120,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto dto)
         {
             var result = await _identityService.RefreshTokenAsync(dto.RefreshToken);
-
+ 
             if (!result.IsSuccess)
                 return Unauthorized(new
                 {
@@ -131,7 +128,7 @@ namespace Morourak.API.Controllers
                     message = result.Message,
                     errorCode = result.ErrorCode,
                 });
-
+ 
             return Ok(new
             {
                 isSuccess = true,
@@ -139,9 +136,9 @@ namespace Morourak.API.Controllers
                 details = result
             });
         }
-
+ 
         // ================= FORGOT PASSWORD (FROM TOKEN) =================
-
+ 
         /// <summary>
         /// Requests a password reset OTP for the currently logged-in user.
         /// </summary>
@@ -151,9 +148,9 @@ namespace Morourak.API.Controllers
         {
             var email = User.FindFirstValue(ClaimTypes.Email);
             if (email == null) return Unauthorized();
-
+ 
             await _otpService.GenerateAndSendAsync(email, OtpType.ResetPassword);
-
+ 
             return Ok(new
             {
                 isSuccess = true,
@@ -161,9 +158,9 @@ namespace Morourak.API.Controllers
                 details = (object?)null
             });
         }
-
+ 
         // ================= RESET PASSWORD (FROM TOKEN) =================
-
+ 
         /// <summary>
         /// Resets the password for the current user using an OTP verification.
         /// </summary>
@@ -176,7 +173,7 @@ namespace Morourak.API.Controllers
 
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null) return Unauthorized();
-
+ 
             var isValid = await _otpService.ValidateAsync(email, request.Code);
             if (!isValid)
                 return BadRequest(new
@@ -185,10 +182,10 @@ namespace Morourak.API.Controllers
                     message = "رمز التحقق غير صحيح.",
                     errorCode = "INVALID_OTP",
                 });
-
+ 
             var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
             var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
-
+ 
             if (!result.Succeeded)
                 return BadRequest(new
                 {
@@ -196,7 +193,7 @@ namespace Morourak.API.Controllers
                     message = "فشل في إعادة تعيين كلمة المرور.",
                     errorCode = "RESET_FAILED",
                 });
-
+ 
             return Ok(new
             {
                 isSuccess = true,

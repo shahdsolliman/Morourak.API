@@ -10,4 +10,6 @@ public interface IPaymentService
     Task<bool> FinalizePaymentAsync(string paymobOrderId, string transactionId, bool success, string? merchantOrderId = null);
     Task<decimal> CalculateFeesAsync(string? requestNumber, List<int>? violationIds);
     Task<PaymentStatus> GetStatusAsync(string merchantOrderId);
+    Task<PaymentStatusResult> CheckPaymentWithPaymobAsync(string merchantOrderId);
+    Task MarkAsPaidForDemo(string merchantOrderId);
 }

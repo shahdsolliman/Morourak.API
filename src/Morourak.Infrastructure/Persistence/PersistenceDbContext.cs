@@ -25,7 +25,8 @@ namespace Morourak.Infrastructure.Persistence
         public DbSet<VehicleTypeEntity> VehicleTypes { get; set; } = null!;
         public DbSet<VehicleLicenseApplication> VehicleLicenseApplications { get; set; } = null!;
         public DbSet<Appointment> ExaminationAppointments { get; set; } = null!;
-        public DbSet<EmailOtp> EmailOtps { get; set; } = null!;
+        public DbSet<OtpVerification> OtpVerifications { get; set; } = null!;
+        public DbSet<PendingRegistration> PendingRegistrations { get; set; } = null!;
         public DbSet<ServiceRequest> ServiceRequests { get; set; }
         public DbSet<RenewalApplication> RenewalApplications { get; set; }
         public DbSet<VehicleViolation> VehicleViolations { get; set; }
@@ -46,59 +47,8 @@ namespace Morourak.Infrastructure.Persistence
 
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(PersistenceDbContext).Assembly);
 
-            // Ensure NationalId is unique (one citizen per National ID)
-            modelBuilder.Entity<CitizenRegistry>()
-                .HasIndex(c => c.NationalId)
-                .IsUnique();
-
-            // DrivingLicense -> CitizenRegistry
-            modelBuilder.Entity<DrivingLicense>()
-                .HasOne(d => d.Citizen)
-                .WithMany()
-                .HasForeignKey(d => d.CitizenRegistryId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<DrivingLicense>()
-                .HasIndex(d => d.LicenseNumber)
-                .IsUnique();
-
-            // VehicleLicense -> CitizenRegistry
-            modelBuilder.Entity<VehicleLicense>()
-                .HasOne(v => v.Citizen)
-                .WithMany(c => c.VehicleLicenses)
-                .HasForeignKey(v => v.CitizenRegistryId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<VehicleLicense>()
-                .HasIndex(v => v.VehicleLicenseNumber)
-                .IsUnique();
-
-            modelBuilder.Entity<VehicleLicense>()
-                .HasOne(v => v.Examination)    
-                .WithOne()                     
-                .HasForeignKey<VehicleLicense>(v => v.ExaminationId)
-                .IsRequired(false);
-
-
             // ServiceRequest PK is configured in ServiceRequestConfiguration
 
-
-            modelBuilder.Entity<DrivingLicense>(entity =>
-            {
-                entity.OwnsOne(e => e.DeliveryAddress, da =>
-                {
-                    da.Property(d => d.Governorate).HasMaxLength(100);
-                    da.Property(d => d.City).HasMaxLength(100);
-                    da.Property(d => d.Details).HasMaxLength(250);
-                });
-            });
-
-
-            modelBuilder.Entity<DrivingLicense>()
-                .HasMany(d => d.Applications)
-                .WithOne(a => a.DrivingLicense)
-                .HasForeignKey(a => a.DrivingLicenseId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<RenewalApplication>()
                 .HasOne(r => r.Citizen)

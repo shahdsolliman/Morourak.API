@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using AppEx = Morourak.Application.Exceptions;
 using Morourak.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
+using Morourak.Infrastructure.Settings;
 
 namespace Morourak.Infrastructure.Services;
 
@@ -21,6 +23,7 @@ public class PaymentService : IPaymentService
     private readonly ICurrentUserService _currentUser;
     private readonly IDrivingLicenseService _drivingService;
     private readonly IVehicleLicenseService _vehicleService;
+    private readonly PaymentSettings _paymentSettings;
 
     public PaymentService(
         IUnitOfWork unitOfWork,
@@ -29,7 +32,8 @@ public class PaymentService : IPaymentService
         IDrivingLicenseService drivingService,
         IVehicleLicenseService vehicleService,
         ILogger<PaymentService> logger,
-        UserManager<ApplicationUser> userManager
+        UserManager<ApplicationUser> userManager,
+        IOptions<PaymentSettings> paymentSettings
        )
     {
         _unitOfWork = unitOfWork;
@@ -39,6 +43,7 @@ public class PaymentService : IPaymentService
         _vehicleService = vehicleService;
         _logger = logger;
         _userManager = userManager;
+        _paymentSettings = paymentSettings.Value;
     }
 
     public async Task<PaymobPaymentResponse> CreatePaymentAsync(PaymentCreateRequest dto)
@@ -196,139 +201,142 @@ public class PaymentService : IPaymentService
 
     public async Task<bool> FinalizePaymentAsync(string paymobOrderId, string transactionId, bool success, string? merchantOrderId = null)
     {
-        _logger.LogInformation("Finalizing payment. MerchantOrderId: {MerchantOrderId}, PaymobOrderId: {PaymobOrderId}. Success: {Success}", merchantOrderId ?? "N/A", paymobOrderId, success);
-
-        Payment? payment = null;
-
-        if (!string.IsNullOrEmpty(merchantOrderId))
+        return await _unitOfWork.ExecuteWithStrategyAsync(async () =>
         {
-            payment = await _unitOfWork.Repository<Payment>()
-                .GetAsync(x => x.MerchantOrderId == merchantOrderId, p => p.PaymentViolations);
-        }
+            _logger.LogInformation("Finalizing payment. MerchantOrderId: {MerchantOrderId}, PaymobOrderId: {PaymobOrderId}. Success: {Success}", merchantOrderId ?? "N/A", paymobOrderId, success);
 
-        if (payment == null)
-        {
-            payment = await _unitOfWork.Repository<Payment>()
-                .GetAsync(x => x.PaymobOrderId == paymobOrderId, p => p.PaymentViolations);
-        }
+            Payment? payment = null;
 
-        if (payment == null)
-        {
-            _logger.LogWarning("Payment record not found. MerchantOrderId: {MerchantOrderId}, PaymobOrderId: {PaymobOrderId}", merchantOrderId ?? "N/A", paymobOrderId);
-            return false;
-        }
-        
-        if (payment.Status == PaymentStatus.Paid)
-        {
-            // ── IDEMPOTENCY: duplicate webhook ────────────────────────────────
-            // Paymob may deliver the same webhook more than once (at-least-once
-            // delivery). We must silently acknowledge it (return 200) but NEVER
-            // mutate state a second time. Log at Warning so this is easily
-            // queryable in production when investigating payment discrepancies.
-            // ─────────────────────────────────────────────────────────────────
-            _logger.LogWarning(
-                "DUPLICATE_WEBHOOK_IGNORED: Payment {MerchantOrderId} (TransactionId={TransactionId}) is already Paid. No state mutation performed.",
-                payment.MerchantOrderId, payment.TransactionId);
-            return true;
-        }
-
-        // Idempotency guard: if a Failed payment is retried with the same transactionId
-        // (e.g., Paymob sends the webhook twice), skip re-setting TransactionId to avoid
-        // a unique constraint violation and just update the status.
-        bool transactionAlreadySet = payment.TransactionId == transactionId
-            && !string.IsNullOrEmpty(transactionId);
-
-        if (!transactionAlreadySet)
-            payment.TransactionId = transactionId;
-        
-        // Use atomic transaction for finalization
-        await _unitOfWork.BeginTransactionAsync();
-        try
-        {
-            if (success)
+            if (!string.IsNullOrEmpty(merchantOrderId))
             {
-                payment.Status = PaymentStatus.Paid;
-                payment.PaidAt = DateTime.UtcNow;
+                payment = await _unitOfWork.Repository<Payment>()
+                    .GetAsync(x => x.MerchantOrderId == merchantOrderId, p => p.PaymentViolations);
+            }
 
-                // Update Service Request
-                if (!string.IsNullOrEmpty(payment.ServiceRequestNumber))
+            if (payment == null)
+            {
+                payment = await _unitOfWork.Repository<Payment>()
+                    .GetAsync(x => x.PaymobOrderId == paymobOrderId, p => p.PaymentViolations);
+            }
+
+            if (payment == null)
+            {
+                _logger.LogWarning("Payment record not found. MerchantOrderId: {MerchantOrderId}, PaymobOrderId: {PaymobOrderId}", merchantOrderId ?? "N/A", paymobOrderId);
+                return false;
+            }
+
+            if (payment.Status == PaymentStatus.Paid)
+            {
+                // ── IDEMPOTENCY: duplicate webhook ────────────────────────────────
+                // Paymob may deliver the same webhook more than once (at-least-once
+                // delivery). We must silently acknowledge it (return 200) but NEVER
+                // mutate state a second time. Log at Warning so this is easily
+                // queryable in production when investigating payment discrepancies.
+                // ─────────────────────────────────────────────────────────────────
+                _logger.LogWarning(
+                    "DUPLICATE_WEBHOOK_IGNORED: Payment {MerchantOrderId} (TransactionId={TransactionId}) is already Paid. No state mutation performed.",
+                    payment.MerchantOrderId, payment.TransactionId);
+                return true;
+            }
+
+            // Idempotency guard: if a Failed payment is retried with the same transactionId
+            // (e.g., Paymob sends the webhook twice), skip re-setting TransactionId to avoid
+            // a unique constraint violation and just update the status.
+            bool transactionAlreadySet = payment.TransactionId == transactionId
+                && !string.IsNullOrEmpty(transactionId);
+
+            if (!transactionAlreadySet)
+                payment.TransactionId = transactionId;
+
+            // Use atomic transaction for finalization
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                if (success)
                 {
-                    var request = await _unitOfWork.Repository<ServiceRequest>()
-                        .GetAsync(x => x.RequestNumber == payment.ServiceRequestNumber);
+                    payment.Status = PaymentStatus.Paid;
+                    payment.PaidAt = DateTime.UtcNow;
 
-                    if (request != null && request.PaymentStatus != PaymentStatus.Paid)
+                    // Update Service Request
+                    if (!string.IsNullOrEmpty(payment.ServiceRequestNumber))
                     {
-                        request.PaymentStatus = PaymentStatus.Paid;
-                        request.PaymentTransactionId = transactionId;
-                        request.PaymentAmount = payment.Amount;
-                        request.PaymentTimestamp = DateTime.UtcNow;
-                        request.Status = RequestStatus.ReadyForProcessing;
-                        request.LastUpdatedAt = DateTime.UtcNow;
+                        var request = await _unitOfWork.Repository<ServiceRequest>()
+                            .GetAsync(x => x.RequestNumber == payment.ServiceRequestNumber);
 
-                        _unitOfWork.Repository<ServiceRequest>().Update(request);
-
-                        // License completion logic (Internal CommitAsync should be removed in these methods)
-                        if (request.ServiceType.ToString().Contains("DrivingLicense"))
-                            await _drivingService.CompleteIssuanceAsync(request.RequestNumber);
-                        else if (request.ServiceType.ToString().Contains("VehicleLicense"))
-                            await _vehicleService.CompleteIssuanceAsync(request.RequestNumber);
-
-                        request.Status = RequestStatus.Completed; // Move to Completed ONLY after everything succeeds
-                        _unitOfWork.Repository<ServiceRequest>().Update(request);
-                    }
-                }
-
-                // Update Violations
-                if (payment.PaymentViolations.Any())
-                {
-                    var violationIds = payment.PaymentViolations.Select(pv => pv.TrafficViolationId).ToList();
-                    var violations = await _unitOfWork.Repository<TrafficViolation>()
-                        .FindAsync(v => violationIds.Contains(v.Id));
-
-                    foreach (var v in violations)
-                    {
-                        if (v.Status != ViolationStatus.Paid)
+                        if (request != null && request.PaymentStatus != PaymentStatus.Paid)
                         {
-                            var paymentViolation = payment.PaymentViolations
-                                .FirstOrDefault(pv => pv.TrafficViolationId == v.Id);
-                            var amountPaid = paymentViolation?.AmountPaid ?? (v.FineAmount - v.PaidAmount);
+                            request.PaymentStatus = PaymentStatus.Paid;
+                            request.PaymentTransactionId = transactionId;
+                            request.PaymentAmount = payment.Amount;
+                            request.PaymentTimestamp = DateTime.UtcNow;
+                            request.Status = RequestStatus.ReadyForProcessing;
+                            request.LastUpdatedAt = DateTime.UtcNow;
 
-                            v.PaidAmount += amountPaid;
-                            if (v.PaidAmount >= v.FineAmount)
+                            _unitOfWork.Repository<ServiceRequest>().Update(request);
+
+                            // License completion logic (Internal CommitAsync should be removed in these methods)
+                            if (request.ServiceType.ToString().Contains("DrivingLicense"))
+                                await _drivingService.CompleteIssuanceAsync(request.RequestNumber);
+                            else if (request.ServiceType.ToString().Contains("VehicleLicense"))
+                                await _vehicleService.CompleteIssuanceAsync(request.RequestNumber);
+
+                            request.Status = RequestStatus.Completed; // Move to Completed ONLY after everything succeeds
+                            _unitOfWork.Repository<ServiceRequest>().Update(request);
+                        }
+                    }
+
+                    // Update Violations
+                    if (payment.PaymentViolations.Any())
+                    {
+                        var violationIds = payment.PaymentViolations.Select(pv => pv.TrafficViolationId).ToList();
+                        var violations = await _unitOfWork.Repository<TrafficViolation>()
+                            .FindAsync(v => violationIds.Contains(v.Id));
+
+                        foreach (var v in violations)
+                        {
+                            if (v.Status != ViolationStatus.Paid)
                             {
-                                v.PaidAmount = v.FineAmount;
-                                v.Status = ViolationStatus.Paid;
+                                var paymentViolation = payment.PaymentViolations
+                                    .FirstOrDefault(pv => pv.TrafficViolationId == v.Id);
+                                var amountPaid = paymentViolation?.AmountPaid ?? (v.FineAmount - v.PaidAmount);
+
+                                v.PaidAmount += amountPaid;
+                                if (v.PaidAmount >= v.FineAmount)
+                                {
+                                    v.PaidAmount = v.FineAmount;
+                                    v.Status = ViolationStatus.Paid;
+                                }
+                                v.UpdatedAt = DateTime.UtcNow;
+                                _unitOfWork.Repository<TrafficViolation>().Update(v);
                             }
-                            v.UpdatedAt = DateTime.UtcNow;
-                            _unitOfWork.Repository<TrafficViolation>().Update(v);
                         }
                     }
                 }
+                else
+                {
+                    payment.Status = PaymentStatus.Failed;
+                }
+
+                // Explicitly mark the payment as updated because GetAsync uses AsNoTracking()
+                _unitOfWork.Repository<Payment>().Update(payment);
+
+                // Commit all changes in one go
+                await _unitOfWork.CommitAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                _logger.LogInformation(
+                    "Payment finalization complete. MerchantOrderId: {MerchantOrderId}, TransactionId: {TransactionId}, Success: {Success}",
+                    payment.MerchantOrderId, transactionId, success);
+
+                return true;
             }
-            else
+            catch (Exception ex)
             {
-                payment.Status = PaymentStatus.Failed;
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "Critical error during payment finalization for MerchantOrderId: {MerchantOrderId}", payment.MerchantOrderId);
+                throw; // Re-throw to let the strategy retry or the controller handle it
             }
-
-            // Explicitly mark the payment as updated because GetAsync uses AsNoTracking()
-            _unitOfWork.Repository<Payment>().Update(payment);
-
-            // Commit all changes in one go
-            await _unitOfWork.CommitAsync();
-            await _unitOfWork.CommitTransactionAsync();
-
-            _logger.LogInformation(
-                "Payment finalization complete. MerchantOrderId: {MerchantOrderId}, TransactionId: {TransactionId}, Success: {Success}",
-                payment.MerchantOrderId, transactionId, success);
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            await _unitOfWork.RollbackTransactionAsync();
-            _logger.LogError(ex, "Critical error during payment finalization for MerchantOrderId: {MerchantOrderId}", payment.MerchantOrderId);
-            throw; // Re-throw to let the controller handle it
-        }
+        });
     }
 
     public async Task<decimal> CalculateFeesAsync(string? requestNumber, List<int>? violationIds)
@@ -357,7 +365,85 @@ public class PaymentService : IPaymentService
 
     public async Task<PaymentStatus> GetStatusAsync(string merchantOrderId)
     {
+        _logger.LogInformation("POLLING_STATUS: MerchantOrderId={MerchantOrderId}", merchantOrderId);
+
         var payment = await _unitOfWork.Repository<Payment>().GetAsync(p => p.MerchantOrderId == merchantOrderId);
-        return payment?.Status ?? PaymentStatus.Failed;
+        
+        if (payment == null)
+        {
+            _logger.LogWarning("POLLING_STATUS_NOT_FOUND: MerchantOrderId={MerchantOrderId}", merchantOrderId);
+            return PaymentStatus.Failed;
+        }
+
+        // If it's already Paid or Failed, return immediately (Idempotent)
+        if (payment.Status != PaymentStatus.Pending)
+        {
+            _logger.LogInformation("POLLING_STATUS_FINALIZED: MerchantOrderId={MerchantOrderId}, Status={Status}", merchantOrderId, payment.Status);
+            return payment.Status;
+        }
+
+        // It's still Pending in our DB, let's check with Paymob
+        if (!string.IsNullOrEmpty(payment.PaymobOrderId))
+        {
+            try
+            {
+                var paymobResult = await CheckPaymentWithPaymobAsync(merchantOrderId);
+                
+                if (paymobResult.Status == PaymentStatus.Paid)
+                {
+                    _logger.LogInformation("POLLING_SUCCESS: Payment {MerchantOrderId} confirmed as Paid by Paymob polling.", merchantOrderId);
+                    
+                    // Finalize payment internally
+                    await FinalizePaymentAsync(
+                        payment.PaymobOrderId, 
+                        paymobResult.TransactionId ?? "POLLING_TX", 
+                        true, 
+                        merchantOrderId);
+                    
+                    return PaymentStatus.Paid;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking status with Paymob during polling for MerchantOrderId: {MerchantOrderId}", merchantOrderId);
+            }
+        }
+
+        return payment.Status;
+    }
+
+    public async Task<PaymentStatusResult> CheckPaymentWithPaymobAsync(string merchantOrderId)
+    {
+        var payment = await _unitOfWork.Repository<Payment>().GetAsync(p => p.MerchantOrderId == merchantOrderId);
+        if (payment == null || string.IsNullOrEmpty(payment.PaymobOrderId))
+        {
+            throw new AppEx.NotFoundException($"Payment not found for MerchantOrderId: {merchantOrderId}");
+        }
+
+        _logger.LogInformation("PAYMOB_CHECK: Calling Paymob API for OrderId={PaymobOrderId}", payment.PaymobOrderId);
+        
+        var result = await _payMobService.CheckPaymentStatusAsync(payment.PaymobOrderId);
+        
+        _logger.LogInformation("PAYMOB_CHECK_RESULT: OrderId={PaymobOrderId}, Status={Status}, Amount={Amount}", 
+            payment.PaymobOrderId, result.Status, result.Amount);
+
+        return result;
+    }
+
+    public async Task MarkAsPaidForDemo(string merchantOrderId)
+    {
+        var payment = await _unitOfWork.Repository<Payment>().GetAsync(p => p.MerchantOrderId == merchantOrderId);
+        
+        if (payment != null && payment.Status == PaymentStatus.Pending)
+        {
+            _logger.LogInformation("DEMO_MODE_FORCED_SUCCESS: Marking Payment {MerchantOrderId} as Paid (DemoMode={IsDemo}).", 
+                merchantOrderId, _paymentSettings.DemoMode);
+            
+            await FinalizePaymentAsync(
+                payment.PaymobOrderId ?? "DEMO", 
+                "DEMO_TX_" + Guid.NewGuid().ToString("N").Substring(0, 8), 
+                true, 
+                merchantOrderId);
+        }
     }
 }

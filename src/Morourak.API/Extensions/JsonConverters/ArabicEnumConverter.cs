@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Morourak.API.Extensions.EnumParsing;
 
 namespace Morourak.API.Extensions.JsonConverters;
 
@@ -13,13 +14,22 @@ public class ArabicEnumConverter : JsonConverterFactory
 {
     public override bool CanConvert(Type typeToConvert)
     {
-        return typeToConvert.IsEnum;
+        var t = Nullable.GetUnderlyingType(typeToConvert) ?? typeToConvert;
+        return t.IsEnum;
     }
 
     public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
     {
-        Type converterType = typeof(EnumToDisplayNameConverter<>).MakeGenericType(typeToConvert);
-        return (JsonConverter)Activator.CreateInstance(converterType)!;
+        var enumType = Nullable.GetUnderlyingType(typeToConvert) ?? typeToConvert;
+
+        if (enumType != typeToConvert)
+        {
+            var converterType = typeof(NullableEnumToDisplayNameConverter<>).MakeGenericType(enumType);
+            return (JsonConverter)Activator.CreateInstance(converterType)!;
+        }
+
+        var nonNullableConverterType = typeof(EnumToDisplayNameConverter<>).MakeGenericType(enumType);
+        return (JsonConverter)Activator.CreateInstance(nonNullableConverterType)!;
     }
 
     private class EnumToDisplayNameConverter<T> : JsonConverter<T> where T : struct, Enum
@@ -29,19 +39,19 @@ public class ArabicEnumConverter : JsonConverterFactory
             // For reading, we support both string (Enum name) and int (Enum value)
             if (reader.TokenType == JsonTokenType.String)
             {
-                string enumString = reader.GetString()!;
-                if (Enum.TryParse<T>(enumString, true, out T result))
-                {
-                    return result;
-                }
+                var enumString = reader.GetString() ?? string.Empty;
+                if (EnumDisplayNameParser.TryParse(typeof(T), enumString, out var parsed))
+                    return (T)parsed;
             }
             else if (reader.TokenType == JsonTokenType.Number)
             {
-                int enumInt = reader.GetInt32();
-                return (T)Enum.ToObject(typeof(T), enumInt);
+                var enumInt = reader.GetInt32();
+                var boxed = Enum.ToObject(typeof(T), enumInt);
+                if (Enum.IsDefined(typeof(T), boxed))
+                    return (T)boxed;
             }
 
-            throw new JsonException($"Unable to convert \"{reader.GetString()}\" to Enum {typeof(T).Name}.");
+            throw new JsonException($"Invalid value for {typeof(T).Name}. Allowed values: {EnumDisplayNameParser.GetAllowedValuesForError(typeof(T))}.");
         }
 
         public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
@@ -57,6 +67,30 @@ public class ArabicEnumConverter : JsonConverterFactory
             {
                 writer.WriteStringValue(value.ToString());
             }
+        }
+    }
+
+    private class NullableEnumToDisplayNameConverter<T> : JsonConverter<T?> where T : struct, Enum
+    {
+        private static readonly EnumToDisplayNameConverter<T> Inner = new();
+
+        public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Null)
+                return null;
+
+            return Inner.Read(ref reader, typeof(T), options);
+        }
+
+        public override void Write(Utf8JsonWriter writer, T? value, JsonSerializerOptions options)
+        {
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+
+            Inner.Write(writer, value.Value, options);
         }
     }
 }

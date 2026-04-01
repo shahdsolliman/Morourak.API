@@ -27,7 +27,11 @@ public class PersistenceDbContextFactory : IDesignTimeDbContextFactory<Persisten
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<PersistenceDbContext>();
-        optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseSqlServer(connectionString, sqlOptions => 
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null));
 
         return new PersistenceDbContext(optionsBuilder.Options);
     }

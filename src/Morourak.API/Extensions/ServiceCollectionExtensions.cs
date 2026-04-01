@@ -120,14 +120,24 @@ namespace Morourak.API.Extensions
             services.AddDbContext<IdentityDbContext>((sp, options) =>
             {
                 var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseConfiguration");
-                options.UseSqlServer(ResolveConnectionString(configuration, env, "IdentityConnection", logger));
+                options.UseSqlServer(
+                    ResolveConnectionString(configuration, env, "IdentityConnection", logger),
+                    sqlOptions => sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null));
             });
 
             // Persistence Database
             services.AddDbContext<PersistenceDbContext>((sp, options) =>
             {
                 var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseConfiguration");
-                options.UseSqlServer(ResolveConnectionString(configuration, env, "PersistenceConnection", logger));
+                options.UseSqlServer(
+                    ResolveConnectionString(configuration, env, "PersistenceConnection", logger),
+                    sqlOptions => sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null));
 
                 if (env.IsDevelopment())
                 {
@@ -176,24 +186,54 @@ namespace Morourak.API.Extensions
             services.AddScoped<IAdminUserService, Morourak.Infrastructure.Services.AdminUserService>();
             services.AddScoped<IGovernorateService, GovernorateService>();
             services.AddScoped<IIdentityService, IdentityService>();
+            services.AddScoped<IAdminSeedDataService, AdminSeedDataService>();
             
             // Settings & Configurations
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
             services.Configure<PayMobSettings>(configuration.GetSection("PayMob"));
+            services.Configure<PaymentSettings>(configuration.GetSection("PaymentSettings"));
             services.AddHttpClient<IPayMobService, Morourak.Infrastructure.Services.PayMobService>();
 
-            // Redis Caching
+            // Redis Caching with Resilience
+            var redisConnectionString = configuration.GetSection("RedisSettings:ConnectionString").Value;
             var redisSettings = configuration.GetSection("RedisSettings").Get<RedisSettings>() ?? new RedisSettings();
             services.Configure<RedisSettings>(configuration.GetSection("RedisSettings"));
-            
-            services.AddSingleton<IConnectionMultiplexer>(sp => 
-                ConnectionMultiplexer.Connect(redisSettings.ConnectionString));
 
-            services.AddStackExchangeRedisCache(options =>
+            if (!string.IsNullOrWhiteSpace(redisConnectionString))
             {
-                options.Configuration = redisSettings.ConnectionString;
-                options.InstanceName = "Morourak_";
-            });
+                try
+                {
+                    // Use a lazy/try connection approach to prevent blocking app startup
+                    services.AddSingleton<IConnectionMultiplexer>(sp => 
+                    {
+                        try
+                        {
+                            return ConnectionMultiplexer.Connect(redisConnectionString);
+                        }
+                        catch (Exception ex)
+                        {
+                            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("RedisConfiguration");
+                            logger.LogWarning(ex, "Redis connection failed. Caching will be disabled.");
+                            return null!; // Will be handled in RedisCacheService
+                        }
+                    });
+
+                    services.AddStackExchangeRedisCache(options =>
+                    {
+                        options.Configuration = redisConnectionString;
+                        options.InstanceName = "Morourak_";
+                    });
+                }
+                catch (Exception ex)
+                {
+                    // Fallback to memory cache if Redis fails to register
+                    services.AddDistributedMemoryCache();
+                }
+            }
+            else
+            {
+                services.AddDistributedMemoryCache();
+            }
 
             services.AddScoped<ICacheService, RedisCacheService>();
 

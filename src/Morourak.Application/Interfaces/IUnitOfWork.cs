@@ -11,5 +11,7 @@ namespace Morourak.Application.Interfaces
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();
         Task RollbackTransactionAsync();
+
+        Task<T> ExecuteWithStrategyAsync<T>(Func<Task<T>> action);
     }
 }

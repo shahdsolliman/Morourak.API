@@ -45,9 +45,9 @@ namespace Morourak.Application.Services.Licenses
 
             if (existingLicense != null)
             {
-                if (existingLicense.Status == LicenseStatus.Active)
+                if (existingLicense.CurrentStatus == LicenseStatus.Active)
                     throw new AppEx.ValidationException("يمتلك المواطن رخصة سيارة سارية بالفعل.", "LICENSE_ACTIVE");
-                if (existingLicense.Status == LicenseStatus.Withdrawn)
+                if (existingLicense.CurrentStatus == LicenseStatus.Withdrawn)
                     throw new AppEx.ValidationException("رخصة المواطن ملغاة. لا يمكن إصدار رخصة جديدة.", "LICENSE_WITHDRAWN");
             }
 
@@ -148,10 +148,10 @@ namespace Morourak.Application.Services.Licenses
 
             // تم حذف التحقق من المخالفات الغير مدفوعة من هنا
 
-            if (license.Status != LicenseStatus.Expired)
+            if (license.CurrentStatus != LicenseStatus.Expired)
                 throw new AppEx.ValidationException("الرخصة لا تزال سارية. لا يلزم التجديد.", "LICENSE_STILL_VALID");
 
-            if (license.Status == LicenseStatus.Withdrawn)
+            if (license.CurrentStatus == LicenseStatus.Withdrawn)
                 throw new AppEx.ValidationException("لا يمكن تجديد رخصة ملغاة.", "LICENSE_WITHDRAWN");
 
             var pendingRenewal = (await _unitOfWork.Repository<VehicleLicenseApplication>()
@@ -288,7 +288,7 @@ namespace Morourak.Application.Services.Licenses
             if (oldLicense == null)
                 throw new AppEx.ValidationException("رخصة السيارة غير موجودة.", "LICENSE_NOT_FOUND");
 
-            if (oldLicense.Status == LicenseStatus.Withdrawn)
+            if (oldLicense.CurrentStatus == LicenseStatus.Withdrawn)
                 throw new AppEx.ValidationException("لا يمكن إصدار بدل لهذه الرخصة لأنها ملغاة.", "LICENSE_WITHDRAWN");
 
             var unpaidViolations = (await _violationService
@@ -453,7 +453,7 @@ namespace Morourak.Application.Services.Licenses
                 VehicleType = l.VehicleType.GetDisplayName(),
                 Brand = l.Brand,
                 Model = l.Model,
-                Status = l.Status.GetDisplayName(),
+                Status = l.CurrentStatus.GetDisplayName(),
                 IssueDate = l.IssueDate,
                 ExpiryDate = l.ExpiryDate,
                 CitizenNationalId = citizen.NationalId
@@ -695,7 +695,7 @@ namespace Morourak.Application.Services.Licenses
                 VehicleType = license.VehicleType.GetDisplayName(),
                 Brand = license.Brand,
                 Model = license.Model,
-                Status = license.Status.GetDisplayName(),
+                Status = license.CurrentStatus.GetDisplayName(),
                 IssueDate = DateOnly.FromDateTime(license.IssueDate),
                 ExpiryDate = DateOnly.FromDateTime(license.ExpiryDate),
                 CitizenNationalId = license.Citizen?.NationalId ?? "",
@@ -755,7 +755,7 @@ namespace Morourak.Application.Services.Licenses
 
         private void ValidateReplacementEligibility(VehicleLicense license)
         {
-            if (license.Status != LicenseStatus.Active)
+            if (license.CurrentStatus != LicenseStatus.Active)
                 throw new AppEx.ValidationException("لا يمكن إصدار بدل لرخصة منتهية أو ملغاة أو مستبدلة بالفعل.", "LICENSE_NOT_REPLACEABLE");
 
             if (license.ExpiryDate < DateTime.UtcNow)

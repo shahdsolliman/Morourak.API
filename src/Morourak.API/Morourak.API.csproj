@@ -32,20 +32,6 @@
     <ProjectReference Include="..\Morourak.Infrastructure\Morourak.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Uploads\EducationalCertificates\" />
-    <Folder Include="Uploads\IDCards\" />
-    <Folder Include="Uploads\MedicalCertificates\" />
-    <Folder Include="Uploads\PersonalPhotos\" />
-    <Folder Include="Uploads\ResidenceProof\" />
-    <Folder Include="Uploads\VehicleLicenses\CustomClearance\" />
-    <Folder Include="Uploads\VehicleLicenses\IdCards\" />
-    <Folder Include="Uploads\VehicleLicenses\InsuranceCertificate\" />
-    <Folder Include="Uploads\VehicleLicenses\OwnershipProof\" />
-    <Folder Include="Uploads\VehicleLicenses\TechnicalInspectionReceipt\" />
-    <Folder Include="Uploads\VehicleLicenses\VehicleDataCertificate\" />
-  </ItemGroup>
-
   <!-- Copy seed JSON to API output so seeders find them at runtime -->
 
 

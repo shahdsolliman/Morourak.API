@@ -8,4 +8,5 @@ public interface IIdentityService
     Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request);
     Task<AuthResponseDto> CreateTokenResponseAsync(string userId);
     Task<AuthResponseDto> RefreshTokenAsync(string refreshToken);
+    Task<AuthResponseDto> ConfirmRegistrationAsync(string email, string code);
 }

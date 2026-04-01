@@ -28,7 +28,7 @@ public sealed class GetMyRequestsQueryHandler
         var pagedEntities = await _unitOfWork.Repository<ServiceRequest>()
             .FindPagedAsync(
                 predicate: sr => sr.CitizenNationalId == request.NationalId,
-                orderBy: q => q.OrderByDescending(sr => sr.SubmittedAt).ThenByDescending(sr => sr.Id),
+                orderBy: q => q.OrderByDescending(sr => sr.SubmittedAt).ThenByDescending(sr => sr.RequestNumber),
                 pageNumber: pagination.PageNumber,
                 pageSize: pagination.PageSize);
 

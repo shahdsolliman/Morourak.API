@@ -27,7 +27,11 @@ public class IdentityDbContextFactory : IDesignTimeDbContextFactory<IdentityDbCo
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<IdentityDbContext>();
-        optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseSqlServer(connectionString, sqlOptions => 
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null));
 
         return new IdentityDbContext(optionsBuilder.Options);
     }

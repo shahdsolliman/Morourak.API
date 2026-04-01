@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Morourak.Application.DTOs.Paymob;
 using Morourak.Application.Interfaces.Services;
+using Morourak.Domain.Enums.Request;
 using Morourak.Infrastructure.Settings;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -146,6 +147,72 @@ public class PayMobService : IPayMobService
         }
         var result = await response.Content.ReadFromJsonAsync<JsonElement>();
         return result.GetProperty("token").GetString() ?? throw new Exception("Payment key token missing.");
+    }
+
+    public async Task<PaymentStatusResult> CheckPaymentStatusAsync(string paymobOrderId)
+    {
+        try
+        {
+            var token = await GetAuthTokenAsync();
+            var response = await _httpClient.GetAsync($"ecommerce/orders/{paymobOrderId}?token={token}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Fetch order status failed: {err}");
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            
+            // Paymob payment status logic:
+            // Check 'paid' boolean or 'desc' or 'order_delivery_status'
+            // Usually, we check the transactions array for a successful one.
+            bool isPaid = result.TryGetProperty("paid", out var paidProp) && paidProp.GetBoolean();
+            
+            decimal amount = 0;
+            if (result.TryGetProperty("amount_cents", out var amountProp))
+                amount = amountProp.GetInt32() / 100.0m;
+            
+            var statusResult = new PaymentStatusResult
+            {
+                Status = isPaid ? PaymentStatus.Paid : PaymentStatus.Pending,
+                Amount = amount,
+                Currency = result.TryGetProperty("currency", out var currProp) ? (currProp.GetString() ?? "EGP") : "EGP"
+            };
+
+            // Look for a successful transaction to get the TransactionId
+            if (result.TryGetProperty("order_transactions", out var transactions) && transactions.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var tx in transactions.EnumerateArray())
+                {
+                    bool txSuccess = false;
+                    if (tx.TryGetProperty("success", out var successProp))
+                    {
+                        txSuccess = successProp.ValueKind switch
+                        {
+                            JsonValueKind.True => true,
+                            JsonValueKind.False => false,
+                            JsonValueKind.String => bool.TryParse(successProp.GetString(), out var b) && b,
+                            _ => false
+                        };
+                    }
+
+                    if (txSuccess)
+                    {
+                        if (tx.TryGetProperty("id", out var idProp))
+                            statusResult.TransactionId = idProp.ToString();
+                        
+                        break;
+                    }
+                }
+            }
+
+            return statusResult;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Paymob Status Check Failed: {ex.Message}", ex);
+        }
     }
 
     public bool ValidateWebhookSignature(string hmacHeader, string requestBody)

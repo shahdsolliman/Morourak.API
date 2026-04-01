@@ -1,4 +1,5 @@
-﻿using Morourak.Domain.Common;
+using System.Text.Json.Serialization;
+using Morourak.Domain.Common;
 using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Common;
 using Morourak.Domain.Enums.Driving;
@@ -13,6 +14,7 @@ namespace Morourak.Domain.Entities
 
         public int CitizenRegistryId { get; set; }
 
+        [JsonIgnore]
         public CitizenRegistry? Citizen { get; set; }
 
         public string LicensingUnit { get; set; } = string.Empty;
@@ -34,7 +36,7 @@ namespace Morourak.Domain.Entities
 
         public bool IsPendingRenewal { get; set; } = false;
 
-        public LicenseStatus Status
+        public LicenseStatus CurrentStatus
         {
             get
             {

@@ -16,5 +16,6 @@ public interface IPayMobService
         string street,
         string building);
 
+    Task<PaymentStatusResult> CheckPaymentStatusAsync(string paymobOrderId);
     bool ValidateWebhookSignature(string hmacHeader, string requestBody);
 }

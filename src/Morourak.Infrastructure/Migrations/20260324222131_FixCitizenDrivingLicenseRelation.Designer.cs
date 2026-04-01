@@ -12,8 +12,8 @@ using Morourak.Infrastructure.Persistence;
 namespace Morourak.Infrastructure.Migrations
 {
     [DbContext(typeof(PersistenceDbContext))]
-    [Migration("20260318233442_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260324222131_FixCitizenDrivingLicenseRelation")]
+    partial class FixCitizenDrivingLicenseRelation
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -970,7 +970,7 @@ namespace Morourak.Infrastructure.Migrations
             modelBuilder.Entity("Morourak.Domain.Entities.DrivingLicense", b =>
                 {
                     b.HasOne("Morourak.Domain.Entities.CitizenRegistry", "Citizen")
-                        .WithMany()
+                        .WithMany("DrivingLicenses")
                         .HasForeignKey("CitizenRegistryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1192,6 +1192,8 @@ namespace Morourak.Infrastructure.Migrations
 
             modelBuilder.Entity("Morourak.Domain.Entities.CitizenRegistry", b =>
                 {
+                    b.Navigation("DrivingLicenses");
+
                     b.Navigation("VehicleLicenses");
                 });
 

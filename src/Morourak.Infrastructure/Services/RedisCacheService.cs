@@ -80,9 +80,9 @@ public class RedisCacheService : ICacheService
     {
         try
         {
-            if (!_connectionMultiplexer.IsConnected)
+            if (_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected)
             {
-                _logger.LogWarning("Redis is not connected. Skipping pattern removal for: {Pattern}", pattern);
+                _logger.LogWarning("Redis is not connected or initialized. Skipping pattern removal for: {Pattern}", pattern);
                 return;
             }
 

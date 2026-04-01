@@ -44,11 +44,11 @@ namespace Morourak.Application.Services.Licenses
             var existingLicense = await _licenseRepo.GetAsync(l => l.CitizenRegistryId == citizen.Id);
             if (existingLicense != null)
             {
-                if (existingLicense.Status == LicenseStatus.Expired)
+                if (existingLicense.CurrentStatus == LicenseStatus.Expired)
                     throw new AppEx.ValidationException("للمواطن رخصة منتهية. يجب التجديد.", "LICENSE_EXPIRED");
-                if (existingLicense.Status == LicenseStatus.Active)
+                if (existingLicense.CurrentStatus == LicenseStatus.Active)
                     throw new AppEx.ValidationException("للمواطن رخصة قيادة سارية بالفعل.", "LICENSE_ACTIVE");
-                if (existingLicense.Status == LicenseStatus.Withdrawn)
+                if (existingLicense.CurrentStatus == LicenseStatus.Withdrawn)
                     throw new AppEx.ValidationException("للمواطن رخصة ملغاة. لا يمكن إصدار رخصة جديدة.", "LICENSE_WITHDRAWN");
             }
 
@@ -135,9 +135,9 @@ namespace Morourak.Application.Services.Licenses
 
             if (license == null)
                 throw new AppEx.ValidationException("لا توجد رخصة قيادة لهذا المواطن.", "LICENSE_NOT_FOUND");
-            if (license.Status != LicenseStatus.Expired)
+            if (license.CurrentStatus != LicenseStatus.Expired)
                 throw new AppEx.ValidationException("الرخصة لا تزال سارية. التجديد غير مطلوب.", "LICENSE_STILL_VALID");
-            if (license.Status == LicenseStatus.Withdrawn)
+            if (license.CurrentStatus == LicenseStatus.Withdrawn)
                 throw new AppEx.ValidationException("لا يمكن تجديد رخصة مسحوبة.", "LICENSE_WITHDRAWN");
             
             var pendingRenewal = (await _unitOfWork.Repository<RenewalApplication>()
@@ -216,7 +216,7 @@ namespace Morourak.Application.Services.Licenses
             if (!application.MedicalExaminationPassed)
                 throw new AppEx.ValidationException("يجب اجتياز الكشف الطبي قبل استكمال التجديد.", "MEDICAL_NOT_PASSED");
 
-            if (license.Status == LicenseStatus.Withdrawn)
+            if (license.CurrentStatus == LicenseStatus.Withdrawn)
                 throw new AppEx.ValidationException("لا يمكن تجديد رخصة مسحوبة.", "LICENSE_WITHDRAWN");
 
             bool isUpgrade = application.RequestedCategory != application.CurrentCategory;
@@ -267,7 +267,7 @@ namespace Morourak.Application.Services.Licenses
             if (oldLicense == null)
                 throw new AppEx.ValidationException("الرخصة غير موجودة.", "LICENSE_NOT_FOUND");
 
-            if (oldLicense.Status == LicenseStatus.Withdrawn)
+            if (oldLicense.CurrentStatus == LicenseStatus.Withdrawn)
                 throw new AppEx.ValidationException("لا يمكن إصدار بدل لهذه الرخصة لأنها مسحوبة.", "LICENSE_WITHDRAWN");
 
             var unpaidViolations = (await _violationService
@@ -520,7 +520,7 @@ namespace Morourak.Application.Services.Licenses
 
         private void ValidateReplacementEligibility(DrivingLicense oldLicense)
         {
-            if (oldLicense.Status != LicenseStatus.Active)
+            if (oldLicense.CurrentStatus != LicenseStatus.Active)
                 throw new AppEx.ValidationException("لا يمكن إصدار بدل لرخصة منتهية أو مسحوبة أو تم استبدالها بالفعل.", "LICENSE_NOT_REPLACEABLE");
 
             if (oldLicense.ExpiryDate < DateOnly.FromDateTime(DateTime.UtcNow))
@@ -543,7 +543,7 @@ namespace Morourak.Application.Services.Licenses
                 Id = license.Id,
                 DrivingLicenseNumber = license.LicenseNumber,
                 Category = license.Category.GetDisplayName(),
-                Status = license.Status.GetDisplayName(),
+                Status = license.CurrentStatus.GetDisplayName(),
                 Governorate = license.Governorate,
                 LicensingUnit = license.LicensingUnit,
                 CitizenName = $"{license.Citizen?.FirstName ?? ""} {license.Citizen?.LastName ?? ""}".Trim(),
@@ -620,7 +620,7 @@ namespace Morourak.Application.Services.Licenses
                 Category = l.Category.GetDisplayName(),
                 Governorate = l.Governorate,
                 LicensingUnit = l.LicensingUnit,
-                Status = l.Status.GetDisplayName(),
+                Status = l.CurrentStatus.GetDisplayName(),
                 IssueDate = l.IssueDate,
                 ExpiryDate = l.ExpiryDate,
                 CitizenNationalId = citizen.NationalId,

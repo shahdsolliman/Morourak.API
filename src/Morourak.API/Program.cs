@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.API.Extensions;
 using Morourak.API.Extensions.JsonConverters;
+using Morourak.API.Extensions.ModelBinders;
 using Morourak.API.Formatting;
 using Morourak.API.Middleware;
 using Morourak.Application.CQRS.Appointment.Commands.CreateAppointment;
@@ -13,6 +14,7 @@ using FluentValidation;
 using AutoMapper;
 using Serilog;
 using System.Threading.RateLimiting;
+using Morourak.Infrastructure.Services;
 
 namespace Morourak.API
 {
@@ -36,7 +38,11 @@ namespace Morourak.API
             // Services
             // ===============================
             builder.Services
-                .AddControllers()
+                .AddControllers(options =>
+                {
+                    // Enables enums to bind from Display(Name) Arabic values in query/form/route (e.g. multipart/form-data).
+                    options.ModelBinderProviders.Insert(0, new DisplayNameEnumModelBinderProvider());
+                })
                 .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.Converters.Add(new ArabicEnumConverter());
@@ -67,6 +73,9 @@ namespace Morourak.API
 
             builder.Services.AddMemoryCache();
             builder.Services.AddApplicationServices(builder.Configuration, builder.Environment);
+            
+            // Register Background Cleanup Service
+            builder.Services.AddHostedService<CleanupService>();
 
             // ===============================
             // CQRS (MediatR) + Validation + Mapping
@@ -157,11 +166,13 @@ namespace Morourak.API
                 await next();
             });
 
-            if (app.Environment.IsDevelopment())
+            // Always enable Swagger for demo/production visibility
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Morourak API v1");
+                options.RoutePrefix = string.Empty; // Set Swagger as the default home page
+            });
 
             if (!app.Environment.IsDevelopment())
             {

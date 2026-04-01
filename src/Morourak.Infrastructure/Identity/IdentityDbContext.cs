@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Morourak.Infrastructure.Identity
@@ -15,7 +15,6 @@ namespace Morourak.Infrastructure.Identity
         {
             base.OnModelCreating(builder);
 
-            builder.Entity<ApplicationUser>().HasQueryFilter(u => !u.IsDeleted);
 
             builder.Entity<ApplicationUser>()
                 .HasIndex(u => u.PhoneNumber)

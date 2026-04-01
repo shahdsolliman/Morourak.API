@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Morourak.Domain.Entities;
 
@@ -19,7 +19,7 @@ namespace Morourak.Infrastructure.Persistence.Configurations
             builder.HasIndex(d => d.LicenseNumber).IsUnique();
 
             builder.HasOne(d => d.Citizen)
-                .WithMany()
+                .WithMany(c => c.DrivingLicenses)
                 .HasForeignKey(d => d.CitizenRegistryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -30,6 +30,18 @@ namespace Morourak.Infrastructure.Persistence.Configurations
             builder.Property(x => x.ExpiryDate).HasConversion(
                        v => v.ToDateTime(TimeOnly.MinValue),
                        v => DateOnly.FromDateTime(v));
+
+            builder.OwnsOne(e => e.DeliveryAddress, da =>
+            {
+                da.Property(d => d.Governorate).HasMaxLength(100);
+                da.Property(d => d.City).HasMaxLength(100);
+                da.Property(d => d.Details).HasMaxLength(250);
+            });
+
+            builder.HasMany(d => d.Applications)
+                .WithOne(a => a.DrivingLicense)
+                .HasForeignKey(a => a.DrivingLicenseId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

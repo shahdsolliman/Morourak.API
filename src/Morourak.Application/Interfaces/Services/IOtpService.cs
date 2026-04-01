@@ -1,11 +1,14 @@
-﻿public enum OtpType
+namespace Morourak.Application.Interfaces.Services
 {
-    Register,
-    ResetPassword
-}
+    public enum OtpType
+    {
+        Register,
+        ResetPassword
+    }
 
-public interface IOtpService
-{
-    Task<string> GenerateAndSendAsync(string email, OtpType type = OtpType.Register);
-    Task<bool> ValidateAsync(string email, string code);
+    public interface IOtpService
+    {
+        Task<string> GenerateAndSendAsync(string identifier, OtpType type = OtpType.Register);
+        Task<bool> ValidateAsync(string identifier, string code);
+    }
 }

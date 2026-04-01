@@ -1,4 +1,6 @@
-﻿using Morourak.Domain.Common;
+using System.Text.Json.Serialization;
+using Morourak.Domain.Common;
+using Morourak.Domain.Entities;
 using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Common;
 using Morourak.Domain.Enums.Vehicles;
@@ -9,6 +11,8 @@ namespace Morourak.Domain.Entities
     {
         public string VehicleLicenseNumber { get; set; } = null!;
         public int CitizenRegistryId { get; set; }
+        
+        [JsonIgnore]
         public CitizenRegistry? Citizen { get; set; }
         public string PlateNumber { get; set; } = null!;
         public VehicleType VehicleType { get; set; }
@@ -20,7 +24,7 @@ namespace Morourak.Domain.Entities
         public bool IsReplaced { get; set; } = false;
         public bool IsPendingRenewal { get; set; } = false;
 
-        public LicenseStatus Status
+        public LicenseStatus CurrentStatus
         {
             get
             {

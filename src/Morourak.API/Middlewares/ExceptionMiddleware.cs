@@ -57,7 +57,8 @@ namespace Morourak.API.Middleware
                 isSuccess = false,
                 message = "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني.",
                 errorCode = "SERVER_ERROR",
-                details = (object?)null
+                debugMessage = ex.Message, // Temporary for debugging
+                stackTrace = ex.StackTrace // Temporary for debugging
             };
 
             context.Response.ContentType = "application/json";

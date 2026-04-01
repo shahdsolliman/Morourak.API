@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Repositories;
 using Morourak.Infrastructure.Persistence;
@@ -56,6 +57,12 @@ namespace Morourak.Infrastructure.UnitOfWork
         {
             if (_context.Database.CurrentTransaction != null)
                 await _context.Database.CurrentTransaction.RollbackAsync();
+        }
+
+        public async Task<T> ExecuteWithStrategyAsync<T>(Func<Task<T>> action)
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(action);
         }
 
         public void Dispose()

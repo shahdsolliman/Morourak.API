@@ -1,4 +1,4 @@
-﻿namespace Morourak.Domain.Entities
+namespace Morourak.Domain.Entities
 {
     /// <summary>
     /// Represents a mock governmental citizen registry.
@@ -45,5 +45,11 @@
         /// One-to-many relationship.
         /// </summary>
         public ICollection<VehicleLicense> VehicleLicenses { get; set; } = new List<VehicleLicense>();
+
+        /// <summary>
+        /// Navigation property: All driving licenses of this citizen.
+        /// One-to-many relationship.
+        /// </summary>
+        public virtual ICollection<DrivingLicense> DrivingLicenses { get; set; } = new List<DrivingLicense>();
     }
 }

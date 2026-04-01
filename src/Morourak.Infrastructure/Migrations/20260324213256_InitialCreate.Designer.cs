@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Morourak.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Morourak.Infrastructure.Persistence;
 namespace Morourak.Infrastructure.Migrations
 {
     [DbContext(typeof(PersistenceDbContext))]
-    partial class PersistenceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324213256_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -301,7 +304,7 @@ namespace Morourak.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("EmailOtp");
+                    b.ToTable("EmailOtps");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.Governorate", b =>
@@ -358,38 +361,6 @@ namespace Morourak.Infrastructure.Migrations
                     b.HasIndex("TrafficUnitId");
 
                     b.ToTable("Locations");
-                });
-
-            modelBuilder.Entity("Morourak.Domain.Entities.OtpVerification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("Expiry")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Identifier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("OtpVerifications");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.Payment", b =>
@@ -501,57 +472,6 @@ namespace Morourak.Infrastructure.Migrations
                     b.HasIndex("TrafficViolationId");
 
                     b.ToTable("PaymentViolations");
-                });
-
-            modelBuilder.Entity("Morourak.Domain.Entities.PendingRegistration", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NationalId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("OtpAttempts")
-                        .HasColumnType("int");
-
-                    b.Property<string>("OtpCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("OtpExpiry")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PendingRegistrations");
                 });
 
             modelBuilder.Entity("Morourak.Domain.Entities.RenewalApplication", b =>
@@ -1050,7 +970,7 @@ namespace Morourak.Infrastructure.Migrations
             modelBuilder.Entity("Morourak.Domain.Entities.DrivingLicense", b =>
                 {
                     b.HasOne("Morourak.Domain.Entities.CitizenRegistry", "Citizen")
-                        .WithMany("DrivingLicenses")
+                        .WithMany()
                         .HasForeignKey("CitizenRegistryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1272,8 +1192,6 @@ namespace Morourak.Infrastructure.Migrations
 
             modelBuilder.Entity("Morourak.Domain.Entities.CitizenRegistry", b =>
                 {
-                    b.Navigation("DrivingLicenses");
-
                     b.Navigation("VehicleLicenses");
                 });
 
