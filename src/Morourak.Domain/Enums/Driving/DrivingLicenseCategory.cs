@@ -4,25 +4,25 @@ namespace Morourak.Domain.Enums.Driving
 {
     public enum DrivingLicenseCategory
     {
-        [Display(Name = "خاصة")]
+        [Display(Name = "قيادة خاصة")]
         Private,
 
-        [Display(Name = "درجة أولى")]
+        [Display(Name = "مهنية درجة أولى")]
         ProfessionalFirstDegree,
 
-        [Display(Name = "درجة ثانية")]
+        [Display(Name = "مهنية درجة ثانية")]
         ProfessionalSecondDegree,
 
-        [Display(Name = "درجة ثالثة")]
+        [Display(Name = "مهنية درجة ثالثة")]
         ProfessionalThirdDegree,
 
         [Display(Name = "دراجة نارية")]
         Motorcycle,
 
-        [Display(Name = "معدات ثقيلة")]
+        [Display(Name = "قيادة معدات ثقيلة")]
         HeavyEquipment,
 
-        [Display(Name = "جرار زراعي")]
+        [Display(Name = "قيادة جرار زراعي")]
         AgriculturalTractor
     }
 }

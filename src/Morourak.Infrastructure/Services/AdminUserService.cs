@@ -167,38 +167,65 @@ public class AdminUserService : IAdminUserService
         if (roles.Contains(AppIdentityConstants.Roles.Admin) && user.Email == "admin@morourak.com")
             return ApiResponse<bool>.FailureResult("Primary administrator cannot be deleted.");
 
-        List<string> filesToDelete = new();
-
         try
         {
             _logger.LogInformation("Starting deletion of user {Email} (NationalId: {NationalId})", user.Email, user.NationalId);
 
-            await _unitOfWork.BeginTransactionAsync();
+            var filesToDelete = new List<string>();
+            List<string>? identityErrors = null;
 
-            // 1) Cleanup business data in PersistenceDbContext (transactional).
-            filesToDelete = await CleanupUserDataAsync(user.NationalId, user.Email!, user.PhoneNumber);
-
-            // Flush deletes inside the transaction so we catch FK/constraint issues before Identity deletion.
-            await _unitOfWork.CommitAsync();
-
-            // 2) Hard delete user from Identity database (separate context).
-            // If this fails, we roll back the business-data transaction to avoid partial deletion.
-            var result = await _userManager.DeleteAsync(user);
-            if (!result.Succeeded)
+            // EF Core SQL Server retry strategy requires user-initiated transactions to be executed
+            // inside CreateExecutionStrategy().ExecuteAsync(...).
+            var success = await _unitOfWork.ExecuteWithStrategyAsync(async () =>
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                await _unitOfWork.BeginTransactionAsync();
 
+                try
+                {
+                    // 1) Cleanup business data (transactional).
+                    filesToDelete = await CleanupUserDataAsync(user.NationalId, user.Email!, user.PhoneNumber);
+
+                    // Flush deletes inside the transaction so we catch FK/constraint issues before Identity deletion.
+                    await _unitOfWork.CommitAsync();
+
+                    // 2) Hard delete user from Identity database (separate context).
+                    // If this fails, we roll back the business-data transaction.
+                    //
+                    // IMPORTANT: this may run more than once if the persistence execution strategy retries.
+                    // If the user was already deleted in a previous attempt, treat that as success.
+                    var identityUser = await _userManager.FindByIdAsync(id);
+                    if (identityUser != null)
+                    {
+                        var identityResult = await _userManager.DeleteAsync(identityUser);
+                        if (!identityResult.Succeeded)
+                        {
+                            identityErrors = identityResult.Errors.Select(e => e.Description).ToList();
+                            await _unitOfWork.RollbackTransactionAsync();
+                            return false;
+                        }
+                    }
+
+                    await _unitOfWork.CommitTransactionAsync();
+                    return true;
+                }
+                catch
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw;
+                }
+            });
+
+            if (!success)
+            {
                 _logger.LogError(
                     "Failed to delete user {Email} from Identity DB: {Errors}",
                     user.Email,
-                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                    identityErrors == null ? "(unknown)" : string.Join(", ", identityErrors));
 
                 return ApiResponse<bool>.FailureResult(
                     "Failed to delete user from Identity database.",
-                    result.Errors.Select(e => e.Description).ToList());
+                    identityErrors);
             }
-
-            await _unitOfWork.CommitTransactionAsync();
 
             // 3) Best-effort deletion of uploaded files after successful DB commits.
             DeleteFilesBestEffort(filesToDelete);
@@ -208,7 +235,6 @@ public class AdminUserService : IAdminUserService
         }
         catch (Exception ex)
         {
-            try { await _unitOfWork.RollbackTransactionAsync(); } catch { /* best-effort */ }
             _logger.LogError(ex, "Error occurred while deleting user {Email}", user.Email);
             return ApiResponse<bool>.FailureResult($"An error occurred during deletion: {ex.Message}");
         }

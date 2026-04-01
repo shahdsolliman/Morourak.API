@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.Application.DTOs.Admin;
 using AppEx = Morourak.Application.Exceptions;
@@ -96,7 +96,16 @@ public class AdminUsersController : BaseApiController
         var result = await _adminUserService.DeleteUserAsync(id);
         if (!result.Success)
         {
-            throw new AppEx.ValidationException(result.Message ?? "المستخدم غير موجود.", "NOT_FOUND");
+            var msg = result.Message ?? "Failed to delete user.";
+
+            if (msg.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                throw new AppEx.ValidationException(msg, "NOT_FOUND");
+
+            if (msg.Contains("Primary administrator", StringComparison.OrdinalIgnoreCase))
+                throw new AppEx.ValidationException(msg, "FORBIDDEN");
+
+            // Anything else is a server-side failure; let global exception middleware return 500.
+            throw new Exception(msg);
         }
 
         return Ok(new
@@ -108,3 +117,4 @@ public class AdminUsersController : BaseApiController
         });
     }
 }
+
