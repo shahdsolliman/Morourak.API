@@ -25,7 +25,7 @@ public sealed class CreateAppointmentCommandHandler
     {
         var context = await _appointmentDomainService.ConfirmBookingAsync(
             nationalId: request.NationalId,
-            serviceType: request.ServiceType,
+            appointmentType: request.AppointmentType,
             date: request.Date,
             time: request.Time,
             governorateId: request.GovernorateId,

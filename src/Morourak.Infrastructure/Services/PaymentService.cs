@@ -275,9 +275,9 @@ public class PaymentService : IPaymentService
                             _unitOfWork.Repository<ServiceRequest>().Update(request);
 
                             // License completion logic (Internal CommitAsync should be removed in these methods)
-                            if (request.ServiceType.ToString().Contains("DrivingLicense"))
+                            if (IsDrivingLicenseService(request.ServiceType))
                                 await _drivingService.CompleteIssuanceAsync(request.RequestNumber);
-                            else if (request.ServiceType.ToString().Contains("VehicleLicense"))
+                            else if (IsVehicleLicenseService(request.ServiceType))
                                 await _vehicleService.CompleteIssuanceAsync(request.RequestNumber);
 
                             request.Status = RequestStatus.Completed; // Move to Completed ONLY after everything succeeds
@@ -446,4 +446,19 @@ public class PaymentService : IPaymentService
                 merchantOrderId);
         }
     }
+
+    private static bool IsDrivingLicenseService(ServiceType serviceType)
+        => serviceType is
+            ServiceType.DrivingLicenseIssue or
+            ServiceType.DrivingLicenseRenewal or
+            ServiceType.DrivingLicenseReplacementLost or
+            ServiceType.DrivingLicenseReplacementDamaged or
+            ServiceType.DrivingLicenseUpgrade;
+
+    private static bool IsVehicleLicenseService(ServiceType serviceType)
+        => serviceType is
+            ServiceType.VehicleLicenseIssue or
+            ServiceType.VehicleLicenseRenewal or
+            ServiceType.VehicleLicenseReplacementLost or
+            ServiceType.VehicleLicenseReplacementDamaged;
 }

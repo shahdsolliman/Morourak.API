@@ -7,6 +7,7 @@ using Morourak.Application.CQRS.Appointment.Queries.GetMyAppointments;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Application.DTOs.Common;
 using Morourak.Domain.Enums.Appointments;
+using Morourak.API.Extensions.Appointments;
 using Morourak.API.Formatting;
 using Morourak.Infrastructure.Identity.Constants;
 using System.Security.Claims;
@@ -74,9 +75,15 @@ namespace Morourak.API.Controllers
             if (string.IsNullOrEmpty(nationalId))
                 throw new AppEx.ValidationException("رقم الهوية غير موجود في رمز التحقق.", "AUTH_ERROR");
 
+            var appointmentType =
+                request.AppointmentType ??
+                (LegacyAppointmentTypeMapper.TryMap(request.ServiceType, out var legacyType)
+                    ? legacyType
+                    : throw new AppEx.ValidationException("نوع الموعد غير مدعوم.", "INVALID_SERVICE_TYPE"));
+
             var result = await _mediator.Send(new CreateAppointmentCommand(
                 NationalId: nationalId,
-                ServiceType: request.ServiceType,
+                AppointmentType: appointmentType,
                 Date: request.Date,
                 Time: request.Time,
                 GovernorateId: request.GovernorateId,

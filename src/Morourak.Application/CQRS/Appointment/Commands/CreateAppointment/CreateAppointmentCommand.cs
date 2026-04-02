@@ -1,12 +1,13 @@
 using MediatR;
 using Morourak.Application.Common.Interfaces;
 using Morourak.Application.DTOs.Appointments;
+using Morourak.Domain.Enums.Appointments;
 
 namespace Morourak.Application.CQRS.Appointment.Commands.CreateAppointment;
 
 public sealed record CreateAppointmentCommand(
     string NationalId,
-    string ServiceType,
+    AppointmentType AppointmentType,
     DateOnly Date,
     TimeOnly Time,
     int GovernorateId,

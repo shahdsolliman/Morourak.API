@@ -50,8 +50,9 @@ public class AdminUserService : IAdminUserService
 
         query = filter.SortBy switch
         {
-            "Email" => filter.IsDescending ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
-            "Name" => filter.IsDescending ? query.OrderByDescending(u => u.FirstName) : query.OrderBy(u => u.FirstName),
+            Morourak.Application.Enums.Admin.UserSortField.Email => filter.IsDescending ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
+            Morourak.Application.Enums.Admin.UserSortField.Name => filter.IsDescending ? query.OrderByDescending(u => u.FirstName) : query.OrderBy(u => u.FirstName),
+            Morourak.Application.Enums.Admin.UserSortField.CreatedAt or null => filter.IsDescending ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt),
             _ => filter.IsDescending ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt)
         };
 
@@ -99,17 +100,18 @@ public class AdminUserService : IAdminUserService
         if (!result.Succeeded)
             return ApiResponse<UserDto>.FailureResult("Failed to create user.", result.Errors.Select(e => e.Description).ToList());
 
-        if (!await _roleManager.RoleExistsAsync(dto.Role))
-            return ApiResponse<UserDto>.FailureResult($"Role '{dto.Role}' does not exist.");
+        var roleName = dto.Role.ToString().ToUpperInvariant();
+        if (!await _roleManager.RoleExistsAsync(roleName))
+            return ApiResponse<UserDto>.FailureResult($"Role '{roleName}' does not exist.");
 
-        await _userManager.AddToRoleAsync(user, dto.Role);
+        await _userManager.AddToRoleAsync(user, roleName);
 
         return ApiResponse<UserDto>.SuccessResult(new UserDto
         {
             Id = user.Id,
             Name = $"{user.FirstName} {user.LastName}",
             Email = user.Email,
-            Role = dto.Role,
+            Role = roleName,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt
         }, "User created successfully.");
@@ -137,11 +139,15 @@ public class AdminUserService : IAdminUserService
         if (!result.Succeeded)
             return ApiResponse<UserDto>.FailureResult("Failed to update user.");
 
-        if (dto.Role != null)
+        if (dto.Role.HasValue)
         {
+            var roleName = dto.Role.Value.ToString().ToUpperInvariant();
+            if (!await _roleManager.RoleExistsAsync(roleName))
+                return ApiResponse<UserDto>.FailureResult($"Role '{roleName}' does not exist.");
+
             var currentRoles = await _userManager.GetRolesAsync(user);
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
-            await _userManager.AddToRoleAsync(user, dto.Role);
+            await _userManager.AddToRoleAsync(user, roleName);
         }
 
         var userRoles = await _userManager.GetRolesAsync(user);

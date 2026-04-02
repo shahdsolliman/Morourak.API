@@ -24,6 +24,8 @@ namespace Morourak.API.Extensions
                 var applicationXmlFile = "Morourak.Application.xml";
                 var applicationXmlPath = Path.Combine(AppContext.BaseDirectory, applicationXmlFile);
                 options.IncludeXmlComments(applicationXmlPath);
+
+                options.SchemaFilter<Morourak.API.Extensions.Swagger.ArabicEnumSchemaFilter>();
             });
             return services;
         }

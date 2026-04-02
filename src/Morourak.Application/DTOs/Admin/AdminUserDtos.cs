@@ -1,5 +1,7 @@
 using Morourak.Domain.Enums.Auth;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+using Morourak.Application.Enums.Admin;
 
 namespace Morourak.Application.DTOs.Admin;
 
@@ -56,7 +58,8 @@ public class CreateUserDto
     /// The role assigned to the user.
     /// </summary>
     [Required]
-    public string Role { get; set; } = null!;
+    [JsonRequired]
+    public AppRole Role { get; set; }
 
     /// <summary>
     /// Initial status of the account.
@@ -88,7 +91,7 @@ public class UpdateUserDto
     /// <summary>
     /// Updated role.
     /// </summary>
-    public string? Role { get; set; }
+    public AppRole? Role { get; set; }
 
     /// <summary>
     /// Updated account status.
@@ -114,7 +117,7 @@ public class UserFilterDto
     /// <summary>
     /// Property name to sort by (e.g., "CreatedAt", "Email").
     /// </summary>
-    public string? SortBy { get; set; }
+    public UserSortField? SortBy { get; set; }
 
     /// <summary>
     /// Whether to sort in descending order.

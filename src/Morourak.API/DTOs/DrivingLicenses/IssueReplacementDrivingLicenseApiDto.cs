@@ -8,10 +8,11 @@ namespace Morourak.API.DTOs.DrivingLicenses
     public class IssueReplacementDrivingLicenseApiDto
     {
         /// <summary>
-        /// The reason for replacement (e.g., "Lost" or "Damaged").
+        /// The reason for replacement.
         /// </summary>
-        /// <example>Lost</example>
-        public string ReplacementType { get; set; } = null!;
+        /// <example>بدل فاقد</example>
+        [System.Text.Json.Serialization.JsonRequired]
+        public Morourak.Domain.Enums.Common.ReplacementType ReplacementType { get; set; }
 
         /// <summary>
         /// Delivery information and address for the new license.

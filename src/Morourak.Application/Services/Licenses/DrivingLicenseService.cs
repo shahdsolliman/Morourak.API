@@ -255,7 +255,7 @@ namespace Morourak.Application.Services.Licenses
         public async Task<Morourak.Application.DTOs.ServiceRequestDto> IssueReplacementAsync(
             string nationalId,
             string drivingLicenseNumber,
-            string replacementType,
+            ReplacementType replacementType,
             DeliveryInfoDto delivery)
         {
             var citizen = await GetCitizenAsync(nationalId);
@@ -280,12 +280,11 @@ namespace Morourak.Application.Services.Licenses
             ValidateReplacementEligibility(oldLicense);
             ValidateDelivery(delivery);
 
-            var normalizedType = replacementType.Trim().ToLower();
-            var serviceType = normalizedType switch
+            var serviceType = replacementType switch
             {
-                "lost" => ServiceType.DrivingLicenseReplacementLost,
-                "damaged" => ServiceType.DrivingLicenseReplacementDamaged,
-                _ => throw new AppEx.ValidationException("نوع البدل يجب أن يكون 'lost' (مفقود) أو 'damaged' (تالف).", "INVALID_REPLACEMENT_TYPE")
+                ReplacementType.Lost => ServiceType.DrivingLicenseReplacementLost,
+                ReplacementType.Damaged => ServiceType.DrivingLicenseReplacementDamaged,
+                _ => throw new AppEx.ValidationException("نوع البدل غير مدعوم.", "INVALID_REPLACEMENT_TYPE")
             };
 
             // Create a pending service request for replacement

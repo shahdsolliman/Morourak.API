@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Morourak.Application.Interfaces;
 using Morourak.Application.Exceptions;
 using Morourak.Application.DTOs.Delivery;
 using Morourak.API.DTOs.VehicleLicenses;
+using Morourak.Domain.Enums.Common;
 
 namespace Morourak.API.Controllers
 {
@@ -100,7 +102,10 @@ namespace Morourak.API.Controllers
         /// </summary>
         [Authorize(Roles = "CITIZEN")]
         [HttpPost("replacement/{licenseNumber}")]
-        public async Task<IActionResult> IssueReplacement(string licenseNumber, [FromQuery] string type, [FromBody] DeliveryInfoDto delivery)
+        public async Task<IActionResult> IssueReplacement(
+            string licenseNumber,
+            [FromQuery, BindRequired] ReplacementType type,
+            [FromBody] DeliveryInfoDto delivery)
         {
             var nationalId = NationalId;
             var result = await _service.IssueReplacementAsync(nationalId, licenseNumber, type, delivery);

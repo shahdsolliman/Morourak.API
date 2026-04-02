@@ -145,9 +145,6 @@ namespace Morourak.API.Controllers
         [HttpPost("issue-replacement/{drivingLicenseNumber}")]
         public async Task<IActionResult> IssueReplacement(string drivingLicenseNumber, [FromBody] IssueReplacementDrivingLicenseApiDto apiDto)
         {
-            if (apiDto.ReplacementType != "Lost" && apiDto.ReplacementType != "Damaged")
-                throw new ValidationException("ReplacementType must be 'Lost' or 'Damaged'.");
-
             var nationalId = NationalId;
             var result = await _service.IssueReplacementAsync(
                 nationalId,

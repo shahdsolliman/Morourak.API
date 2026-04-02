@@ -5,7 +5,6 @@ using Morourak.Application.Interfaces.DomainServices;
 using Morourak.Domain.Entities;
 using AppointmentEntity = Morourak.Domain.Entities.Appointment;
 using Morourak.Domain.Enums.Appointments;
-using Morourak.Domain.Enums.Request;
 
 namespace Morourak.Application.DomainServices.Appointment;
 
@@ -28,15 +27,13 @@ public sealed class AppointmentDomainService : IAppointmentDomainService
 
     public async Task<BookingConfirmationContext> ConfirmBookingAsync(
         string nationalId,
-        string serviceType,
+        AppointmentType appointmentType,
         DateOnly date,
         TimeOnly time,
         int governorateId,
         int trafficUnitId,
         CancellationToken cancellationToken)
     {
-        var appointmentType = MapToAppointmentType(serviceType);
-
         ValidateWorkingHours(time);
 
         var governorate = await ValidateGovernorate(governorateId);
@@ -108,43 +105,6 @@ public sealed class AppointmentDomainService : IAppointmentDomainService
             trafficUnit: trafficUnit,
             appointmentType: appointmentType,
             assignedToUserId: assignedToUserId);
-    }
-
-    private static AppointmentType MapToAppointmentType(string serviceType)
-    {
-        var normalized = serviceType.Trim();
-
-        if (normalized.Equals("كشف طبي", StringComparison.OrdinalIgnoreCase))
-            return AppointmentType.Medical;
-
-        if (normalized.Equals("فحص فني", StringComparison.OrdinalIgnoreCase))
-            return AppointmentType.Technical;
-
-        if (normalized.Equals("اختبار قيادة", StringComparison.OrdinalIgnoreCase))
-            return AppointmentType.Driving;
-
-        if (normalized.Contains("مركبة", StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.VehicleLicenseIssue), StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.VehicleLicenseRenewal), StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.VehicleLicenseReplacementLost), StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.VehicleLicenseReplacementDamaged), StringComparison.OrdinalIgnoreCase))
-        {
-            return AppointmentType.Technical;
-        }
-
-        if (normalized.Contains("قيادة", StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.DrivingLicenseIssue), StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.DrivingLicenseRenewal), StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.DrivingLicenseReplacementLost), StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.DrivingLicenseReplacementDamaged), StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals(nameof(ServiceType.DrivingLicenseUpgrade), StringComparison.OrdinalIgnoreCase))
-        {
-            return AppointmentType.Driving;
-        }
-
-        throw new ValidationException(
-            "نوع الخدمة غير مدعوم.",
-            "INVALID_SERVICE_TYPE");
     }
 
     private static bool IsActiveAppointmentStatus(AppointmentStatus status)

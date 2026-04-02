@@ -1,3 +1,5 @@
+using Morourak.Domain.Enums.Appointments;
+
 namespace Morourak.Application.DTOs.Appointments
 {
     /// <summary>
@@ -7,7 +9,11 @@ namespace Morourak.Application.DTOs.Appointments
     /// </summary>
     public class ConfirmAppointmentRequestDto
     {
-        /// <summary>نوع الخدمة المطلوبة — مثال: "كشف طبي" | "فحص فني" | "اختبار قيادة"</summary>
+        /// <summary>نوع الموعد المطلوب (القيمة الأساسية للتعامل مع API).</summary>
+        public AppointmentType? AppointmentType { get; set; }
+
+        /// <summary>نوع الخدمة المطلوبة (حقل قديم للتوافق مع التطبيقات القديمة).</summary>
+        [System.Obsolete("Use AppointmentType instead. This legacy field will be removed in a future version.")]
         public string ServiceType { get; set; } = string.Empty;
 
         /// <summary>Scheduled date for the appointment.</summary>

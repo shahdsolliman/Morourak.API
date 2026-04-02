@@ -7,7 +7,7 @@ public interface IAppointmentDomainService
 {
     Task<BookingConfirmationContext> ConfirmBookingAsync(
         string nationalId,
-        string serviceType,
+        AppointmentType appointmentType,
         DateOnly date,
         TimeOnly time,
         int governorateId,

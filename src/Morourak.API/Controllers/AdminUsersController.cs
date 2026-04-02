@@ -26,9 +26,9 @@ public class AdminUsersController : BaseApiController
     /// Retrieves a paginated list of users based on filter criteria.
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetDocs([FromQuery] UserFilterDto filter)
+    public async Task<IActionResult> GetDocs([FromQuery] Morourak.API.DTOs.Admin.AdminUserFilterApiDto filter)
     {
-        var result = await _adminUserService.GetUsersAsync(filter);
+        var result = await _adminUserService.GetUsersAsync(filter.ToApplicationDto());
         return Ok(new
         {
             isSuccess = true,

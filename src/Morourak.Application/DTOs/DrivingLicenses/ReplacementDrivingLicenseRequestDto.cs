@@ -2,10 +2,10 @@ namespace Morourak.Application.DTOs.DrivingLicenses
 {
     public class ReplacementDrivingLicenseRequestDto
     {
-        public string ReplacementType { get; set; } = null!; // Lost | Damaged
+        public Morourak.Domain.Enums.Common.ReplacementType ReplacementType { get; set; }
         public string Governorate { get; set; } = null!;
         public string TrafficUnit { get; set; } = null!;
-        public string DeliveryMethod { get; set; } = null!; // Pickup | Mail
+        public Morourak.Domain.Enums.Common.DeliveryMethod DeliveryMethod { get; set; }
         public string? PoliceReportPath { get; set; }
     }
 }

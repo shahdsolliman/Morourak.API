@@ -3,6 +3,7 @@ using Morourak.Application.DTOs.DrivingLicenses;
 using Morourak.Application.DTOs.Licenses;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Appointments;
+using Morourak.Domain.Enums.Common;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -39,7 +40,7 @@ namespace Morourak.Application.Interfaces
         Task<Morourak.Application.DTOs.ServiceRequestDto> IssueReplacementAsync(
             string nationalId,
             string drivingLicenseNumber,
-            string replacementType,
+            ReplacementType replacementType,
             DeliveryInfoDto delivery);
 
         #endregion

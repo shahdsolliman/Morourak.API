@@ -13,8 +13,9 @@ public sealed class CreateAppointmentCommandValidator : AbstractValidator<Create
             .NotEmpty().WithMessage("رقم الهوية مطلوب.")
             .MaximumLength(32).WithMessage("رقم الهوية غير صحيح.");
 
-        RuleFor(x => x.ServiceType)
-            .NotEmpty().WithMessage("نوع الخدمة مطلوب.");
+        RuleFor(x => x.AppointmentType)
+            .NotEqual(default(Morourak.Domain.Enums.Appointments.AppointmentType))
+            .WithMessage("نوع الموعد مطلوب.");
 
         RuleFor(x => x.Date)
             .NotEqual(default(DateOnly)).WithMessage("التاريخ مطلوب.")

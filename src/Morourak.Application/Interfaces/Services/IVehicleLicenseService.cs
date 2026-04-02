@@ -2,6 +2,7 @@ using Morourak.Application.DTOs.Delivery;
 using Morourak.Application.DTOs.Vehicles;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Appointments;
+using Morourak.Domain.Enums.Common;
 
 namespace Morourak.Application.Interfaces
 {
@@ -38,7 +39,7 @@ namespace Morourak.Application.Interfaces
         Task<Morourak.Application.DTOs.ServiceRequestDto> IssueReplacementAsync(
             string nationalId,
             string vehicleLicenseNumber,
-            string replacementType,
+            ReplacementType replacementType,
             DeliveryInfoDto delivery);
 
         Task SubmitAppointmentResultAsync(int applicationId, AppointmentType type, bool passed, string? notes);

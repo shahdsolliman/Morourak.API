@@ -19,7 +19,7 @@ namespace Morourak.API.DTOs.VehicleLicenses
         public string Model { get; set; }
         public int ManufactureYear { get; set; }
 
-        public DeliveryMethod DeliveryMethod { get; set; } // eg. "Pickup" / "Home Delivery"
+        public DeliveryMethod DeliveryMethod { get; set; } // مثال: "وحدة المرور" / "توصيل للمنزل"
         public AddressDto? DeliveryAddress { get; set; }
     }
 }
