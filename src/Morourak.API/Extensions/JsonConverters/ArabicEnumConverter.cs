@@ -34,6 +34,8 @@ public class ArabicEnumConverter : JsonConverterFactory
 
     private class EnumToDisplayNameConverter<T> : JsonConverter<T> where T : struct, Enum
     {
+        private static readonly IReadOnlyDictionary<T, string> DisplayNameByValue = BuildDisplayNameByValue();
+
         public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             // For reading, we support both string (Enum name) and int (Enum value)
@@ -51,22 +53,32 @@ public class ArabicEnumConverter : JsonConverterFactory
                     return (T)boxed;
             }
 
-            throw new JsonException($"Invalid value for {typeof(T).Name}. Allowed values: {EnumDisplayNameParser.GetAllowedValuesForError(typeof(T))}.");
+            throw new JsonException($"قيمة غير صحيحة. القيم المسموحة: {EnumDisplayNameParser.GetAllowedValuesForError(typeof(T))}.");
         }
 
         public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
         {
-            var field = value.GetType().GetField(value.ToString());
-            var displayAttribute = field?.GetCustomAttribute<DisplayAttribute>();
-
-            if (displayAttribute != null && !string.IsNullOrEmpty(displayAttribute.Name))
-            {
-                writer.WriteStringValue(displayAttribute.Name);
-            }
+            if (DisplayNameByValue.TryGetValue(value, out var displayName))
+                writer.WriteStringValue(displayName);
             else
-            {
                 writer.WriteStringValue(value.ToString());
+        }
+
+        private static IReadOnlyDictionary<T, string> BuildDisplayNameByValue()
+        {
+            var result = new Dictionary<T, string>();
+            foreach (var value in Enum.GetValues<T>())
+            {
+                var enumName = value.ToString();
+                var field = typeof(T).GetField(enumName);
+                var displayAttribute = field?.GetCustomAttribute<DisplayAttribute>();
+
+                result[value] = !string.IsNullOrWhiteSpace(displayAttribute?.Name)
+                    ? displayAttribute!.Name!.Trim()
+                    : enumName;
             }
+
+            return result;
         }
     }
 

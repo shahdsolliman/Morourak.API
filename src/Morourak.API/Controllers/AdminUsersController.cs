@@ -47,8 +47,8 @@ public class AdminUsersController : BaseApiController
         var result = await _adminUserService.CreateUserAsync(dto);
         if (!result.Success)
         {
-            if (result.Message != null && result.Message.Contains("exists", StringComparison.OrdinalIgnoreCase))
-                throw new AppEx.ValidationException(result.Message, "CONFLICT");
+            if (result.ErrorCode == "EMAIL_EXISTS")
+                throw new AppEx.ValidationException(result.Message ?? "Email already exists.", "CONFLICT");
             
             throw new AppEx.ValidationException(result.Message ?? "فشل في إنشاء المستخدم.");
         }
@@ -72,8 +72,8 @@ public class AdminUsersController : BaseApiController
         var result = await _adminUserService.UpdateUserAsync(id, dto);
         if (!result.Success)
         {
-            if (result.Message != null && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                throw new AppEx.ValidationException(result.Message, "NOT_FOUND");
+            if (result.ErrorCode == "USER_NOT_FOUND")
+                throw new AppEx.ValidationException(result.Message ?? "User not found.", "NOT_FOUND");
                 
             throw new AppEx.ValidationException(result.Message ?? "فشل في تحديث بيانات المستخدم.");
         }
@@ -96,16 +96,14 @@ public class AdminUsersController : BaseApiController
         var result = await _adminUserService.DeleteUserAsync(id);
         if (!result.Success)
         {
-            var msg = result.Message ?? "Failed to delete user.";
+            if (result.ErrorCode == "USER_NOT_FOUND")
+                throw new AppEx.ValidationException(result.Message ?? "User not found.", "NOT_FOUND");
 
-            if (msg.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                throw new AppEx.ValidationException(msg, "NOT_FOUND");
-
-            if (msg.Contains("Primary administrator", StringComparison.OrdinalIgnoreCase))
-                throw new AppEx.ValidationException(msg, "FORBIDDEN");
+            if (result.ErrorCode == "PRIMARY_ADMIN_PROTECTED")
+                throw new AppEx.ValidationException(result.Message ?? "Primary administrator cannot be deleted.", "FORBIDDEN");
 
             // Anything else is a server-side failure; let global exception middleware return 500.
-            throw new Exception(msg);
+            throw new Exception(result.Message ?? "Failed to delete user.");
         }
 
         return Ok(new

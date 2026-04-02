@@ -199,7 +199,14 @@ namespace Morourak.API
             // ===============================
             // Database Initialization
             // ===============================
-            await app.InitializeDatabasesAsync();
+            var skipDatabaseInit =
+                app.Environment.IsEnvironment("Test") ||
+                app.Configuration.GetValue<bool>("SkipDatabaseInit");
+
+            if (!skipDatabaseInit)
+            {
+                await app.InitializeDatabasesAsync();
+            }
 
             app.Run();
         }

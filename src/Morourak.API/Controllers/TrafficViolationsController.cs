@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Morourak.Application.DTOs.Violations;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Enums.Violations;
@@ -72,7 +73,7 @@ namespace Morourak.API.Controllers
         [HttpGet("license/{licenseNumber}/details")]
         public async Task<IActionResult> GetViolationDetailsByLicenseNumber(
             string licenseNumber,
-            [FromQuery] LicenseType licenseType)
+            [FromQuery, BindRequired] LicenseType licenseType)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, licenseType);
             return Ok(new

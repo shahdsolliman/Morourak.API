@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using MediatR;
 using Morourak.Application.DTOs.Appointments;
 using Morourak.Application.CQRS.Appointment.Commands.CreateAppointment;
@@ -44,7 +45,7 @@ namespace Morourak.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetAvailableSlots(
         [FromQuery] DateOnly date,
-        [FromQuery] AppointmentType type,
+        [FromQuery, BindRequired] AppointmentType type,
         [FromQuery] int trafficUnitId)
         {
             var slots = await _queryService.GetAvailableSlotsAsync(date, type, trafficUnitId);
@@ -75,11 +76,7 @@ namespace Morourak.API.Controllers
             if (string.IsNullOrEmpty(nationalId))
                 throw new AppEx.ValidationException("رقم الهوية غير موجود في رمز التحقق.", "AUTH_ERROR");
 
-            var appointmentType =
-                request.AppointmentType ??
-                (LegacyAppointmentTypeMapper.TryMap(request.ServiceType, out var legacyType)
-                    ? legacyType
-                    : throw new AppEx.ValidationException("نوع الموعد غير مدعوم.", "INVALID_SERVICE_TYPE"));
+            var appointmentType = AppointmentTypeInputResolver.Resolve(request);
 
             var result = await _mediator.Send(new CreateAppointmentCommand(
                 NationalId: nationalId,

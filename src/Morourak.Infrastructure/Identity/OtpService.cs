@@ -4,6 +4,7 @@ using Morourak.Infrastructure.Persistence;
 using Morourak.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
+using System.ComponentModel.DataAnnotations;
 using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Infrastructure.Identity
@@ -89,7 +90,7 @@ namespace Morourak.Infrastructure.Identity
                 await _persistenceContext.SaveChangesAsync();
 
                 // Get user email to send code
-                var user = identifier.Contains("@") 
+                var user = IsEmail(identifier)
                     ? await _userManager.FindByEmailAsync(identifier)
                     : await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == identifier);
 
@@ -197,5 +198,8 @@ namespace Morourak.Infrastructure.Identity
             var number = BitConverter.ToUInt32(bytes, 0) % 900000 + 100000;
             return number.ToString();
         }
+
+        private static bool IsEmail(string identifier)
+            => new EmailAddressAttribute().IsValid(identifier);
     }
 }

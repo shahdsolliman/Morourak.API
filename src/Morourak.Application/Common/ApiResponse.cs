@@ -4,6 +4,7 @@ public class ApiResponse<T>
 {
     public bool Success { get; set; }
     public string? Message { get; set; }
+    public string? ErrorCode { get; set; }
     public T? Data { get; set; }
     public List<string>? Errors { get; set; }
 
@@ -23,6 +24,18 @@ public class ApiResponse<T>
         {
             Success = false,
             Message = message,
+            ErrorCode = null,
+            Errors = errors
+        };
+    }
+
+    public static ApiResponse<T> FailureResult(string message, string errorCode, List<string>? errors = null)
+    {
+        return new ApiResponse<T>
+        {
+            Success = false,
+            Message = message,
+            ErrorCode = errorCode,
             Errors = errors
         };
     }

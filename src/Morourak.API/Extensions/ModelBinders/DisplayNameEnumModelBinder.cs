@@ -29,7 +29,7 @@ public class DisplayNameEnumModelBinder : IModelBinder
 
             bindingContext.ModelState.TryAddModelError(
                 bindingContext.ModelName,
-                $"{bindingContext.ModelName} is required.");
+                "هذا الحقل مطلوب.");
             return Task.CompletedTask;
         }
 
@@ -38,7 +38,7 @@ public class DisplayNameEnumModelBinder : IModelBinder
             var allowed = EnumDisplayNameParser.GetAllowedValuesForError(enumType);
             bindingContext.ModelState.TryAddModelError(
                 bindingContext.ModelName,
-                $"Invalid value '{raw}' for {enumType.Name}. Allowed values: {allowed}.");
+                $"قيمة غير صحيحة. القيم المسموحة: {allowed}.");
             return Task.CompletedTask;
         }
 
@@ -46,4 +46,3 @@ public class DisplayNameEnumModelBinder : IModelBinder
         return Task.CompletedTask;
     }
 }
-

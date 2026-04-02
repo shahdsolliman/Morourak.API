@@ -83,7 +83,7 @@ public class AdminUserService : IAdminUserService
     public async Task<ApiResponse<UserDto>> CreateUserAsync(CreateUserDto dto)
     {
         if (await _userManager.FindByEmailAsync(dto.Email) != null)
-            return ApiResponse<UserDto>.FailureResult("Email already exists.");
+            return ApiResponse<UserDto>.FailureResult("Email already exists.", "EMAIL_EXISTS");
 
         var user = new ApplicationUser
         {
@@ -98,11 +98,11 @@ public class AdminUserService : IAdminUserService
 
         var result = await _userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded)
-            return ApiResponse<UserDto>.FailureResult("Failed to create user.", result.Errors.Select(e => e.Description).ToList());
+            return ApiResponse<UserDto>.FailureResult("Failed to create user.", "CREATE_FAILED", result.Errors.Select(e => e.Description).ToList());
 
         var roleName = dto.Role.ToString().ToUpperInvariant();
         if (!await _roleManager.RoleExistsAsync(roleName))
-            return ApiResponse<UserDto>.FailureResult($"Role '{roleName}' does not exist.");
+            return ApiResponse<UserDto>.FailureResult($"Role '{roleName}' does not exist.", "ROLE_NOT_FOUND");
 
         await _userManager.AddToRoleAsync(user, roleName);
 
@@ -120,7 +120,7 @@ public class AdminUserService : IAdminUserService
     public async Task<ApiResponse<UserDto>> UpdateUserAsync(string id, UpdateUserDto dto)
     {
         var user = await _userManager.FindByIdAsync(id);
-        if (user == null) return ApiResponse<UserDto>.FailureResult("User not found.");
+        if (user == null) return ApiResponse<UserDto>.FailureResult("User not found.", "USER_NOT_FOUND");
 
         if (dto.FirstName != null) user.FirstName = dto.FirstName;
         if (dto.LastName != null) user.LastName = dto.LastName;
@@ -129,7 +129,7 @@ public class AdminUserService : IAdminUserService
         if (dto.Email != null && dto.Email != user.Email)
         {
             if (await _userManager.FindByEmailAsync(dto.Email) != null)
-                return ApiResponse<UserDto>.FailureResult("Email already exists.");
+                return ApiResponse<UserDto>.FailureResult("Email already exists.", "EMAIL_EXISTS");
             
             user.Email = dto.Email;
             user.UserName = dto.Email;
@@ -137,13 +137,13 @@ public class AdminUserService : IAdminUserService
 
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
-            return ApiResponse<UserDto>.FailureResult("Failed to update user.");
+            return ApiResponse<UserDto>.FailureResult("Failed to update user.", "UPDATE_FAILED");
 
         if (dto.Role.HasValue)
         {
             var roleName = dto.Role.Value.ToString().ToUpperInvariant();
             if (!await _roleManager.RoleExistsAsync(roleName))
-                return ApiResponse<UserDto>.FailureResult($"Role '{roleName}' does not exist.");
+                return ApiResponse<UserDto>.FailureResult($"Role '{roleName}' does not exist.", "ROLE_NOT_FOUND");
 
             var currentRoles = await _userManager.GetRolesAsync(user);
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
@@ -166,12 +166,12 @@ public class AdminUserService : IAdminUserService
     public async Task<ApiResponse<bool>> DeleteUserAsync(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
-        if (user == null) return ApiResponse<bool>.FailureResult("User not found.");
+        if (user == null) return ApiResponse<bool>.FailureResult("User not found.", "USER_NOT_FOUND");
 
         // Protection: Prevent deletion of primary Admin
         var roles = await _userManager.GetRolesAsync(user);
         if (roles.Contains(AppIdentityConstants.Roles.Admin) && user.Email == "admin@morourak.com")
-            return ApiResponse<bool>.FailureResult("Primary administrator cannot be deleted.");
+            return ApiResponse<bool>.FailureResult("Primary administrator cannot be deleted.", "PRIMARY_ADMIN_PROTECTED");
 
         try
         {
@@ -230,6 +230,7 @@ public class AdminUserService : IAdminUserService
 
                 return ApiResponse<bool>.FailureResult(
                     "Failed to delete user from Identity database.",
+                    "IDENTITY_DELETE_FAILED",
                     identityErrors);
             }
 

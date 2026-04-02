@@ -48,6 +48,19 @@ public sealed class EnumDisplayNameParserTests
     {
         Assert.False(EnumDisplayNameParser.TryParse(typeof(ReplacementType), "not-a-real-value", out _));
     }
+
+    [Fact]
+    public void TryParse_UserSortField_Allows_English_Arabic_And_Int()
+    {
+        Assert.True(EnumDisplayNameParser.TryParse(typeof(UserSortField), "CreatedAt", out var createdAt1));
+        Assert.Equal(UserSortField.CreatedAt, Assert.IsType<UserSortField>(createdAt1));
+
+        Assert.True(EnumDisplayNameParser.TryParse(typeof(UserSortField), "تاريخ الإنشاء", out var createdAt2));
+        Assert.Equal(UserSortField.CreatedAt, Assert.IsType<UserSortField>(createdAt2));
+
+        Assert.True(EnumDisplayNameParser.TryParse(typeof(UserSortField), "1", out var createdAt3));
+        Assert.Equal(UserSortField.CreatedAt, Assert.IsType<UserSortField>(createdAt3));
+    }
 }
 
 public sealed class ArabicEnumConverterTests

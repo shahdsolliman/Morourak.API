@@ -2,6 +2,7 @@ using AutoMapper;
 using Morourak.Application.CQRS.Appointment.Commands.CreateAppointment;
 using Morourak.Application.DTOs.Appointments;
 using Morourak.Domain.Enums.Appointments;
+using Morourak.Domain.Extensions;
 using System.Globalization;
 
 namespace Morourak.Application.Mapping.Appointment;
@@ -15,7 +16,7 @@ public sealed class AppointmentProfile : Profile
             .ForMember(d => d.BookingNumber, opt => opt.MapFrom(src => src.Appointment.Id.ToString()))
             .ForMember(d => d.ApplicationId, opt => opt.MapFrom(src => src.Appointment.ApplicationId))
             .ForMember(d => d.RequestNumber, opt => opt.MapFrom(src => src.ServiceRequest.RequestNumber))
-            .ForMember(d => d.ServiceName, opt => opt.MapFrom(src => src.AppointmentType.ToString()))
+            .ForMember(d => d.ServiceName, opt => opt.MapFrom(src => src.AppointmentType.GetDisplayName()))
             .ForMember(d => d.Date, opt => opt.MapFrom(src =>
                 src.Appointment.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)))
             .ForMember(d => d.Time, opt => opt.MapFrom(src =>
@@ -25,20 +26,20 @@ public sealed class AppointmentProfile : Profile
             .ForMember(d => d.TimeFormatted, opt => opt.MapFrom(src => 
                 ToArabicTime(src.Appointment.StartTime)))
             .ForMember(d => d.TrafficUnitName, opt => opt.MapFrom(src => 
-                src.TrafficUnit.Name.Contains("العاشر") ? "وحدة مرور العاشر من رمضان" : (src.TrafficUnit.Name ?? string.Empty)))
+                src.TrafficUnit.Name ?? string.Empty))
             .ForMember(d => d.TrafficUnitAddress, opt => opt.MapFrom(src => 
-                src.TrafficUnit.Name.Contains("العاشر") ? "شارع التسعين , العاشر من رمضان , الشرقية" : (src.TrafficUnit.Address ?? string.Empty)))
+                src.TrafficUnit.Address ?? string.Empty))
             .ForMember(d => d.GovernorateName, opt => opt.MapFrom(src => src.Governorate.Name ?? string.Empty))
             .ForMember(d => d.WorkingHours, opt => opt.MapFrom(src => 
-                src.TrafficUnit.Name.Contains("العاشر") ? "9 ص الي 3 م (الاحد -الخميس)" : (src.TrafficUnit.WorkingHours ?? string.Empty)))
+                src.TrafficUnit.WorkingHours ?? string.Empty))
             .ForMember(d => d.AssignedToUserId, opt => opt.MapFrom(src => src.AssignedToUserId));
 
         CreateMap<BookingConfirmationContext, BookingServiceRequestDto>()
             .ForMember(d => d.RequestNumber, opt => opt.MapFrom(src => src.ServiceRequest.RequestNumber))
             .ForMember(d => d.CitizenNationalId, opt => opt.MapFrom(src => src.ServiceRequest.CitizenNationalId))
-            .ForMember(d => d.ServiceType, opt => opt.MapFrom(src => src.ServiceRequest.ServiceType.ToString()))
-            .ForMember(d => d.Status, opt => opt.MapFrom(src => src.ServiceRequest.Status.ToString()))
-            .ForMember(d => d.PaymentStatus, opt => opt.MapFrom(src => src.ServiceRequest.PaymentStatus.ToString()))
+            .ForMember(d => d.ServiceType, opt => opt.MapFrom(src => src.ServiceRequest.ServiceType.GetDisplayName()))
+            .ForMember(d => d.Status, opt => opt.MapFrom(src => src.ServiceRequest.Status.GetDisplayName()))
+            .ForMember(d => d.PaymentStatus, opt => opt.MapFrom(src => src.ServiceRequest.PaymentStatus.GetDisplayName()))
             .ForMember(d => d.SubmittedAt, opt => opt.MapFrom(src =>
                 src.ServiceRequest.SubmittedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)))
             .ForMember(d => d.LastUpdatedAt, opt => opt.MapFrom(src =>
@@ -51,8 +52,8 @@ public sealed class AppointmentProfile : Profile
 
         // Raw mapping for appointment read models (no Arabic formatting here).
         CreateMap<Morourak.Domain.Entities.Appointment, AppointmentDto>()
-            .ForMember(d => d.TypeName, opt => opt.MapFrom(src => src.Type.ToString()))
-            .ForMember(d => d.ServiceName, opt => opt.MapFrom(src => src.Type.ToString()))
+            .ForMember(d => d.TypeName, opt => opt.MapFrom(src => src.Type.GetDisplayName()))
+            .ForMember(d => d.ServiceName, opt => opt.MapFrom(src => src.Type.GetDisplayName()))
             .ForMember(d => d.DateFormatted, opt => opt.MapFrom(_ => string.Empty))
             .ForMember(d => d.TimeFormatted, opt => opt.MapFrom(_ => string.Empty))
             .ForMember(d => d.CreatedAt, opt => opt.MapFrom(src =>

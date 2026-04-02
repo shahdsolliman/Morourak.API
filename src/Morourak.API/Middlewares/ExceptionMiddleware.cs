@@ -8,11 +8,16 @@ namespace Morourak.API.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionMiddleware> _logger;
+        private readonly IWebHostEnvironment _environment;
 
-        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+        public ExceptionMiddleware(
+            RequestDelegate next,
+            ILogger<ExceptionMiddleware> logger,
+            IWebHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
+            _environment = environment;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -20,6 +25,11 @@ namespace Morourak.API.Middleware
             try
             {
                 await _next(context);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "INVALID_JSON: {Message}", ex.Message);
+                await HandleJsonExceptionAsync(context, ex);
             }
             catch (AppException ex)
             {
@@ -31,6 +41,30 @@ namespace Morourak.API.Middleware
                 _logger.LogError(ex, "SYSTEM_ERROR: An unhandled exception has occurred: {Message}", ex.Message);
                 await HandleSystemExceptionAsync(context, ex);
             }
+        }
+
+        private static async Task HandleJsonExceptionAsync(HttpContext context, JsonException ex)
+        {
+            var response = new
+            {
+                isSuccess = false,
+                message = "بيانات غير صالحة.",
+                errorCode = "VALIDATION_ERROR",
+                details = new[]
+                {
+                    new ErrorDetail
+                    {
+                        Field = "body",
+                        Error = ex.Message
+                    }
+                }
+            };
+
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            await context.Response.WriteAsync(JsonSerializer.Serialize(response, options));
         }
 
         private async Task HandleBusinessExceptionAsync(HttpContext context, AppException ex)
@@ -52,14 +86,21 @@ namespace Morourak.API.Middleware
 
         private async Task HandleSystemExceptionAsync(HttpContext context, Exception ex)
         {
-            var response = new
-            {
-                isSuccess = false,
-                message = "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني.",
-                errorCode = "SERVER_ERROR",
-                debugMessage = ex.Message, // Temporary for debugging
-                stackTrace = ex.StackTrace // Temporary for debugging
-            };
+            object response = _environment.IsDevelopment()
+                ? new
+                {
+                    isSuccess = false,
+                    message = "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني.",
+                    errorCode = "SERVER_ERROR",
+                    debugMessage = ex.Message,
+                    stackTrace = ex.StackTrace
+                }
+                : new
+                {
+                    isSuccess = false,
+                    message = "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً أو التواصل مع الدعم الفني.",
+                    errorCode = "SERVER_ERROR"
+                };
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
