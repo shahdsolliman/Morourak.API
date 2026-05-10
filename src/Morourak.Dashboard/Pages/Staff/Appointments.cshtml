@@ -92,6 +92,16 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-primary/5">
+                    @if (!Model.Appointments.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="px-8 py-12 text-center text-secondary/50 font-bold">
+                                لا توجد مواعيد لهذا اليوم. جرّب تغيير التاريخ من الأعلى.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
                     @foreach (var appointment in Model.Appointments)
                     {
                         <tr class="appointment-row hover:bg-primary/[0.01] transition-colors group"
@@ -167,6 +177,7 @@
                                 </div>
                             </td>
                         </tr>
+                    }
                     }
                     <tr id="noResultsRow" class="hidden">
                         <td colspan="5" class="px-8 py-12 text-center text-secondary/50 font-bold">
