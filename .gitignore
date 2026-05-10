@@ -16,7 +16,7 @@ src/Morourak.API/wwwroot/uploads/
 # Ignore all appsettings except templates
 src/Morourak.API/appsettings.json
 src/Morourak.API/appsettings.Development.json
-!src/Morourak.API/appsettings.Production.json
+src/Morourak.API/appsettings.Production.json
 
 .env
 *.env
