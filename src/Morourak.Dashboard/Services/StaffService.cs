@@ -31,6 +31,7 @@ namespace Morourak.Dashboard.Services
 
             var request = CreateRequest(HttpMethod.Get, url);
             var response = await HttpClient.SendAsync(request);
+            await EnsureSuccessOrLogAsync(response);
             
             if (response.IsSuccessStatusCode)
             {
@@ -46,19 +47,37 @@ namespace Morourak.Dashboard.Services
 
                 return ParseAppointments(content);
             }
-            return Enumerable.Empty<AppointmentDto>();
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                throw new UnauthorizedAccessException("SessionExpired");
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new Exception(string.IsNullOrWhiteSpace(errorContent)
+                ? $"API Error ({(int)response.StatusCode})"
+                : $"API Error ({(int)response.StatusCode}): {errorContent}");
         }
 
         public async Task<AppointmentDto?> GetAppointmentByIdAsync(int id)
         {
             var request = CreateRequest(HttpMethod.Get, $"staff/appointment/{id}");
             var response = await HttpClient.SendAsync(request);
+            await EnsureSuccessOrLogAsync(response);
             
             if (response.IsSuccessStatusCode)
             {
                 var result = await HandleResponseAsync<AppointmentDto>(response);
                 return result.Details;
             }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                throw new UnauthorizedAccessException("SessionExpired");
+            }
+
             return null;
         }
 
@@ -66,6 +85,7 @@ namespace Morourak.Dashboard.Services
         {
             var request = CreateRequest(HttpMethod.Post, $"appointments/{id}/start");
             var response = await HttpClient.SendAsync(request);
+            await EnsureSuccessOrLogAsync(response);
             return await HandleResponseAsync<object>(response);
         }
 
@@ -79,6 +99,7 @@ namespace Morourak.Dashboard.Services
                 Notes = notes
             });
             var response = await HttpClient.SendAsync(request);
+            await EnsureSuccessOrLogAsync(response);
             return await HandleResponseAsync<object>(response);
         }
 

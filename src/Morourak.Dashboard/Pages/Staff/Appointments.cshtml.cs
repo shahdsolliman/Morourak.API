@@ -17,6 +17,8 @@ namespace Morourak.Dashboard.Pages.Staff
         }
 
         public IEnumerable<AppointmentDto> Appointments { get; set; } = Enumerable.Empty<AppointmentDto>();
+
+        public string? ErrorMessage { get; set; }
         
         [BindProperty(SupportsGet = true)]
         public DateOnly? SelectedDate { get; set; }
@@ -33,7 +35,15 @@ namespace Morourak.Dashboard.Pages.Staff
 
                 Appointments = await _staffService.GetAppointmentsAsync(SelectedDate);
             }
-            catch { }
+            catch (UnauthorizedAccessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+                Appointments = Enumerable.Empty<AppointmentDto>();
+            }
         }
     }
 }

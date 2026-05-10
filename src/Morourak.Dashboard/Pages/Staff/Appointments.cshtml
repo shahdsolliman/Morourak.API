@@ -9,6 +9,12 @@
 }
 
 <div class="animate-fade-in space-y-xl">
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-5 font-bold text-sm">
+            @Model.ErrorMessage
+        </div>
+    }
     <header class="flex flex-col gap-xs">
         <nav class="flex items-center gap-xs text-secondary/50 font-bold text-[12px] mb-2">
             <a class="hover:text-primary transition-colors" asp-page="/Index">الرئيسية</a>
@@ -64,13 +70,13 @@
         <div class="p-8 border-b border-primary/5 flex flex-col md:flex-row justify-between items-center gap-lg bg-white/50 backdrop-blur-sm">
             <div class="relative flex-1 max-w-md">
                 <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-secondary/40">search</span>
-                <input class="w-full bg-background border border-primary/5 rounded-xl pr-12 py-3 text-sm focus:ring-primary focus:border-primary font-medium" placeholder="ابحث برقم الهوية أو المعاملة..." type="text"/>
+                <input id="appointmentSearch" class="w-full bg-background border border-primary/5 rounded-xl pr-12 py-3 text-sm focus:ring-primary focus:border-primary font-medium" placeholder="ابحث برقم الهوية أو المعاملة..." type="text"/>
             </div>
             <div class="flex items-center gap-md">
                 <div class="flex bg-background p-1 rounded-xl border border-primary/5">
-                    <button class="px-6 py-2 rounded-lg bg-white text-primary font-bold text-xs shadow-sm">الكل</button>
-                    <button class="px-6 py-2 rounded-lg text-secondary/40 font-bold text-xs hover:text-secondary transition-colors">قيد الانتظار</button>
-                    <button class="px-6 py-2 rounded-lg text-secondary/40 font-bold text-xs hover:text-secondary transition-colors">مكتمل</button>
+                    <button type="button" data-status="all" class="appointment-filter px-6 py-2 rounded-lg bg-white text-primary font-bold text-xs shadow-sm">الكل</button>
+                    <button type="button" data-status="pending" class="appointment-filter px-6 py-2 rounded-lg text-secondary/40 font-bold text-xs hover:text-secondary transition-colors">قيد الانتظار</button>
+                    <button type="button" data-status="completed" class="appointment-filter px-6 py-2 rounded-lg text-secondary/40 font-bold text-xs hover:text-secondary transition-colors">مكتمل</button>
                 </div>
             </div>
         </div>
@@ -88,7 +94,9 @@
                 <tbody class="divide-y divide-primary/5">
                     @foreach (var appointment in Model.Appointments)
                     {
-                        <tr class="hover:bg-primary/[0.01] transition-colors group">
+                        <tr class="appointment-row hover:bg-primary/[0.01] transition-colors group"
+                            data-status="@((appointment.Status == "محجوز" || appointment.Status == "قيد الانتظار" || appointment.Status == "Scheduled" || appointment.Status == "Pending") ? "pending" : ((appointment.Status == "مكتمل" || appointment.Status == "ناجح" || appointment.Status == "Completed" || appointment.Status == "Passed") ? "completed" : "other"))"
+                            data-search="@($"{appointment.CitizenNationalId} {appointment.RequestNumberRelated} {appointment.TypeName} {appointment.DateFormatted} {appointment.TimeFormatted}".ToLowerInvariant())">
                             <td class="px-8 py-6">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 rounded-2xl bg-background border border-primary/10 flex items-center justify-center text-primary font-black shadow-sm group-hover:scale-110 transition-transform">
@@ -160,6 +168,11 @@
                             </td>
                         </tr>
                     }
+                    <tr id="noResultsRow" class="hidden">
+                        <td colspan="5" class="px-8 py-12 text-center text-secondary/50 font-bold">
+                            لا توجد مواعيد مطابقة للبحث/التصفية.
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -171,3 +184,60 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const searchInput = document.getElementById('appointmentSearch');
+        const filterButtons = Array.from(document.querySelectorAll('.appointment-filter'));
+        const rows = Array.from(document.querySelectorAll('tr.appointment-row'));
+        const noResultsRow = document.getElementById('noResultsRow');
+
+        let activeStatus = 'all';
+
+        function setActiveButton(status) {
+            filterButtons.forEach(btn => {
+                const isActive = (btn.getAttribute('data-status') === status);
+                btn.classList.toggle('bg-white', isActive);
+                btn.classList.toggle('text-primary', isActive);
+                btn.classList.toggle('shadow-sm', isActive);
+                btn.classList.toggle('text-secondary/40', !isActive);
+            });
+        }
+
+        function applyFilters() {
+            const q = (searchInput?.value || '').trim().toLowerCase();
+            let visible = 0;
+
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status') || 'other';
+                const rowSearch = row.getAttribute('data-search') || '';
+
+                const statusOk = (activeStatus === 'all') || (rowStatus === activeStatus);
+                const searchOk = !q || rowSearch.includes(q);
+
+                const show = statusOk && searchOk;
+                row.classList.toggle('hidden', !show);
+                if (show) visible++;
+            });
+
+            if (noResultsRow) {
+                noResultsRow.classList.toggle('hidden', visible !== 0);
+            }
+        }
+
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeStatus = btn.getAttribute('data-status') || 'all';
+                setActiveButton(activeStatus);
+                applyFilters();
+            });
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', applyFilters);
+        }
+
+        setActiveButton(activeStatus);
+        applyFilters();
+    })();
+</script>
