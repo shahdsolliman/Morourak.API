@@ -13,11 +13,15 @@ namespace Morourak.Application.DTOs.Admin;
         public string Id { get; set; } = null!;
 
         public string Name { get; set; } = null!;
+        public string FirstName { get; set; } = null!;
+        public string LastName { get; set; } = null!;
 
         public string Email { get; set; } = null!;
 
         public string Role { get; set; } = null!;
-
+        public string? PhoneNumber { get; set; }
+        public string? PasswordHint { get; set; }
+        public string? NationalId { get; set; }
         public bool IsActive { get; set; }
 
         public DateTime CreatedAt { get; set; }
@@ -65,6 +69,16 @@ public class CreateUserDto
     /// Initial status of the account.
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Citizen's National ID (required if role is CITIZEN).
+    /// </summary>
+    public string? NationalId { get; set; }
+
+    /// <summary>
+    /// Citizen's Phone Number.
+    /// </summary>
+    public string? PhoneNumber { get; set; }
 }
 
 /// <summary>

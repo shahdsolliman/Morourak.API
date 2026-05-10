@@ -17,25 +17,21 @@ namespace Morourak.API.Controllers;
 [AllowAnonymous]
 [Route("api/v1/meta/enums")]
 [Tags("Meta")]
-public sealed class EnumsController : ControllerBase
+public sealed class EnumsController : BaseApiController
 {
     [HttpGet]
     public IActionResult GetKeys()
     {
-        return Ok(new
+        return Success(new[]
         {
-            isSuccess = true,
-            details = new[]
-            {
-                "replacement-type",
-                "appointment-type",
-                "delivery-method",
-                "vehicle-type",
-                "driving-license-category",
-                "service-type",
-                "app-role",
-                "user-sort-field"
-            }
+            "replacement-type",
+            "appointment-type",
+            "delivery-method",
+            "vehicle-type",
+            "driving-license-category",
+            "service-type",
+            "app-role",
+            "user-sort-field"
         });
     }
 
@@ -65,11 +61,7 @@ public sealed class EnumsController : ControllerBase
             });
         }
 
-        return Ok(new
-        {
-            isSuccess = true,
-            details = BuildEnumCatalog(enumType)
-        });
+        return Success(BuildEnumCatalog(enumType));
     }
 
     private static object BuildEnumCatalog(Type enumType)

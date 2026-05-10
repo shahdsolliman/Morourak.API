@@ -50,6 +50,11 @@ namespace Morourak.Application.DTOs.Vehicles
         public byte[]? InsuranceCertificate { get; set; }
 
         /// <summary>
+        /// Selected insurance company ID (required if InsuranceCertificate is not provided).
+        /// </summary>
+        public int? InsuranceCompanyId { get; set; }
+
+        /// <summary>
         /// Custom clearance document (as byte array, optional).
         /// </summary>
         public byte[]? CustomClearance { get; set; }

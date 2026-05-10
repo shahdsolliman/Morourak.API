@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Morourak.Domain.Enums.Appointments
 {
@@ -21,9 +21,11 @@ namespace Morourak.Domain.Enums.Appointments
 
         [Display(Name = "متاح")]
         Available = 6,
-
+        
         [Display(Name = "راسب")]
+        Failed = 7,
 
-        Failed
+        [Display(Name = "قيد التنفيذ")]
+        InProgress = 8
     }
 }

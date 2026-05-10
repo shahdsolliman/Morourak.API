@@ -12,9 +12,9 @@ namespace Morourak.Application.DTOs.Licenses
         public string Category { get; set; } = default!;
         public string Status { get; set; } = default!;
         public string CitizenNationalId { get; set; } = null!;
-        public string LicensingUnit { get; set; } = null!;
         public string Governorate { get; set; } = null!;
-        public DateOnly IssueDate { get; set; }
-        public DateOnly ExpiryDate { get; set; }
+        public string LicensingUnit { get; set; } = null!;
+        public string IssueDate { get; set; } = string.Empty;
+        public string ExpiryDate { get; set; } = string.Empty;
     }
 }

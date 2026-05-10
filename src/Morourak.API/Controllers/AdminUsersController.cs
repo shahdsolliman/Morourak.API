@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Morourak.Application.DTOs.Admin;
 using AppEx = Morourak.Application.Exceptions;
@@ -29,13 +29,17 @@ public class AdminUsersController : BaseApiController
     public async Task<IActionResult> GetDocs([FromQuery] Morourak.API.DTOs.Admin.AdminUserFilterApiDto filter)
     {
         var result = await _adminUserService.GetUsersAsync(filter.ToApplicationDto());
-        return Ok(new
-        {
-            isSuccess = true,
-            message = (string?)null,
-            errorCode = (string?)null,
-            details = result
-        });
+
+        if (!result.IsSuccess)
+            throw new AppEx.ValidationException(result.Message ?? "فشل في جلب المستخدمين.");
+
+        return SuccessPaginated(
+            result.Details ?? Array.Empty<UserDto>(),
+            result.Page,
+            result.PageSize,
+            result.TotalRecords,
+            result.Message
+        );
     }
 
     /// <summary>
@@ -45,7 +49,7 @@ public class AdminUsersController : BaseApiController
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
         var result = await _adminUserService.CreateUserAsync(dto);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             if (result.ErrorCode == "EMAIL_EXISTS")
                 throw new AppEx.ValidationException(result.Message ?? "Email already exists.", "CONFLICT");
@@ -53,14 +57,7 @@ public class AdminUsersController : BaseApiController
             throw new AppEx.ValidationException(result.Message ?? "فشل في إنشاء المستخدم.");
         }
 
-        return CreatedAtAction(nameof(GetDocs), new { search = dto.Email },
-            new
-            {
-                isSuccess = true,
-                message = "تم إنشاء المستخدم بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+        return Success(result.Details, "تم إنشاء المستخدم بنجاح");
     }
 
     /// <summary>
@@ -70,7 +67,7 @@ public class AdminUsersController : BaseApiController
     public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto)
     {
         var result = await _adminUserService.UpdateUserAsync(id, dto);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             if (result.ErrorCode == "USER_NOT_FOUND")
                 throw new AppEx.ValidationException(result.Message ?? "User not found.", "NOT_FOUND");
@@ -78,13 +75,7 @@ public class AdminUsersController : BaseApiController
             throw new AppEx.ValidationException(result.Message ?? "فشل في تحديث بيانات المستخدم.");
         }
 
-        return Ok(new
-        {
-            isSuccess = true,
-            message = "تم تحديث بيانات المستخدم بنجاح",
-            errorCode = (string?)null,
-            details = result
-        });
+        return Success(result.Details, "تم تحديث بيانات المستخدم بنجاح");
     }
 
     /// <summary>
@@ -94,7 +85,7 @@ public class AdminUsersController : BaseApiController
     public async Task<IActionResult> Delete(string id)
     {
         var result = await _adminUserService.DeleteUserAsync(id);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             if (result.ErrorCode == "USER_NOT_FOUND")
                 throw new AppEx.ValidationException(result.Message ?? "User not found.", "NOT_FOUND");
@@ -106,13 +97,7 @@ public class AdminUsersController : BaseApiController
             throw new Exception(result.Message ?? "Failed to delete user.");
         }
 
-        return Ok(new
-        {
-            isSuccess = true,
-            message = "تم حذف المستخدم بنجاح.",
-            errorCode = (string?)null,
-            details = (object?)null
-        });
+        return Success((object?)null, "تم حذف المستخدم بنجاح.");
     }
 }
 

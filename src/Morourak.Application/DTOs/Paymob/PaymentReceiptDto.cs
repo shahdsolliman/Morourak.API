@@ -5,7 +5,7 @@ public class PaymentReceiptDto
     public string TransactionId { get; set; } = string.Empty;
     public string MerchantOrderId { get; set; } = string.Empty;
     public decimal TotalAmount { get; set; }
-    public DateTime PaidAt { get; set; }
+    public string PaidAt { get; set; } = string.Empty;
     
     public List<ReceiptItemDto> Items { get; set; } = new();
     

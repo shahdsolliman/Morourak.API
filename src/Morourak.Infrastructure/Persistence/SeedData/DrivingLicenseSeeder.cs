@@ -58,9 +58,7 @@ namespace Morourak.Infrastructure.Persistence.SeedData
                     CitizenRegistryId = citizenId,
                     Category = Enum.Parse<DrivingLicenseCategory>(l.Category),
                     IssueDate = DateOnly.FromDateTime(l.IssueDate),
-                    ExpiryDate = DateOnly.FromDateTime(l.ExpiryDate),
-                    Governorate = l.Governorate,
-                    LicensingUnit = l.LicensingUnit
+                    ExpiryDate = DateOnly.FromDateTime(l.ExpiryDate)
                 });
             }
 

@@ -5,6 +5,7 @@ using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Appointments;
 using Morourak.Domain.Enums.Request;
 using Morourak.Domain.Extensions;
+using AutoMapper;
 using System.Globalization;
 
 namespace Morourak.Application.Services
@@ -15,14 +16,16 @@ namespace Morourak.Application.Services
     public class AppointmentQueryService : IAppointmentQueryService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
         private static readonly TimeOnly WorkStart = new(9, 0);
         private static readonly TimeOnly WorkEnd = new(14, 0);
         private const int SlotDurationMinutes = 30;
 
-        public AppointmentQueryService(IUnitOfWork unitOfWork)
+        public AppointmentQueryService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
         public async Task<IEnumerable<AppointmentDto>> GetAvailableSlotsAsync(
@@ -35,7 +38,7 @@ namespace Morourak.Application.Services
                     "لا يمكن عرض مواعيد لتاريخ سابق.",
                     "INVALID_PAST_DATE");
 
-            var repo = _unitOfWork.Repository<Appointment>();
+            var repo = _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>();
 
             var booked = await repo.FindAsync(a =>
                 a.Date == date &&
@@ -54,24 +57,19 @@ namespace Morourak.Application.Services
                 if (bookedTimes.Contains(time))
                     continue;
 
-                slots.Add(new AppointmentDto
+                var appointment = new Morourak.Domain.Entities.Appointment
                 {
                     Type = type,
-                    TypeName = GetAppointmentTypeName(type),
-                    ServiceName = GetAppointmentTypeName(type),
-                    AssignedToUserId = ResolveAssignedToUserId(type),
                     Date = date,
-                    DateFormatted = FormatArabicDate(date),
                     StartTime = time,
-                    TimeFormatted = FormatArabicTime(time),
-                    EndTime = time.AddMinutes(SlotDurationMinutes),
-                    Status = AppointmentStatus.Available,
-                    GovernorateId = 0,
-                    TrafficUnitId = trafficUnitId,
-                    GovernorateName = "غير محدد",
-                    TrafficUnitName = "غير محدد",
-                    CreatedAt = FormatArabicDateTime(DateTime.Now),
-                });
+                    Status = AppointmentStatus.Scheduled, // Temporary status for DTO mapping
+                    CreatedAt = DateTime.Now,
+                    TrafficUnitId = trafficUnitId
+                };
+
+                var dto = _mapper.Map<AppointmentDto>(appointment);
+                dto.Status = AppointmentStatus.Available.GetDisplayName(); // Set back to Available
+                slots.Add(dto);
             }
 
             return slots;
@@ -79,7 +77,7 @@ namespace Morourak.Application.Services
 
         public async Task<IEnumerable<AppointmentDto>> GetMyAppointmentsAsync(string nationalId)
         {
-            var appointments = await _unitOfWork.Repository<Appointment>()
+            var appointments = await _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>()
                 .FindAsync(
                     a => a.CitizenNationalId == nationalId,
                     a => a.Governorate!,
@@ -90,7 +88,7 @@ namespace Morourak.Application.Services
 
         public async Task<IEnumerable<AppointmentDto>> GetAppointmentsByTypeAsync(AppointmentType type)
         {
-            var repo = _unitOfWork.Repository<Appointment>();
+            var repo = _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>();
             var appointments = await repo.FindAsync(
                 a => a.Type == type && a.Status == AppointmentStatus.Scheduled,
                 a => a.Governorate!,
@@ -103,7 +101,7 @@ namespace Morourak.Application.Services
                 .ToList();
         }
 
-        public async Task<IEnumerable<AppointmentDto>> GetByRoleAsync(string role, string? userId = null)
+        public async Task<IEnumerable<AppointmentDto>> GetByRoleAsync(string role, string? userId = null, DateOnly? date = null)
         {
             role = role.ToUpperInvariant();
 
@@ -118,16 +116,31 @@ namespace Morourak.Application.Services
             if (type == null)
                 return Enumerable.Empty<AppointmentDto>();
 
-            var repo = _unitOfWork.Repository<Appointment>();
-            var appointments = await repo.FindAsync(a =>
-                a.Type == type.Value &&
-                a.Status != AppointmentStatus.Cancelled,
-                a => a.Governorate!,
-                a => a.TrafficUnit!);
+            var repo = _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>();
+            
+            IEnumerable<Morourak.Domain.Entities.Appointment> appointments;
 
-            IEnumerable<Appointment> query = appointments;
+            if (role == "ADMIN")
+            {
+                appointments = await repo.FindAsync(a =>
+                    (!date.HasValue || a.Date == date.Value),
+                    a => a.Governorate!,
+                    a => a.TrafficUnit!);
+            }
+            else
+            {
+                if (type == null) return Enumerable.Empty<AppointmentDto>();
 
-            return query
+                appointments = await repo.FindAsync(a =>
+                    a.Type == type.Value &&
+                    a.Status != AppointmentStatus.Cancelled &&
+                    (!date.HasValue || a.Date == date.Value) &&
+                    (string.IsNullOrEmpty(a.StaffId) || a.StaffId == userId), 
+                    a => a.Governorate!,
+                    a => a.TrafficUnit!);
+            }
+
+            return appointments
                 .OrderByDescending(a => a.Date)
                 .ThenByDescending(a => a.StartTime)
                 .Select(MapToDto)
@@ -136,7 +149,7 @@ namespace Morourak.Application.Services
 
         public async Task<AppointmentDto> GetByIdAsync(int id)
         {
-            var repo = _unitOfWork.Repository<Appointment>();
+            var repo = _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>();
             var appointment = await repo.GetAsync(
                 a => a.Id == id,
                 a => a.Governorate!,
@@ -147,84 +160,9 @@ namespace Morourak.Application.Services
             return MapToDto(appointment);
         }
 
-        private static AppointmentDto MapToDto(Appointment appointment)
+        private AppointmentDto MapToDto(Morourak.Domain.Entities.Appointment appointment)
         {
-            var typeName = GetAppointmentTypeName(appointment.Type);
-            var assignedToUserId = ResolveAssignedToUserId(appointment.Type);
-
-            var governorateName = string.IsNullOrWhiteSpace(appointment.Governorate?.Name)
-                ? "غير محدد"
-                : appointment.Governorate!.Name;
-
-            var trafficUnitName = string.IsNullOrWhiteSpace(appointment.TrafficUnit?.Name)
-                ? "غير محدد"
-                : appointment.TrafficUnit!.Name;
-
-            return new AppointmentDto
-            {
-                RequestNumberRelated = appointment.RequestNumber,
-                ApplicationId = appointment.ApplicationId,
-                Type = appointment.Type,
-                TypeName = typeName,
-                ServiceName = typeName,
-                Date = appointment.Date,
-                DateFormatted = FormatArabicDate(appointment.Date),
-                StartTime = appointment.StartTime,
-                TimeFormatted = FormatArabicTime(appointment.StartTime),
-                EndTime = appointment.EndTime,
-                Status = appointment.Status,
-                CreatedAt = FormatArabicDateTime(appointment.CreatedAt),
-                CompletedAt = appointment.UpdatedAt.HasValue ? FormatArabicDateTime(appointment.UpdatedAt.Value) : "غير مكتمل",
-                CitizenNationalId = appointment.CitizenNationalId,
-                GovernorateId = appointment.GovernorateId,
-                TrafficUnitId = appointment.TrafficUnitId,
-                GovernorateName = governorateName,
-                TrafficUnitName = trafficUnitName,
-                AssignedToUserId = assignedToUserId
-            };
-        }
-
-        private static string GetAppointmentTypeName(AppointmentType type)
-        {
-            return type switch
-            {
-                AppointmentType.Medical => "كشف طبي",
-                AppointmentType.Driving => "اختبار قيادة",
-                AppointmentType.Technical => "فحص فني",
-                _ => "غير محدد"
-            };
-        }
-
-        private static string ResolveAssignedToUserId(AppointmentType appointmentType)
-        {
-            return appointmentType switch
-            {
-                AppointmentType.Medical => "DOCTOR",
-                AppointmentType.Technical => "INSPECTOR",
-                AppointmentType.Driving => "EXAMINATOR",
-                _ => "STAFF"
-            };
-        }
-
-        private static string FormatArabicDate(DateOnly date)
-        {
-            return date.ToString("d MMMM yyyy", new CultureInfo("ar-EG"));
-        }
-
-        private static string FormatArabicTime(TimeOnly time)
-        {
-            return time
-                .ToString("hh:mm tt", new CultureInfo("en-US"))
-                .Replace("AM", "صباحاً")
-                .Replace("PM", "مساءً");
-        }
-
-        private static string FormatArabicDateTime(DateTime dateTime)
-        {
-            return dateTime.ToString("d MMMM yyyy hh:mm tt", new CultureInfo("ar-EG"))
-                           .Replace("AM", "صباحاً")
-                           .Replace("PM", "مساءً");
+            return _mapper.Map<AppointmentDto>(appointment);
         }
     }
 }
-

@@ -65,6 +65,11 @@ namespace Morourak.Infrastructure.UnitOfWork
             return await strategy.ExecuteAsync(action);
         }
 
+        public void ClearTracking()
+        {
+            _context.ChangeTracker.Clear();
+        }
+
         public void Dispose()
         {
             _context.Dispose();

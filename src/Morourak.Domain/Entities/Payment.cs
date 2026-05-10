@@ -13,7 +13,7 @@ public class Payment : BaseEntity<int>
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
     public string CitizenNationalId { get; set; } = null!;
     
-    public string? ServiceRequestNumber { get; set; }
+    public int? ServiceRequestId { get; set; }
     public ServiceRequest? ServiceRequest { get; set; }
 
     public ICollection<PaymentViolation> PaymentViolations { get; set; } = new List<PaymentViolation>();

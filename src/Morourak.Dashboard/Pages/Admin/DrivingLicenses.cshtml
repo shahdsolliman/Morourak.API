@@ -1,0 +1,129 @@
+@page
+@model Morourak.Dashboard.Pages.Admin.DrivingLicensesModel
+@{
+    ViewData["Title"] = "سجل تراخيص القيادة";
+    ViewData["ActivePage"] = "DrivingLicenses";
+    var totalLicenses = Model.Licenses.Count();
+}
+
+<div class="animate-fade-in space-y-xl">
+    <section class="mb-4">
+        <nav class="flex gap-sm text-secondary/50 font-bold text-[12px] mb-2">
+            <a class="hover:text-primary transition-colors" asp-page="/Index">الرئيسية</a>
+            <span class="material-symbols-outlined text-sm">chevron_left</span>
+            <span class="text-primary">سجل التراخيص</span>
+        </nav>
+        <div class="flex justify-between items-end">
+            <div>
+                <h1 class="font-headline text-3xl font-black text-secondary">سجل تراخيص القيادة</h1>
+                <p class="text-secondary/50 text-sm font-medium">إدارة ومراقبة قاعدة بيانات تراخيص القيادة الوطنية للمواطنين والمقيمين.</p>
+            </div>
+            <button class="flex items-center gap-sm bg-primary text-white px-8 py-3.5 rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-bold">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">file_download</span>
+                <span>تصدير التقرير السنوي</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-lg mb-xl">
+        <div class="bg-white p-6 rounded-[24px] border border-primary/10 shadow-sm flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+                <div class="w-12 h-12 bg-secondary-container/30 rounded-xl flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-3xl">badge</span>
+                </div>
+            </div>
+            <div class="mt-8">
+                <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">إجمالي التراخيص</p>
+                <h3 class="text-3xl font-black text-secondary">@totalLicenses.ToString("N0")</h3>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-[24px] border border-primary/10 shadow-sm flex flex-col justify-between border-r-4 border-r-primary">
+            <div class="flex justify-between items-start">
+                <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-3xl">check_circle</span>
+                </div>
+            </div>
+            <div class="mt-8">
+                <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">تراخيص نشطة</p>
+                <h3 class="text-3xl font-black text-primary">@Model.Licenses.Count(i => {
+                    var l = (System.Text.Json.JsonElement)i;
+                    if (l.TryGetProperty("expiryDate", out var ed) || l.TryGetProperty("ExpiryDate", out ed))
+                        return DateTime.Parse(ed.GetString()) > DateTime.Now;
+                    return false;
+                })</h3>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm flex items-center gap-lg mb-xl">
+        <div class="flex-1 relative">
+            <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-secondary/40">search</span>
+            <input class="w-full bg-background border border-primary/5 rounded-xl pr-12 focus:ring-2 focus:ring-primary h-12 text-sm font-medium" placeholder="ابحث برقم الرخصة أو الهوية الوطنية..." type="text"/>
+        </div>
+    </section>
+
+    <section class="bg-white rounded-[32px] overflow-hidden border border-primary/10 shadow-sm">
+        <table class="w-full text-right border-collapse">
+            <thead>
+                <tr class="bg-background border-b border-primary/10">
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">الرقم القومي</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">تفاصيل الرخصة</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">تاريخ الإصدار</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">تاريخ الانتهاء</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest text-center">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-primary/5">
+                @foreach (dynamic item in Model.Licenses)
+                {
+                    var license = (System.Text.Json.JsonElement)item;
+
+                    // Robust case-insensitive helper to get property value safely
+                    string GetProp(string name, string fallback = "---") {
+                        try {
+                            System.Text.Json.JsonElement val;
+                            if (license.TryGetProperty(name, out val)) 
+                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
+                                
+                            string camel = char.ToLower(name[0]) + name.Substring(1);
+                            if (license.TryGetProperty(camel, out val)) 
+                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
+                        } catch { }
+                        return fallback;
+                    }
+
+                    var licenseNumber = GetProp("LicenseNumber");
+                    var nationalId = GetProp("CitizenNationalId");
+                    var issueProp = GetProp("IssueDate");
+                    var issueDate = issueProp != "---" ? DateTime.Parse(issueProp) : DateTime.MinValue;
+                    var expiryProp = GetProp("ExpiryDate");
+                    var expiryDate = expiryProp != "---" ? DateTime.Parse(expiryProp) : DateTime.MinValue;
+                    var isExpired = expiryDate < DateTime.Now;
+
+                    <tr class="hover:bg-primary/[0.01] transition-colors group">
+                        <td class="px-lg py-6">
+                            <p class="font-black text-secondary text-sm">@nationalId</p>
+                        </td>
+                        <td class="px-lg py-6">
+                            <span class="font-black text-primary bg-primary/5 px-4 py-1.5 rounded-lg text-center tracking-widest text-xs border border-primary/10">@licenseNumber</span>
+                        </td>
+                        <td class="px-lg py-6 font-bold text-secondary/60 text-xs">@issueDate.ToString("yyyy/MM/dd")</td>
+                        <td class="px-lg py-6">
+                            <p class="font-black text-secondary text-sm @(isExpired ? "text-red-500" : "")">@expiryDate.ToString("yyyy/MM/dd")</p>
+                        </td>
+                        <td class="px-lg py-6">
+                            <div class="flex justify-center gap-sm">
+                                <button class="p-2.5 rounded-xl hover:bg-primary/10 text-primary transition-all active:scale-95">
+                                    <span class="material-symbols-outlined text-xl">visibility</span>
+                                </button>
+                                <button class="p-2.5 rounded-xl hover:bg-secondary/10 text-secondary transition-all active:scale-95">
+                                    <span class="material-symbols-outlined text-xl">edit</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+</div>

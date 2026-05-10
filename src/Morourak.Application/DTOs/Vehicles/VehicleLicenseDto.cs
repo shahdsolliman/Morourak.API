@@ -14,8 +14,8 @@ namespace Morourak.Application.DTOs.Vehicles
         public string Brand { get; set; } = null!;
         public string Model { get; set; } = null!;
         public string Status { get; set; } = null!;
-        public DateTime IssueDate { get; set; }
-        public DateTime ExpiryDate { get; set; }
+        public string IssueDate { get; set; } = string.Empty;
+        public string ExpiryDate { get; set; } = string.Empty;
         public string CitizenNationalId { get; set; } = null!;
     }
 }

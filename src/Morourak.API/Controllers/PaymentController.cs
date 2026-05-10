@@ -55,13 +55,7 @@ public class PaymentController : BaseApiController
             request.ViolationIds?.Count ?? 0);
 
         var response = await _paymentService.CreatePaymentAsync(request);
-        return Ok(new
-        {
-            isSuccess = true,
-            message = "تم إنشاء عملية الدفع بنجاح",
-            errorCode = (string?)null,
-            details = response
-        });
+        return Success(response, "تم إنشاء عملية الدفع بنجاح");
     }
 
     [Authorize]
@@ -78,36 +72,24 @@ public class PaymentController : BaseApiController
         {
             var paymentResult = await _paymentService.CheckPaymentWithPaymobAsync(merchantOrderId);
             
-            return Ok(new
+            return Success(new UnifiedPaymentStatusDto
             {
-                isSuccess = true,
-                message = "تم استرجاع الحالة بنجاح",
-                errorCode = (string?)null,
-                details = new UnifiedPaymentStatusDto
-                {
-                    Status = status.ToString(),
-                    MerchantOrderId = merchantOrderId,
-                    Amount = paymentResult.Amount,
-                    Currency = paymentResult.Currency
-                }
-            });
+                Status = status.ToString(),
+                MerchantOrderId = merchantOrderId,
+                Amount = paymentResult.Amount,
+                Currency = paymentResult.Currency
+            }, "تم استرجاع الحالة بنجاح");
         }
         catch (Exception ex)
         {
             _logger.LogWarning("POLLING_FALLBACK: Paymob API unavailable for {MerchantOrderId}. Returning local status. Error: {Error}", 
                 merchantOrderId, ex.Message);
 
-            return Ok(new
+            return Success(new UnifiedPaymentStatusDto
             {
-                isSuccess = true,
-                message = "تم استرجاع الحالة من النظام المحلي (Paymob غير متاح)",
-                errorCode = (string?)null,
-                details = new UnifiedPaymentStatusDto
-                {
-                    Status = status.ToString(),
-                    MerchantOrderId = merchantOrderId
-                }
-            });
+                Status = status.ToString(),
+                MerchantOrderId = merchantOrderId
+            }, "تم استرجاع الحالة من النظام المحلي (Paymob غير متاح)");
         }
     }
 
@@ -122,35 +104,39 @@ public class PaymentController : BaseApiController
 
         var receipt = await _paymentService.GetReceiptAsync(merchantOrderId);
 
-        return Ok(new
-        {
-            isSuccess = true,
-            message = (string?)null,
-            errorCode = (string?)null,
-            details = receipt
-        });
+        return Success(receipt);
     }
 
     [AllowAnonymous]
     [HttpGet("callback")]
     public async Task<IActionResult> Callback(
         [FromQuery] bool success,
-        [FromQuery] string? merchant_order_id)
+        [FromQuery(Name = "merchant_order_id")] string? merchant_order_id,
+        [FromQuery(Name = "order")] string? paymob_order_id,
+        [FromQuery(Name = "id")] string? transaction_id)
     {
         _logger.LogInformation(
-            "CALLBACK_RECEIVED: MerchantOrderId: {MerchantOrderId}, Success: {Success}, DemoMode: {DemoMode}",
+            "CALLBACK_RECEIVED: MerchantOrderId: {MerchantOrderId}, PaymobOrderId: {PaymobOrderId}, Success: {Success}, DemoMode: {DemoMode}",
             merchant_order_id,
+            paymob_order_id,
             success,
             _paymentSettings.DemoMode);
 
-        // In Demo Mode, OR if success is true, we finalize the payment directly
-        // because we can't rely on webhooks on free hosting.
-        if (!string.IsNullOrEmpty(merchant_order_id))
+        // Try to finalize by any available ID
+        if (!string.IsNullOrEmpty(merchant_order_id) || !string.IsNullOrEmpty(paymob_order_id))
         {
+            // If redirected with success=true OR in Demo Mode, we process
             if (success || _paymentSettings.DemoMode)
             {
-                _logger.LogInformation("AUTO_FINALIZING: Completing payment for {MerchantOrderId} via callback (Demo/Success).", merchant_order_id);
-                await _paymentService.MarkAsPaidForDemo(merchant_order_id);
+                _logger.LogInformation("FINALIZING_PAYMENT: Processing callback for {ID} (Success={S}, Demo={D})", 
+                    merchant_order_id ?? paymob_order_id, success, _paymentSettings.DemoMode);
+
+                await _paymentService.FinalizePaymentAsync(
+                    paymob_order_id ?? "N/A", 
+                    transaction_id ?? "N/A", 
+                    success || _paymentSettings.DemoMode, // Treat as success if success or Demo
+                    merchant_order_id);
+
                 return Content(GenerateSuccessHtml(), "text/html");
             }
         }

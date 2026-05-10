@@ -1,4 +1,4 @@
-﻿namespace Morourak.Infrastructure.Persistence.SeedData
+namespace Morourak.Infrastructure.Persistence.SeedData
 {
     /// <summary>
     /// Represents the structure of citizen data coming from JSON file.
@@ -10,5 +10,7 @@
         public string MobileNumber { get; set; } = null!;
         public string FirstName { get; set; } = null!;
         public string LastName { get; set; } = null!;
+        public string Governorate { get; set; } = string.Empty;
+        public string LicensingUnit { get; set; } = string.Empty;
     }
 }

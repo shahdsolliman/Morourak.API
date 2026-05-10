@@ -1,0 +1,145 @@
+@page
+@model Morourak.Dashboard.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "لوحة التحكم الرئيسية";
+    ViewData["ActivePage"] = "Dashboard";
+}
+
+<div class="animate-fade-in space-y-xl">
+    <div class="grid grid-cols-12 gap-lg">
+        <div class="col-span-12 lg:col-span-6 bg-white rounded-3xl p-8 relative overflow-hidden flex flex-col justify-between border border-primary/10 shadow-sm">
+            <div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-headline text-xl font-black text-secondary mb-1">إجمالي مستخدمي النظام</h3>
+                        <p class="text-secondary/40 text-[10px] font-bold uppercase tracking-widest">نظرة عامة على قاعدة البيانات النشطة</p>
+                    </div>
+                    <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">analytics</span>
+                    </div>
+                </div>
+                <div class="mt-8 flex items-end gap-md">
+                    <span class="font-headline text-5xl font-black text-primary">@((Model.TotalCitizens + Model.Users.Count).ToString("N0"))+</span>
+                    <div class="flex items-center gap-xs text-primary mb-2">
+                        <span class="material-symbols-outlined text-sm">trending_up</span>
+                        <span class="text-[10px] font-black">12% زيادة هذا الشهر</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 h-24 flex items-end gap-1.5 w-full">
+                @for(int i = 0; i < 12; i++) {
+                    var height = new Random().Next(30, 95);
+                    <div class="flex-1 bg-primary/10 rounded-t-lg h-[@height%] transition-all hover:bg-primary/30 cursor-pointer"></div>
+                }
+            </div>
+        </div>
+
+        <div class="col-span-12 md:col-span-6 lg:col-span-3 bg-white rounded-3xl p-8 flex flex-col justify-between group hover:border-primary/30 border border-primary/10 transition-all duration-300 shadow-sm">
+            <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-2xl bg-secondary-container/30 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-3xl">group</span>
+                </div>
+                <a class="text-primary text-[10px] font-black flex items-center gap-1 hover:underline uppercase" asp-page="/Admin/Citizens">
+                    عرض السجل
+                    <span class="material-symbols-outlined text-xs">chevron_left</span>
+                </a>
+            </div>
+            <div class="mt-8">
+                <h4 class="text-secondary/40 text-[11px] font-bold uppercase tracking-widest">إجمالي المواطنين</h4>
+                <div class="font-headline text-3xl font-black text-secondary mt-1">@Model.TotalCitizens.ToString("N0")</div>
+            </div>
+            <div class="mt-6 pt-6 border-t border-primary/5 flex items-center justify-between">
+                <span class="text-[10px] font-bold text-secondary/40 uppercase">نشط حالياً</span>
+                <span class="w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/40 animate-pulse"></span>
+            </div>
+        </div>
+
+        <div class="col-span-12 md:col-span-6 lg:col-span-3 bg-white rounded-3xl p-8 flex flex-col justify-between group hover:border-primary/30 border border-primary/10 transition-all duration-300 shadow-sm">
+            <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500">
+                    <span class="material-symbols-outlined text-3xl">directions_car</span>
+                </div>
+                <a class="text-primary text-[10px] font-black flex items-center gap-1 hover:underline uppercase" asp-page="/Admin/VehicleLicenses">
+                    عرض السجل
+                    <span class="material-symbols-outlined text-xs">chevron_left</span>
+                </a>
+            </div>
+            <div class="mt-8">
+                <h4 class="text-secondary/40 text-[11px] font-bold uppercase tracking-widest">تراخيص المركبات</h4>
+                <div class="font-headline text-3xl font-black text-secondary mt-1">@Model.TotalVehicleLicenses.ToString("N0")</div>
+            </div>
+            <div class="mt-6 pt-6 border-t border-primary/5 flex items-center justify-between">
+                <span class="text-[10px] font-bold text-secondary/40 uppercase">سجل قانوني</span>
+                <span class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[9px] font-black">@((Model.TotalVehicleLicenses / 100)) طلب</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[32px] overflow-hidden border border-primary/10 shadow-sm">
+        <div class="p-8 border-b border-primary/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-lg">
+            <div>
+                <h2 class="font-headline text-2xl font-black text-secondary">إدارة مستخدمي البوابة</h2>
+                <p class="text-secondary/40 text-sm font-medium mt-1">تحكم في صلاحيات الوصول وإدارة الحسابات الحكومية</p>
+            </div>
+            <button class="bg-primary text-white px-8 py-3.5 rounded-2xl font-bold flex items-center gap-3 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                <span class="material-symbols-outlined text-xl">person_add</span>
+                <span>إضافة مستخدم</span>
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-right">
+                <thead>
+                    <tr class="bg-background border-b border-primary/10">
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">المستخدم</th>
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">الدور الوظيفي</th>
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest text-center">الحالة</th>
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest text-center">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-primary/5">
+                    @foreach (var user in Model.Users)
+                    {
+                        <tr class="hover:bg-primary/[0.01] transition-colors group">
+                            <td class="px-8 py-6">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black border-2 border-white shadow-sm group-hover:scale-110 transition-transform">
+                                        @(string.IsNullOrEmpty(user.Name) ? "U" : user.Name[0].ToString())
+                                    </div>
+                                    <div>
+                                        <p class="font-headline text-base font-black text-secondary">@user.Name</p>
+                                        <p class="text-[10px] font-bold text-secondary/40 uppercase">@user.Email</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-lg text-primary/40">verified_user</span>
+                                    <span class="text-xs font-black text-secondary uppercase tracking-tighter">@user.Role</span>
+                                </div>
+                            </td>
+                            <td class="px-8 py-6 text-center">
+                                <span class="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase border border-primary/10">نشط</span>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="flex items-center justify-center gap-3">
+                                    <button class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all active:scale-95">
+                                        <span class="material-symbols-outlined text-xl">edit</span>
+                                    </button>
+                                    <button class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-secondary/40 hover:text-red-500 hover:bg-red-50 transition-all active:scale-95">
+                                        <span class="material-symbols-outlined text-xl">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="px-8 py-6 bg-background border-t border-primary/10 flex items-center justify-between">
+            <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">عرض 10 مستخدمين نشطين</p>
+            <div class="flex gap-2">
+                <button class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-black shadow-lg shadow-primary/20">1</button>
+            </div>
+        </div>
+    </div>
+</div>

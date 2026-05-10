@@ -24,13 +24,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetGovernoratesAsync()
         {
             var governorates = await _governorateService.GetAllGovernoratesAsync();
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = governorates
-            });
+            return Success(governorates);
         }
 
         /// <summary>
@@ -40,13 +34,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetTrafficUnitsAsync(int governorateId)
         {
             var units = await _governorateService.GetTrafficUnitsByGovernorateAsync(governorateId);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = units
-            });
+            return Success(units);
         }
     }
 }

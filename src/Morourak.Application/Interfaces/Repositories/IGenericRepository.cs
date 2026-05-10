@@ -36,6 +36,9 @@ namespace Morourak.Application.Interfaces.Repositories
         Task<T?> GetAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes);
 
 
+        // Explicit tracking for identity management
+        T Track(T entity);
+
         // Add, update, remove
         Task AddAsync(T entity);
         void Update(T entity);

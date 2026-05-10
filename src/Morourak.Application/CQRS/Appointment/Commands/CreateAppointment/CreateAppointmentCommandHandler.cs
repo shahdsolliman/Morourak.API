@@ -30,9 +30,9 @@ public sealed class CreateAppointmentCommandHandler
             time: request.Time,
             governorateId: request.GovernorateId,
             trafficUnitId: request.TrafficUnitId,
+            requestNumber: request.RequestNumber,
             cancellationToken: cancellationToken);
 
         return _mapper.Map<BookingConfirmationDto>(context);
     }
 }
-

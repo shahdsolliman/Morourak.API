@@ -8,7 +8,6 @@ namespace Morourak.Application.DTOs
         public string RequestNumber { get; set; } = string.Empty;
         public string ServiceType { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public DateTime SubmittedAt { get; set; }
+        public string SubmittedAt { get; set; } = string.Empty;
     }
 }
-

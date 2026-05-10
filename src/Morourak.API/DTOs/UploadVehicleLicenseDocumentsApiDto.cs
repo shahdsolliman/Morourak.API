@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Morourak.Domain.Enums.Vehicles;
 
 namespace Morourak.API.DTOs.VehicleLicenses
@@ -39,9 +39,14 @@ namespace Morourak.API.DTOs.VehicleLicenses
         public IFormFile IdCard { get; set; } = null!;
 
         /// <summary>
-        /// Insurance certificate file.
+        /// Insurance certificate file (optional if InsuranceCompanyId is provided).
         /// </summary>
-        public IFormFile InsuranceCertificate { get; set; } = null!;
+        public IFormFile? InsuranceCertificate { get; set; }
+
+        /// <summary>
+        /// Selected insurance company ID (optional if InsuranceCertificate is provided).
+        /// </summary>
+        public int? InsuranceCompanyId { get; set; }
 
         /// <summary>
         /// Optional custom clearance document file.

@@ -1,0 +1,176 @@
+@page
+@model Morourak.Dashboard.Pages.Admin.VehicleLicensesModel
+@{
+    ViewData["Title"] = "سجل تراخيص المركبات";
+    ViewData["ActivePage"] = "VehicleLicenses";
+    var totalLicenses = Model.Licenses.Count();
+}
+
+<div class="animate-fade-in space-y-xl">
+    <div class="flex flex-col gap-xs mb-4">
+        <nav class="flex items-center gap-sm text-secondary/50 font-bold text-[12px] mb-2">
+            <a class="hover:text-primary transition-colors" asp-page="/Index">الرئيسية</a>
+            <span class="material-symbols-outlined text-sm">chevron_left</span>
+            <span class="text-primary">تراخيص المركبات</span>
+        </nav>
+        <div class="flex justify-between items-end">
+            <div>
+                <h2 class="font-headline text-3xl font-black text-secondary">سجل تراخيص المركبات</h2>
+                <p class="text-secondary/50 text-sm font-medium">إدارة ومتابعة الحالة القانونية لجميع المركبات المسجلة في النظام</p>
+            </div>
+            <button class="flex items-center gap-sm bg-primary text-white px-8 py-3.5 rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-bold">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+                <span>إصدار ترخيص جديد</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-lg mb-xl">
+        <div class="col-span-4 bg-white p-6 rounded-[24px] border border-primary/10 shadow-sm flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+                <div class="w-14 h-14 rounded-2xl bg-secondary-container/30 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">directions_car</span>
+                </div>
+                <div class="flex items-center gap-xs text-primary font-bold text-[10px]">
+                    <span class="material-symbols-outlined text-sm">trending_up</span>
+                    <span>12%+</span>
+                </div>
+            </div>
+            <div class="mt-8">
+                <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">إجمالي التراخيص</p>
+                <h3 class="text-3xl font-black text-secondary">@totalLicenses.ToString("N0")</h3>
+            </div>
+        </div>
+        <div class="col-span-4 bg-white p-6 rounded-[24px] border border-primary/10 shadow-sm flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -right-4 -top-4 w-32 h-32 bg-red-500/5 rounded-full blur-3xl"></div>
+            <div class="flex justify-between items-start relative z-10">
+                <div class="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center text-red-500">
+                    <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">warning</span>
+                </div>
+            </div>
+            <div class="mt-8 relative z-10">
+                <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">منتهية الصلاحية</p>
+                <h3 class="text-3xl font-black text-red-500">@Model.Licenses.Count(i => {
+                    var l = (System.Text.Json.JsonElement)i;
+                    if (l.TryGetProperty("expiryDate", out var ed) || l.TryGetProperty("ExpiryDate", out ed))
+                        return DateTime.Parse(ed.GetString()) < DateTime.Now;
+                    return false;
+                })</h3>
+            </div>
+        </div>
+        <div class="col-span-4 bg-white p-6 rounded-[24px] border border-primary/10 shadow-sm flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+                <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">app_registration</span>
+                </div>
+            </div>
+            <div class="mt-8">
+                <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">تحديثات هذا الشهر</p>
+                <h3 class="text-3xl font-black text-secondary">@((totalLicenses / 12).ToString("N0"))</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm flex flex-wrap items-center gap-lg">
+        <div class="flex-1 min-w-[200px] space-y-2">
+            <label class="block text-[11px] font-bold text-secondary/40 pr-2 uppercase">بحث متقدم</label>
+            <div class="relative">
+                <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-secondary/40">search</span>
+                <input class="w-full bg-background border border-primary/5 rounded-xl pr-12 pl-4 py-3 text-sm focus:ring-primary focus:border-primary font-medium" placeholder="رقم اللوحة، المالك، أو الشاسيه" type="text"/>
+            </div>
+        </div>
+        <div class="w-48 space-y-2">
+            <label class="block text-[11px] font-bold text-secondary/40 pr-2 uppercase">نوع المركبة</label>
+            <select class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm font-bold focus:ring-primary appearance-none">
+                <option>الكل</option>
+                <option>ملاكي</option>
+                <option>أجرة</option>
+                <option>نقل</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[32px] overflow-hidden border border-primary/10 shadow-sm">
+        <table class="w-full text-right border-collapse">
+            <thead>
+                <tr class="bg-background border-b border-primary/10">
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">رقم اللوحة</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">تفاصيل المركبة</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">المالك (الرقم القومي)</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">تاريخ الانتهاء</th>
+                    <th class="px-lg py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest text-center">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-primary/5">
+                @foreach (dynamic item in Model.Licenses)
+                {
+                    var license = (System.Text.Json.JsonElement)item;
+
+                    // Robust case-insensitive helper to get property value safely
+                    string GetProp(string name, string fallback = "---") {
+                        try {
+                            System.Text.Json.JsonElement val;
+                            if (license.TryGetProperty(name, out val)) 
+                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
+                                
+                            string camel = char.ToLower(name[0]) + name.Substring(1);
+                            if (license.TryGetProperty(camel, out val)) 
+                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
+                        } catch { }
+                        return fallback;
+                    }
+
+                    var plateNumber = GetProp("PlateNumber");
+                    var brand = GetProp("Brand");
+                    var vehicleModel = GetProp("Model");
+                    var color = GetProp("Color");
+                    var type = GetProp("VehicleType");
+                    var ownerId = GetProp("CitizenNationalId");
+                    var expiryProp = GetProp("ExpiryDate");
+                    var expiryDate = expiryProp != "---" ? DateTime.Parse(expiryProp) : DateTime.MinValue;
+                    var isExpired = expiryDate < DateTime.Now;
+                    var isSoon = !isExpired && expiryDate < DateTime.Now.AddMonths(3);
+
+                    <tr class="hover:bg-primary/[0.01] transition-colors group">
+                        <td class="px-lg py-6">
+                            <div class="relative inline-flex items-center gap-2 border-2 border-secondary rounded-lg px-4 py-2 bg-white font-black text-lg shadow-sm">
+                                <span class="font-headline">@plateNumber</span>
+                                <div class="absolute right-0 top-0 bottom-0 w-1.5 @(isExpired ? "bg-red-500" : (isSoon ? "bg-orange-500" : "bg-primary"))"></div>
+                            </div>
+                        </td>
+                        <td class="px-lg py-6">
+                            <div class="flex items-center gap-md">
+                                <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                                    <span class="material-symbols-outlined">directions_car</span>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-secondary text-sm">@brand @vehicleModel</p>
+                                    <p class="text-[10px] font-bold text-secondary/40 uppercase">@type - @color</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-lg py-6">
+                            <p class="font-bold text-secondary text-sm">@ownerId</p>
+                            <p class="text-[10px] text-primary font-bold uppercase tracking-tighter">مالك مسجل</p>
+                        </td>
+                        <td class="px-lg py-6">
+                            <p class="font-bold text-secondary text-sm">@expiryDate.ToString("yyyy/MM/dd")</p>
+                            @if (isExpired) { <p class="text-[10px] text-red-500 font-bold">منتهية الصلاحية</p> }
+                            else { <p class="text-[10px] text-primary font-bold">سارية حالياً</p> }
+                        </td>
+                        <td class="px-lg py-6">
+                            <div class="flex items-center justify-center gap-sm">
+                                <button class="p-2.5 rounded-xl hover:bg-primary/10 text-primary transition-all active:scale-95">
+                                    <span class="material-symbols-outlined text-xl">visibility</span>
+                                </button>
+                                <button class="p-2.5 rounded-xl hover:bg-secondary/10 text-secondary transition-all active:scale-95">
+                                    <span class="material-symbols-outlined text-xl">edit</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

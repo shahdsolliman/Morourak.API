@@ -41,5 +41,8 @@ namespace Morourak.Application.DTOs.Auth
         /// The refresh token used to obtain new access tokens.
         /// </summary>
         public string? RefreshToken { get; set; }
+
+        public string? Username { get; set; }
+        public string? FullName { get; set; }
     }
 }

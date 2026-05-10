@@ -27,12 +27,7 @@ public class AdminSeedDataController : BaseApiController
     public async Task<IActionResult> GetAllCitizens()
     {
         var citizens = await _adminSeedDataService.GetAllCitizensAsync();
-        return Ok(new
-        {
-            isSuccess = true,
-            message = "تم استرجاع بيانات المواطنين بنجاح.",
-            details = citizens
-        });
+        return Success(citizens, "تم استرجاع بيانات المواطنين بنجاح.");
     }
 
     /// <summary>
@@ -42,12 +37,7 @@ public class AdminSeedDataController : BaseApiController
     public async Task<IActionResult> GetAllVehicleLicenses()
     {
         var licenses = await _adminSeedDataService.GetAllVehicleLicensesAsync();
-        return Ok(new
-        {
-            isSuccess = true,
-            message = "تم استرجاع بيانات رخص المركبات بنجاح.",
-            details = licenses
-        });
+        return Success(licenses, "تم استرجاع بيانات رخص المركبات بنجاح.");
     }
 
     /// <summary>
@@ -57,11 +47,6 @@ public class AdminSeedDataController : BaseApiController
     public async Task<IActionResult> GetAllDrivingLicenses()
     {
         var licenses = await _adminSeedDataService.GetAllDrivingLicensesAsync();
-        return Ok(new
-        {
-            isSuccess = true,
-            message = "تم استرجاع بيانات رخص القيادة بنجاح.",
-            details = licenses
-        });
+        return Success(licenses, "تم استرجاع بيانات رخص القيادة بنجاح.");
     }
 }

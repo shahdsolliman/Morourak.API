@@ -10,6 +10,7 @@ using Morourak.Domain.Enums.Request;
 using Morourak.Domain.Enums.Vehicles;
 using Morourak.Domain.Enums.Violations;
 using Morourak.Domain.Extensions;
+using AutoMapper;
 using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services.Licenses
@@ -20,16 +21,19 @@ namespace Morourak.Application.Services.Licenses
     {
         private readonly IRequestNumberGenerator _generator;
         private readonly ITrafficViolationService _violationService;
+        private readonly IMapper _mapper;
 
         public VehicleLicenseService(
             IUnitOfWork unitOfWork,
             IServiceRequestService serviceRequestService,
             IRequestNumberGenerator generator,
-            ITrafficViolationService violationService)
+            ITrafficViolationService violationService,
+            IMapper mapper)
             : base(unitOfWork, serviceRequestService)
         {
             _generator = generator;
             _violationService = violationService;
+            _mapper = mapper;
         }
 
         #region First-Time Process
@@ -39,24 +43,6 @@ namespace Morourak.Application.Services.Licenses
             UploadVehicleDocsDto dto)
         {
             var citizen = await GetCitizenAsync(nationalId);
-
-            var existingLicense = await _licenseRepo.GetAsync(
-                l => l.CitizenRegistryId == citizen.Id && l.IsReplaced == false);
-
-            if (existingLicense != null)
-            {
-                if (existingLicense.CurrentStatus == LicenseStatus.Active)
-                    throw new AppEx.ValidationException("يمتلك المواطن رخصة سيارة سارية بالفعل.", "LICENSE_ACTIVE");
-                if (existingLicense.CurrentStatus == LicenseStatus.Withdrawn)
-                    throw new AppEx.ValidationException("رخصة المواطن ملغاة. لا يمكن إصدار رخصة جديدة.", "LICENSE_WITHDRAWN");
-            }
-
-            var pendingApplication = (await _unitOfWork.Repository<VehicleLicenseApplication>()
-                .FindAsync(a => a.CitizenRegistryId == citizen.Id && a.Status == LicenseStatus.Pending))
-                .FirstOrDefault();
-
-            if (pendingApplication != null)
-                throw new AppEx.ValidationException("يوجد طلب رخصة سيارة قيد الانتظار بالفعل.", "APPLICATION_PENDING");
 
             ValidateDocuments(dto);
 
@@ -76,15 +62,9 @@ namespace Morourak.Application.Services.Licenses
             await _unitOfWork.Repository<ServiceRequest>().AddAsync(serviceRequest);
             await _unitOfWork.CommitAsync();
 
-            return new VehicleLicenseApplicationDto
-            {
-                Id = application.Id,
-                VehicleType = application.VehicleType.GetDisplayName(),
-                Brand = application.Brand,
-                Model = application.Model,
-                Status = application.Status.GetDisplayName(),
-                RequestNumber = serviceRequest.RequestNumber
-            };
+            var result = _mapper.Map<VehicleLicenseApplicationDto>(application);
+            result.RequestNumber = serviceRequest.RequestNumber;
+            return result;
         }
 
         public async Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeLicenseAsync(
@@ -146,13 +126,22 @@ namespace Morourak.Application.Services.Licenses
             if (license == null)
                 throw new AppEx.ValidationException("رخصة السيارة غير موجودة.", "LICENSE_NOT_FOUND");
 
-            // تم حذف التحقق من المخالفات الغير مدفوعة من هنا
-
             if (license.CurrentStatus != LicenseStatus.Expired)
                 throw new AppEx.ValidationException("الرخصة لا تزال سارية. لا يلزم التجديد.", "LICENSE_STILL_VALID");
 
             if (license.CurrentStatus == LicenseStatus.Withdrawn)
                 throw new AppEx.ValidationException("لا يمكن تجديد رخصة ملغاة.", "LICENSE_WITHDRAWN");
+
+            // Check for unpaid violations
+            var hasViolations = (await _unitOfWork.Repository<TrafficViolation>()
+                .FindAsync(v => v.RelatedLicenseId == license.Id && 
+                                v.LicenseType == LicenseType.Vehicle && 
+                                v.Status != ViolationStatus.Paid && 
+                                v.IsPayable))
+                .Any();
+
+            if (hasViolations)
+                throw new AppEx.ValidationException("لا يمكن التجديد لوجود مخالفات مرورية غير مدفوعة على السيارة. يرجى السداد أولاً.", "UNPAID_VIOLATIONS");
 
             var pendingRenewal = (await _unitOfWork.Repository<VehicleLicenseApplication>()
                 .FindAsync(a => a.CitizenRegistryId == citizen.Id &&
@@ -194,21 +183,15 @@ namespace Morourak.Application.Services.Licenses
             await _unitOfWork.Repository<ServiceRequest>().AddAsync(serviceRequest);
             await _unitOfWork.CommitAsync();
 
-            return new VehicleLicenseApplicationDto
-            {
-                Id = application.Id,
-                VehicleType = application.VehicleType.GetDisplayName(),
-                Brand = application.Brand,
-                Model = application.Model,
-                Status = application.Status.GetDisplayName(),
-                RequestNumber = serviceRequest.RequestNumber
-            };
+            var result = _mapper.Map<VehicleLicenseApplicationDto>(application);
+            result.RequestNumber = serviceRequest.RequestNumber;
+            return result;
         }
 
         public async Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeRenewalAsync(
-    string requestNumber,
-    string nationalId,
-    DeliveryInfoDto delivery)
+            string requestNumber,
+            string nationalId,
+            DeliveryInfoDto delivery)
         {
             var citizen = await GetCitizenAsync(nationalId);
 
@@ -233,7 +216,6 @@ namespace Morourak.Application.Services.Licenses
             if (license == null)
                 throw new AppEx.ValidationException("الرخصة غير موجودة.", "LICENSE_NOT_FOUND");
 
-            // ✅ تحقق المخالفات الغير مدفوعة هنا
             var unpaidViolations = (await _violationService
                     .GetViolationsByLicenseNumberAsync(license.VehicleLicenseNumber, LicenseType.Vehicle))
                 .Violations.Where(v => v.Status != ViolationStatus.Paid).ToList();
@@ -244,13 +226,11 @@ namespace Morourak.Application.Services.Licenses
                     "UNPAID_VIOLATIONS");
 
             ValidateDelivery(delivery);
-
             ValidateTechnicalInspection(application);
 
             var addressStr = delivery.Method == DeliveryMethod.HomeDelivery
                 ? $"{delivery.Address?.Governorate}, {delivery.Address?.City}, {delivery.Address?.Details}"
                 : null;
-
 
             if (serviceRequest.PaymentStatus == PaymentStatus.Pending)
             {
@@ -288,6 +268,9 @@ namespace Morourak.Application.Services.Licenses
             if (oldLicense == null)
                 throw new AppEx.ValidationException("رخصة السيارة غير موجودة.", "LICENSE_NOT_FOUND");
 
+            if (oldLicense.IsReplaced)
+                throw new AppEx.ValidationException("تم استبدال هذه الرخصة بالفعل ولا يمكن إصدار بدل لها مرة أخرى.", "LICENSE_ALREADY_REPLACED");
+
             if (oldLicense.CurrentStatus == LicenseStatus.Withdrawn)
                 throw new AppEx.ValidationException("لا يمكن إصدار بدل لهذه الرخصة لأنها ملغاة.", "LICENSE_WITHDRAWN");
 
@@ -301,6 +284,22 @@ namespace Morourak.Application.Services.Licenses
             ValidateReplacementEligibility(oldLicense);
             ValidateDelivery(delivery);
 
+            // Check if there is already a pending replacement request for this license
+            var existingRequest = (await _unitOfWork.Repository<ServiceRequest>()
+                .FindAsync(r => r.CitizenNationalId == nationalId 
+                             && r.ReferenceId == oldLicense.Id 
+                             && (r.ServiceType == ServiceType.VehicleLicenseReplacementLost || r.ServiceType == ServiceType.VehicleLicenseReplacementDamaged)
+                             && r.Status != RequestStatus.Completed 
+                             && r.Status != RequestStatus.Failed))
+                .FirstOrDefault();
+
+            if (existingRequest != null)
+            {
+                throw new AppEx.ValidationException(
+                    $"يوجد طلب استخراج بدل بالفعل لهذه الرخصة برقم ({existingRequest.RequestNumber}) وحالته الحالية هي: {existingRequest.Status.GetDisplayName()}.", 
+                    "EXISTING_REQUEST_FOUND");
+            }
+
             var serviceType = replacementType switch
             {
                 ReplacementType.Lost => ServiceType.VehicleLicenseReplacementLost,
@@ -308,7 +307,6 @@ namespace Morourak.Application.Services.Licenses
                 _ => throw new AppEx.ValidationException("نوع البدل غير مدعوم.", "INVALID_REPLACEMENT_TYPE")
             };
 
-            // Create pending request
             var serviceRequest = new ServiceRequest
             {
                 ReferenceId = oldLicense.Id,
@@ -320,21 +318,18 @@ namespace Morourak.Application.Services.Licenses
                 LastUpdatedAt = DateTime.UtcNow
             };
 
-            await _unitOfWork.Repository<ServiceRequest>().AddAsync(serviceRequest);
-            await _unitOfWork.CommitAsync();
-
             var addressStr = delivery.Method == DeliveryMethod.HomeDelivery
                 ? $"{delivery.Address?.Governorate}, {delivery.Address?.City}, {delivery.Address?.Details}"
                 : null;
 
-            return await _serviceRequestService.SetDeliveryAndFeesAsync(serviceRequest.RequestNumber, delivery.Method, addressStr);
+            // Use the service to get the standard DTO response
+            return await _serviceRequestService.SetDeliveryAndFeesAsync(serviceRequest, delivery.Method, addressStr);
         }
 
         public async Task<VehicleLicenseResponseDto> CompleteIssuanceAsync(string requestNumber)
         {
             var request = await _unitOfWork.Repository<ServiceRequest>().GetAsync(r => r.RequestNumber == requestNumber);
             if (request == null) throw new AppEx.ValidationException("الطلب غير موجود.");
-            // Payment check is removed here because PaymentService already verified it and local state might not be committed yet.
 
             var delivery = new DeliveryInfoDto
             {
@@ -392,7 +387,6 @@ namespace Morourak.Application.Services.Licenses
                 DeliveryFactory.ApplyDelivery(license, delivery);
                 
                 _licenseRepo.Update(license);
-
                 application.Status = LicenseStatus.Completed;
             }
             else if (request.ServiceType == ServiceType.VehicleLicenseReplacementLost || request.ServiceType == ServiceType.VehicleLicenseReplacementDamaged)
@@ -420,11 +414,16 @@ namespace Morourak.Application.Services.Licenses
                 };
                 DeliveryFactory.ApplyDelivery(license, delivery);
                 await _licenseRepo.AddAsync(license);
+                
+                // Explicitly update and save the old license status
+                _licenseRepo.Update(oldLicense);
+                request.Status = RequestStatus.Completed;
             }
 
             if (license == null)
                 throw new AppEx.ValidationException("فشل إصدار الرخصة.", "ISSUANCE_FAILED");
 
+            await _unitOfWork.CommitAsync();
             return MapToDto(license);
         }
 
@@ -444,18 +443,11 @@ namespace Morourak.Application.Services.Licenses
             var citizen = await GetCitizenAsync(nationalId);
             var licenses = await _licenseRepo.FindAsync(l => l.CitizenRegistryId == citizen.Id);
 
-            return licenses.Select(l => new VehicleLicenseDto
+            return licenses.Select(l => 
             {
-                Id = l.Id,
-                VehicleLicenseNumber = l.VehicleLicenseNumber,
-                PlateNumber = l.PlateNumber,
-                VehicleType = l.VehicleType.GetDisplayName(),
-                Brand = l.Brand,
-                Model = l.Model,
-                Status = l.CurrentStatus.GetDisplayName(),
-                IssueDate = l.IssueDate,
-                ExpiryDate = l.ExpiryDate,
-                CitizenNationalId = citizen.NationalId
+                var dto = _mapper.Map<VehicleLicenseDto>(l);
+                dto.CitizenNationalId = citizen.NationalId;
+                return dto;
             });
         }
 
@@ -531,71 +523,9 @@ namespace Morourak.Application.Services.Licenses
             return $"{string.Join(" ", letters)} {number}";
         }
 
-       
-
-        private async Task<VehicleLicenseResponseDto> IssueVehicleLicenseAsync(
-        string requestNumber,
-        string nationalId,
-        DeliveryInfoDto delivery)
-        {
-            var citizen = await GetCitizenAsync(nationalId);
-
-            var serviceRequest = (await _unitOfWork.Repository<ServiceRequest>()
-                .FindAsync(r => r.RequestNumber == requestNumber && r.CitizenNationalId == nationalId))
-                .FirstOrDefault();
-
-            if (serviceRequest == null)
-                throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
-
-            var application = await _unitOfWork.Repository<VehicleLicenseApplication>()
-                .GetAsync(a => a.Id == serviceRequest.ReferenceId);
-
-            if (application == null)
-                throw new AppEx.ValidationException("طلب الرخصة غير موجود.", "APPLICATION_NOT_FOUND");
-
-            ValidateDelivery(delivery);
-
-            var newLicenseNumber = await GenerateVehicleLicenseNumberAsync();
-            var plateNumber = GenerateRandomPlateNumber();
-            var (chassisNumber, engineNumber) = await GenerateVehicleSequencesAsync();
-
-            var license = new VehicleLicense
-            {
-                CitizenRegistryId = citizen.Id,
-                VehicleLicenseNumber = newLicenseNumber,
-                PlateNumber = plateNumber,
-                VehicleType = application.VehicleType,
-                Brand = application.Brand,
-                Model = application.Model,
-                IssueDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddYears(1),
-                ChassisNumber = chassisNumber,
-                EngineNumber = engineNumber,
-            };
-
-            DeliveryFactory.ApplyDelivery(license, delivery);
-
-            await _licenseRepo.AddAsync(license);
-
-            application.Status = LicenseStatus.Completed;
-            // serviceRequest.Status = RequestStatus.Completed; (Managed by orchestrator)
-            serviceRequest.LastUpdatedAt = DateTime.UtcNow;
-
-            // Removed internal CommitAsync to support atomic transactions in PaymentService
-            // await _unitOfWork.CommitAsync();
-
-            return MapToDto(license);
-        }
-
-
         private async Task<(string ChassisNumber, string EngineNumber)> GenerateVehicleSequencesAsync()
         {
-            // Use a default starting sequence if no previous license exists
             int lastSeq = 200000;
-
-            // Fetch the last license from the database to determine the next sequence
-            // Note: In a high-concurrency production environment, you might use a database Sequence or a Redis-based counter.
-            // Here, we fetch the latest record within the current unit of work context.
             var lastLicense = (await _licenseRepo.GetAllAsync())
                 .OrderByDescending(l => l.Id)
                 .FirstOrDefault();
@@ -610,7 +540,6 @@ namespace Morourak.Application.Services.Licenses
             }
 
             int newSeq = lastSeq + 1;
-
             return ($"CHS{newSeq:D6}", $"ENG{newSeq:D6}");
         }
 
@@ -627,7 +556,10 @@ namespace Morourak.Application.Services.Licenses
                 OwnershipProofPath = await SaveFileAsync(dto.OwnershipProof!, "OwnershipProofs"),
                 VehicleDataCertificatePath = await SaveFileAsync(dto.VehicleDataCertificate!, "VehicleDataCertificates"),
                 IdCardPath = await SaveFileAsync(dto.IdCard!, "IDCards"),
-                InsuranceCertificatePath = await SaveFileAsync(dto.InsuranceCertificate!, "InsuranceCertificates"),
+                InsuranceCertificatePath = dto.InsuranceCertificate != null 
+                    ? await SaveFileAsync(dto.InsuranceCertificate, "InsuranceCertificates") 
+                    : null,
+                InsuranceCompanyId = dto.InsuranceCompanyId,
                 CustomClearancePath = dto.CustomClearance != null
                     ? await SaveFileAsync(dto.CustomClearance, "CustomClearances")
                     : null,
@@ -645,13 +577,11 @@ namespace Morourak.Application.Services.Licenses
         private async Task<string> GenerateVehicleLicenseNumberAsync()
         {
             var allLicenses = await _licenseRepo.GetAllAsync();
-
             long maxNumber = 200000; 
 
             foreach (var license in allLicenses)
             {
                 if (string.IsNullOrEmpty(license.VehicleLicenseNumber)) continue;
-
                 var parts = license.VehicleLicenseNumber.Split('-');
                 if (parts.Length == 2 && long.TryParse(parts[1], out var num))
                 {
@@ -659,7 +589,6 @@ namespace Morourak.Application.Services.Licenses
                         maxNumber = num;
                 }
             }
-
             return $"VL-{maxNumber + 1}";
         }
 
@@ -678,38 +607,13 @@ namespace Morourak.Application.Services.Licenses
                 if (parts.Length > 1 && long.TryParse(parts[1], out var parsed))
                     nextNumber = parsed + 1;
             }
-
             return $"PL-{nextNumber}";
         }
 
         private VehicleLicenseResponseDto MapToDto(VehicleLicense? license)
         {
             if (license == null) return new VehicleLicenseResponseDto();
-
-            return new VehicleLicenseResponseDto
-            {
-                Id = license.Id,
-                VehicleLicenseNumber = license.VehicleLicenseNumber,
-                PlateNumber = license.PlateNumber,
-                VehicleType = license.VehicleType.GetDisplayName(),
-                Brand = license.Brand,
-                Model = license.Model,
-                Status = license.CurrentStatus.GetDisplayName(),
-                IssueDate = DateOnly.FromDateTime(license.IssueDate),
-                ExpiryDate = DateOnly.FromDateTime(license.ExpiryDate),
-                CitizenNationalId = license.Citizen?.NationalId ?? "",
-                CitizenName = $"{license.Citizen?.FirstName ?? ""} {license.Citizen?.LastName ?? ""}".Trim(),
-                Delivery = new DeliveryInfoDto
-                {
-                    Method = license.DeliveryMethod,
-                    Address = license.DeliveryAddress == null ? null : new AddressDto
-                    {
-                        Governorate = license.DeliveryAddress.Governorate,
-                        City = license.DeliveryAddress.City,
-                        Details = license.DeliveryAddress.Details
-                    }
-                }
-            };
+            return _mapper.Map<VehicleLicenseResponseDto>(license);
         }
 
         private void ValidateDocuments(UploadVehicleDocsDto dto)
@@ -720,8 +624,13 @@ namespace Morourak.Application.Services.Licenses
                 throw new AppEx.ValidationException("شهادة بيانات المركبة مطلوبة.", "DOCUMENT_MISSING");
             if (dto.IdCard == null)
                 throw new AppEx.ValidationException("بطاقة الهوية مطلوبة.", "DOCUMENT_MISSING");
-            if (dto.InsuranceCertificate == null)
-                throw new AppEx.ValidationException("شهادة التأمين مطلوبة.", "DOCUMENT_MISSING");
+
+            // Insurance validation (XOR logic)
+            if (dto.InsuranceCertificate == null && !dto.InsuranceCompanyId.HasValue)
+                throw new AppEx.ValidationException("يجب إما رفع شهادة تأمين سارية أو اختيار إحدى شركات التأمين المتاحة.", "INSURANCE_MISSING");
+
+            if (dto.InsuranceCertificate != null && dto.InsuranceCompanyId.HasValue)
+                throw new AppEx.ValidationException("لا يمكن رفع شهادة تأمين واختيار شركة تأمين في نفس الوقت. يرجى اختيار وسيلة واحدة فقط.", "INSURANCE_CONFLICT");
         }
 
         private void ValidateDelivery(DeliveryInfoDto delivery)
@@ -745,7 +654,6 @@ namespace Morourak.Application.Services.Licenses
         {
             if (application == null)
                 throw new AppEx.ValidationException("طلب الرخصة غير موجود.", "APPLICATION_NOT_FOUND");
-
             if (!application.TechnicalInspectionPassed)
                 throw new AppEx.ValidationException(
                     "يجب اجتياز الفحص الفني قبل استكمال إصدار أو تجديد الرخصة.",
@@ -756,7 +664,6 @@ namespace Morourak.Application.Services.Licenses
         {
             if (license.CurrentStatus != LicenseStatus.Active)
                 throw new AppEx.ValidationException("لا يمكن إصدار بدل لرخصة منتهية أو ملغاة أو مستبدلة بالفعل.", "LICENSE_NOT_REPLACEABLE");
-
             if (license.ExpiryDate < DateTime.UtcNow)
                 throw new AppEx.ValidationException("لا يمكن إصدار بدل لرخصة منتهية الصلاحية.", "LICENSE_EXPIRED");
         }

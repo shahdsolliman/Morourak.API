@@ -1,4 +1,5 @@
-﻿using Morourak.Domain.Enums.Driving;
+using System.ComponentModel.DataAnnotations;
+using Morourak.Domain.Enums.Driving;
 
 namespace Morourak.API.DTOs.DrivingLicenses
 {
@@ -7,6 +8,9 @@ namespace Morourak.API.DTOs.DrivingLicenses
     /// </summary>
     public class SubmitRenewalRequestApiDto
     {
+        [Required(ErrorMessage = "رقم الرخصة مطلوب للتجديد.")]
+        public string LicenseNumber { get; set; } = string.Empty;
+
         /// <summary>
         /// The new license category requested (if upgrading).
         /// </summary>

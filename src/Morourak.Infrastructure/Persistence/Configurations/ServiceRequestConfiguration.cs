@@ -8,8 +8,9 @@ namespace Morourak.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<ServiceRequest> builder)
         {
-            builder.HasKey(x => x.RequestNumber);
-            builder.Ignore(x => x.Id); // Fix PK ambiguity from BaseEntity
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.RequestNumber).IsRequired().HasMaxLength(50);
+            builder.HasIndex(x => x.RequestNumber).IsUnique();
         }
     }
 }

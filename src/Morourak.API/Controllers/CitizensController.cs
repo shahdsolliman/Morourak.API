@@ -27,7 +27,7 @@ namespace Morourak.API.Controllers
             if (citizen is null)
                 return NotFound();
 
-            return Ok(citizen);
+            return Success(citizen);
         }
     }
 }

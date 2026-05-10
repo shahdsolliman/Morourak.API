@@ -28,8 +28,8 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasMaxLength(14);
 
         builder.HasOne(p => p.ServiceRequest)
-            .WithMany()
-            .HasForeignKey(p => p.ServiceRequestNumber)
+            .WithMany(r => r.Payments)
+            .HasForeignKey(p => p.ServiceRequestId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(p => p.TransactionId)

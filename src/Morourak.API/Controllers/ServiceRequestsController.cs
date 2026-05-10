@@ -38,14 +38,7 @@ namespace Morourak.API.Controllers
             var result = await _mediator.Send(
                 new GetMyRequestsQuery(NationalId, pagination));
 
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "Success",
-                errorCode = (string?)null,
-                data = result,
-                details = result
-            });
+            return SuccessPaginated(result.Items, result.PageNumber, result.PageSize, result.TotalCount, "Success");
         }
 
         /// <summary>
@@ -58,13 +51,7 @@ namespace Morourak.API.Controllers
             if (request == null)
                 throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
 
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = request
-            });
+            return Success(request);
         }
     }
 }

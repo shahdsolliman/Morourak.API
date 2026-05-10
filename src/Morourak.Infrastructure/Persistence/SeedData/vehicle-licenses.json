@@ -17,8 +17,8 @@
     "VehicleType": "Taxi",
     "Brand": "Hyundai",
     "Model": "Elantra",
-    "IssueDate": "2024-01-01T00:00:00",
-    "ExpiryDate": "2025-01-01T00:00:00",
+    "IssueDate": "2023-01-01T00:00:00",
+    "ExpiryDate": "2024-01-01T00:00:00",
     "Status": "Expired"
   },
   {
@@ -218,5 +218,49 @@
     "IssueDate": "2023-11-01T00:00:00",
     "ExpiryDate": "2024-11-01T00:00:00",
     "Status": "Expired"
+  },
+  {
+    "VehicleLicenseNumber": "VL-300001",
+    "CitizenNationalId": "29902012345678",
+    "PlateNumber": "ن ق ر 5544",
+    "VehicleType": "Truck",
+    "Brand": "Isuzu",
+    "Model": "NQR",
+    "IssueDate": "2025-01-01T00:00:00",
+    "ExpiryDate": "2027-01-01T00:00:00",
+    "Status": "Active"
+  },
+  {
+    "VehicleLicenseNumber": "VL-300002",
+    "CitizenNationalId": "29902012345678",
+    "PlateNumber": "هـ ن د 2233",
+    "VehicleType": "Motorcycle",
+    "Brand": "Honda",
+    "Model": "CBR",
+    "IssueDate": "2026-03-01T00:00:00",
+    "ExpiryDate": "2028-03-01T00:00:00",
+    "Status": "Active"
+  },
+  {
+    "VehicleLicenseNumber": "VL-300003",
+    "CitizenNationalId": "29902012345678",
+    "PlateNumber": "ك ي ا 9988",
+    "VehicleType": "PrivateCar",
+    "Brand": "Kia",
+    "Model": "Sportage",
+    "IssueDate": "2023-01-01T00:00:00",
+    "ExpiryDate": "2024-01-01T00:00:00",
+    "Status": "Expired"
+  },
+  {
+    "VehicleLicenseNumber": "VL-300004",
+    "CitizenNationalId": "29902012345678",
+    "PlateNumber": "ت س ل 1111",
+    "VehicleType": "PrivateCar",
+    "Brand": "Tesla",
+    "Model": "Model 3",
+    "IssueDate": "2026-04-01T00:00:00",
+    "ExpiryDate": "2029-04-01T00:00:00",
+    "Status": "Active"
   }
 ]

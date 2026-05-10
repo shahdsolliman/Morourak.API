@@ -31,6 +31,11 @@ public class RedisCacheService : ICacheService
     {
         try
         {
+            if (_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected)
+            {
+                return null;
+            }
+
             var cachedData = await _distributedCache.GetStringAsync(key, cancellationToken);
             if (string.IsNullOrEmpty(cachedData))
             {
@@ -50,6 +55,11 @@ public class RedisCacheService : ICacheService
     {
         try
         {
+            if (_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected)
+            {
+                return;
+            }
+
             var options = new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = expiration ?? TimeSpan.FromMinutes(_settings.DefaultExpirationMinutes)
@@ -68,6 +78,11 @@ public class RedisCacheService : ICacheService
     {
         try
         {
+            if (_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected)
+            {
+                return;
+            }
+
             await _distributedCache.RemoveAsync(key, cancellationToken);
         }
         catch (Exception ex)

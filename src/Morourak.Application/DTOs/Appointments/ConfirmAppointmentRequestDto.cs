@@ -16,6 +16,12 @@ namespace Morourak.Application.DTOs.Appointments
         [System.Obsolete("Use AppointmentType instead. This legacy field will be removed in a future version.")]
         public string ServiceType { get; set; } = string.Empty;
 
+        /// <summary>Optional specific request number to link this appointment to.</summary>
+        public string? RequestNumber { get; set; }
+
+        /// <summary>Scheduled date for the appointment.</summary>
+        /// <example>2025-12-01</example>
+
         /// <summary>Scheduled date for the appointment.</summary>
         /// <example>2025-12-01</example>
         public DateOnly Date { get; set; }
@@ -24,10 +30,10 @@ namespace Morourak.Application.DTOs.Appointments
         /// <example>09:00</example>
         public TimeOnly Time { get; set; }
 
-        /// <summary>The ID of the selected governorate.</summary>
-        public int GovernorateId { get; set; }
+        /// <summary>The ID or Arabic name of the selected governorate.</summary>
+        public object GovernorateId { get; set; } = null!;
 
-        /// <summary>The ID of the selected traffic unit (must belong to the selected governorate).</summary>
-        public int TrafficUnitId { get; set; }
+        /// <summary>The ID or Arabic name of the selected traffic unit.</summary>
+        public object TrafficUnitId { get; set; } = null!;
     }
 }

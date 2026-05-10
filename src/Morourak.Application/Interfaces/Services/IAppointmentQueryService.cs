@@ -12,7 +12,7 @@ namespace Morourak.Application.Interfaces.Services
         Task<IEnumerable<AppointmentDto>> GetAvailableSlotsAsync(DateOnly date, AppointmentType type, int trafficUnitId);
         Task<IEnumerable<AppointmentDto>> GetMyAppointmentsAsync(string nationalId);
         Task<IEnumerable<AppointmentDto>> GetAppointmentsByTypeAsync(AppointmentType type);
-        Task<IEnumerable<AppointmentDto>> GetByRoleAsync(string role, string? userId = null);
+        Task<IEnumerable<AppointmentDto>> GetByRoleAsync(string role, string? userId = null, DateOnly? date = null);
         Task<AppointmentDto> GetByIdAsync(int id);
     }
 }

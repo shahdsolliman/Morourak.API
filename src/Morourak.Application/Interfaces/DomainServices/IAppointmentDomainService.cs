@@ -12,6 +12,6 @@ public interface IAppointmentDomainService
         TimeOnly time,
         int governorateId,
         int trafficUnitId,
-        CancellationToken cancellationToken);
+        string? requestNumber = null,
+        CancellationToken cancellationToken = default);
 }
-

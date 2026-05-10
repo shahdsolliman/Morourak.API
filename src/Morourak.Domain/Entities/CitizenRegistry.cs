@@ -51,5 +51,15 @@ namespace Morourak.Domain.Entities
         /// One-to-many relationship.
         /// </summary>
         public virtual ICollection<DrivingLicense> DrivingLicenses { get; set; } = new List<DrivingLicense>();
+
+        /// <summary>
+        /// The governorate this citizen belongs to.
+        /// </summary>
+        public string Governorate { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The traffic unit (licensing unit) this citizen belongs to.
+        /// </summary>
+        public string LicensingUnit { get; set; } = string.Empty;
     }
 }

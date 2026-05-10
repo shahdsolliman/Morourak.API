@@ -17,9 +17,6 @@ namespace Morourak.Domain.Entities
         [JsonIgnore]
         public CitizenRegistry? Citizen { get; set; }
 
-        public string LicensingUnit { get; set; } = string.Empty;
-
-        public string Governorate { get; set; } = string.Empty;
 
         public DateOnly IssueDate { get; set; }
 

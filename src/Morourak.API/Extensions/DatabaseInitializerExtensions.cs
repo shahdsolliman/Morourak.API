@@ -33,7 +33,7 @@ namespace Morourak.API.Extensions
                     services.GetRequiredService<UserManager<ApplicationUser>>();
 
                 await IdentityRoleSeeder.SeedAsync(roleManager);
-                await IdentityUserSeeder.SeedAsync(userManager);
+                await IdentityUserSeeder.SeedAsync(userManager, app.Environment.IsDevelopment());
 
                 // ===============================
                 // Persistence Database
@@ -59,11 +59,17 @@ namespace Morourak.API.Extensions
                 logger.LogInformation("Seeding Driving Licenses...");
                 await DrivingLicenseSeeder.SeedAsync(persistenceContext, logger);
 
+                logger.LogInformation("Seeding Insurance Companies...");
+                await InsuranceCompanySeeder.SeedAsync(persistenceContext, logger);
+
                 logger.LogInformation("Seeding Vehicle Licenses...");
                 await VehicleLicenseSeeder.SeedAsync(persistenceContext, logger);
 
                 logger.LogInformation("Seeding Traffic Violations...");
                 await TrafficViolationSeeder.SeedAsync(persistenceContext, logger);
+
+                logger.LogInformation("Seeding Appointments...");
+                await AppointmentSeeder.SeedAsync(persistenceContext, logger);
 
                 logger.LogInformation("Databases initialized successfully.");
             }

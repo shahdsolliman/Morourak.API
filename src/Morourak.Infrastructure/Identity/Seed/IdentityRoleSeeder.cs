@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Morourak.Infrastructure.Identity.Constants;
 
 namespace Morourak.Infrastructure.Identity.Seed
@@ -13,7 +13,8 @@ namespace Morourak.Infrastructure.Identity.Seed
                 AppIdentityConstants.Roles.Inspector,
                 AppIdentityConstants.Roles.Examinator,
                 AppIdentityConstants.Roles.Admin,
-                AppIdentityConstants.Roles.Doctor
+                AppIdentityConstants.Roles.Doctor,
+                AppIdentityConstants.Roles.Tester
             };
 
             foreach (var role in roles)

@@ -5,6 +5,7 @@ using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Violations;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using AutoMapper;
 using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services
@@ -13,11 +14,13 @@ namespace Morourak.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<TrafficViolationService> _logger;
+        private readonly IMapper _mapper;
 
-        public TrafficViolationService(IUnitOfWork unitOfWork, ILogger<TrafficViolationService> logger)
+        public TrafficViolationService(IUnitOfWork unitOfWork, ILogger<TrafficViolationService> logger, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _mapper = mapper;
         }
 
         public async Task<ViolationListResponseDto> GetViolationsByLicenseNumberAsync(string licenseNumber, LicenseType licenseType)
@@ -50,7 +53,7 @@ namespace Morourak.Application.Services
 
             var violationDtos = violations
                 .OrderByDescending(v => v.ViolationDateTime)
-                .Select(MapToDto)
+                .Select(v => _mapper.Map<ViolationDto>(v))
                 .ToList();
 
             var unpaid = violations.Where(v => v.Status != ViolationStatus.Paid && v.IsPayable).ToList();
@@ -105,7 +108,7 @@ namespace Morourak.Application.Services
             if (violation == null)
                 throw new AppEx.ValidationException("لا توجد مخالفات لهذه الرخصة.", "VIOLATION_NOT_FOUND");
 
-            return MapToDetailsDto(violation);
+            return _mapper.Map<ViolationDetailsDto>(violation);
         }
 
         public Task<PaymentResultDto> PaySingleViolationAsync(int violationId, decimal amount)
@@ -141,69 +144,5 @@ namespace Morourak.Application.Services
             });
         }
 
-        private static ViolationDto MapToDto(TrafficViolation v)
-        {
-            return new ViolationDto
-            {
-                ViolationId = v.Id,
-                ViolationNumber = v.ViolationNumber,
-                ViolationType = v.ViolationType.ToString(),
-                LegalReference = v.LegalReference,
-                Description = v.Description,
-                Location = v.Location,
-                ViolationDateTime = v.ViolationDateTime.ToString("d MMMM yyyy - hh:mm tt", new CultureInfo("ar-EG")),
-                FineAmount = v.FineAmount,
-                PaidAmount = v.PaidAmount,
-                Status = v.Status,
-                StatusAr = GetStatusArabic(v.Status),
-                IsPayable = v.IsPayable
-            };
-        }
-
-        private static ViolationDetailsDto MapToDetailsDto(TrafficViolation v)
-        {
-            return new ViolationDetailsDto
-            {
-                ViolationId = v.Id,
-                ViolationNumber = v.ViolationNumber,
-                CitizenName = v.Citizen?.FirstName ?? "غير معروف",
-                NationalId = v.Citizen?.NationalId ?? "غير معروف",
-                LicenseType = v.LicenseType.ToString(),
-                LicenseTypeAr = v.LicenseType == LicenseType.Driving ? "رخصة قيادة" : "رخصة مركبة",
-                RelatedLicenseId = v.RelatedLicenseId,
-                ViolationType = v.ViolationType.ToString(),
-                ViolationTypeAr = GetViolationTypeArabic(v.ViolationType),
-                LegalReference = v.LegalReference,
-                Description = v.Description,
-                Location = v.Location,
-                ViolationDateTime = v.ViolationDateTime.ToString("hh:mm tt - d/M/yyyy", new CultureInfo("ar-EG")),
-                FineAmount = v.FineAmount,
-                PaidAmount = v.PaidAmount,
-                Status = v.Status,
-                StatusAr = GetStatusArabic(v.Status),
-                IsPayable = v.IsPayable
-            };
-        }
-
-        private static string GetStatusArabic(ViolationStatus status) => status switch
-        {
-            ViolationStatus.Unpaid => "غير مدفوعة",
-            ViolationStatus.PartiallyPaid => "مدفوعة جزئياً",
-            ViolationStatus.Paid => "مدفوعة",
-            _ => "غير معروف"
-        };
-
-        private static string GetViolationTypeArabic(ViolationType type) => type switch
-        {
-            ViolationType.SpeedLimitExceeded => "تجاوز السرعة القصوى",
-            ViolationType.RedLightViolation => "تجاوز الإشارة الحمراء",
-            ViolationType.SeatBeltViolation => "عدم ربط حزام الأمان",
-            ViolationType.IllegalParking => "وقوف غير قانوني",
-            ViolationType.MobilePhoneUsage => "استخدام الهاتف أثناء القيادة",
-            ViolationType.DrivingWithoutLicense => "القيادة بدون رخصة",
-            ViolationType.ExpiredLicense => "القيادة برخصة منتهية",
-            ViolationType.UnauthorizedModification => "تعديلات غير مصرح بها على المركبة",
-            _ => "مخالفة مرورية"
-        };
     }
 }

@@ -1,4 +1,4 @@
-﻿using Morourak.Domain.Common;
+using Morourak.Domain.Common;
 using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Driving;
 
@@ -8,13 +8,11 @@ namespace Morourak.Domain.Entities
     {
         public DrivingLicenseCategory Category { get; set; }
 
-        public string Governorate { get; set; } = string.Empty;
-        public string LicensingUnit { get; set; } = string.Empty;
-
         public string PersonalPhotoPath { get; set; } = null!;
         public string EducationalCertificatePath { get; set; } = null!;
         public string IdCardPath { get; set; } = null!;
-        public string ResidenceProofPath { get; set; } = null!;
+        public string? ResidenceProofPath { get; set; } 
+        public string? MedicalCertificatePath { get; set; } 
 
         public bool MedicalExaminationPassed { get; set; } = false;
         public bool DrivingTestPassed { get; set; } = false;

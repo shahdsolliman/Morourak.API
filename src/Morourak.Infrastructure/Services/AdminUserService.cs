@@ -8,6 +8,7 @@ using Morourak.Infrastructure.Identity;
 using Morourak.Infrastructure.Identity.Constants;
 using Morourak.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using AutoMapper;
 using System.IO;
 
 namespace Morourak.Infrastructure.Services;
@@ -18,20 +19,23 @@ public class AdminUserService : IAdminUserService
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AdminUserService> _logger;
+    private readonly IMapper _mapper;
 
     public AdminUserService(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IUnitOfWork unitOfWork,
-        ILogger<AdminUserService> logger)
+        ILogger<AdminUserService> logger,
+        IMapper mapper)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mapper = mapper;
     }
 
-    public async Task<PagedResponse<List<UserDto>>> GetUsersAsync(UserFilterDto filter)
+    public async Task<PagedApiResponse<UserDto>> GetUsersAsync(UserFilterDto filter)
     {
         var query = _userManager.Users.AsNoTracking();
 
@@ -66,18 +70,16 @@ public class AdminUserService : IAdminUserService
         foreach (var user in users)
         {
             var userRoles = await _userManager.GetRolesAsync(user);
-            userDtos.Add(new UserDto
-            {
-                Id = user.Id,
-                Name = $"{user.FirstName} {user.LastName}",
-                Email = user.Email!,
-                Role = userRoles.FirstOrDefault() ?? "None",
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt
-            });
+            var dto = _mapper.Map<UserDto>(user);
+            dto.FirstName = user.FirstName;
+            dto.LastName = user.LastName;
+            dto.Role = userRoles.FirstOrDefault() ?? "None";
+            dto.PhoneNumber = user.PhoneNumber;
+            dto.PasswordHint = AppIdentityConstants.DefaultDemoPassword;
+            userDtos.Add(dto);
         }
 
-        return new PagedResponse<List<UserDto>>(userDtos, filter.PageNumber, filter.PageSize, totalRecords);
+        return new PagedApiResponse<UserDto>(userDtos, filter.PageNumber, filter.PageSize, totalRecords);
     }
 
     public async Task<ApiResponse<UserDto>> CreateUserAsync(CreateUserDto dto)
@@ -93,7 +95,8 @@ public class AdminUserService : IAdminUserService
             LastName = dto.LastName,
             IsActive = dto.IsActive,
             IsVerified = true,
-            NationalId = "00000000000000"
+            NationalId = dto.NationalId ?? "00000000000000",
+            PhoneNumber = dto.PhoneNumber
         };
 
         var result = await _userManager.CreateAsync(user, dto.Password);
@@ -106,15 +109,13 @@ public class AdminUserService : IAdminUserService
 
         await _userManager.AddToRoleAsync(user, roleName);
 
-        return ApiResponse<UserDto>.SuccessResult(new UserDto
-        {
-            Id = user.Id,
-            Name = $"{user.FirstName} {user.LastName}",
-            Email = user.Email,
-            Role = roleName,
-            IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
-        }, "User created successfully.");
+        var userDto = _mapper.Map<UserDto>(user);
+        userDto.FirstName = user.FirstName;
+        userDto.LastName = user.LastName;
+        userDto.Role = roleName;
+        userDto.PhoneNumber = user.PhoneNumber;
+        userDto.PasswordHint = AppIdentityConstants.DefaultDemoPassword;
+        return ApiResponse<UserDto>.SuccessResult(userDto, "User created successfully.");
     }
 
     public async Task<ApiResponse<UserDto>> UpdateUserAsync(string id, UpdateUserDto dto)
@@ -151,16 +152,14 @@ public class AdminUserService : IAdminUserService
         }
 
         var userRoles = await _userManager.GetRolesAsync(user);
+        var userDto = _mapper.Map<UserDto>(user);
+        userDto.FirstName = user.FirstName;
+        userDto.LastName = user.LastName;
+        userDto.Role = userRoles.FirstOrDefault() ?? "None";
+        userDto.PhoneNumber = user.PhoneNumber;
+        userDto.PasswordHint = AppIdentityConstants.DefaultDemoPassword;
 
-        return ApiResponse<UserDto>.SuccessResult(new UserDto
-        {
-            Id = user.Id,
-            Name = $"{user.FirstName} {user.LastName}",
-            Email = user.Email!,
-            Role = userRoles.FirstOrDefault() ?? "None",
-            IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
-        }, "User updated successfully.");
+        return ApiResponse<UserDto>.SuccessResult(userDto, "User updated successfully.");
     }
 
     public async Task<ApiResponse<bool>> DeleteUserAsync(string id)
@@ -268,9 +267,9 @@ public class AdminUserService : IAdminUserService
             _unitOfWork.Repository<ServiceRequest>().Remove(sr);
 
         // 3. Delete Appointments (linked by NationalId)
-        var appointments = await _unitOfWork.Repository<Appointment>().FindAsync(a => a.CitizenNationalId == nationalId);
+        var appointments = await _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>().FindAsync(a => a.CitizenNationalId == nationalId);
         foreach (var a in appointments)
-            _unitOfWork.Repository<Appointment>().Remove(a);
+            _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>().Remove(a);
 
         // 4. Delete Email OTPs (linked by Email)
         var otps = await _unitOfWork.Repository<EmailOtp>().FindAsync(o => o.Email == email);

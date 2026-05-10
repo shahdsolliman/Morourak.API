@@ -5,19 +5,15 @@
     "Category": "Private",
     "IssueDate": "2021-01-15T00:00:00",
     "ExpiryDate": "2026-01-15T00:00:00",
-    "Status": "Active",
-    "Governorate": "القاهرة",
-    "LicensingUnit": "وحدة مرور العاشر"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100002",
     "CitizenNationalId": "29902012345678",
     "Category": "ProfessionalFirstDegree",
     "IssueDate": "2020-06-10T00:00:00",
-    "ExpiryDate": "2025-06-10T00:00:00",
-    "Status": "Active",
-    "Governorate": "الجيزة",
-    "LicensingUnit": "وحدة مرور الدقي"
+    "ExpiryDate": "2030-06-10T00:00:00",
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100003",
@@ -25,9 +21,7 @@
     "Category": "Motorcycle",
     "IssueDate": "2019-03-01T00:00:00",
     "ExpiryDate": "2024-03-01T00:00:00",
-    "Status": "Expired",
-    "Governorate": "الإسكندرية",
-    "LicensingUnit": "وحدة مرور سيدي جابر"
+    "Status": "Expired"
   },
   {
     "LicenseNumber": "DL-100004",
@@ -35,9 +29,7 @@
     "Category": "Private",
     "IssueDate": "2022-09-20T00:00:00",
     "ExpiryDate": "2027-09-20T00:00:00",
-    "Status": "Active",
-    "Governorate": "القليوبية",
-    "LicensingUnit": "وحدة مرور شبين القناطر"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100005",
@@ -45,9 +37,7 @@
     "Category": "ProfessionalSecondDegree",
     "IssueDate": "2018-11-05T00:00:00",
     "ExpiryDate": "2023-11-05T00:00:00",
-    "Status": "Expired",
-    "Governorate": "السويس",
-    "LicensingUnit": "وحدة مرور السويس"
+    "Status": "Expired"
   },
   {
     "LicenseNumber": "DL-100006",
@@ -55,9 +45,7 @@
     "Category": "HeavyEquipment",
     "IssueDate": "2021-02-18T00:00:00",
     "ExpiryDate": "2026-02-18T00:00:00",
-    "Status": "Active",
-    "Governorate": "أسوان",
-    "LicensingUnit": "وحدة مرور أسوان"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100007",
@@ -65,9 +53,7 @@
     "Category": "Private",
     "IssueDate": "2020-12-01T00:00:00",
     "ExpiryDate": "2025-12-01T00:00:00",
-    "Status": "Active",
-    "Governorate": "المنيا",
-    "LicensingUnit": "وحدة مرور المنيا"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100008",
@@ -75,9 +61,7 @@
     "Category": "ProfessionalThirdDegree",
     "IssueDate": "2019-08-12T00:00:00",
     "ExpiryDate": "2024-08-12T00:00:00",
-    "Status": "Expired",
-    "Governorate": "الفيوم",
-    "LicensingUnit": "وحدة مرور الفيوم"
+    "Status": "Expired"
   },
   {
     "LicenseNumber": "DL-100009",
@@ -85,19 +69,15 @@
     "Category": "Private",
     "IssueDate": "2020-04-12T00:00:00",
     "ExpiryDate": "2025-04-12T00:00:00",
-    "Status": "Active",
-    "Governorate": "شرم الشيخ",
-    "LicensingUnit": "وحدة مرور جنوب سيناء"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100010",
-    "CitizenNationalId": "30211077891234",
-    "Category": "ProfessionalFirstDegree",
-    "IssueDate": "2019-11-20T00:00:00",
+    "CitizenNationalId": "29902012345678",
+    "Category": "AgriculturalTractor",
+    "IssueDate": "2014-11-20T00:00:00",
     "ExpiryDate": "2024-11-20T00:00:00",
-    "Status": "Expired",
-    "Governorate": "السويس",
-    "LicensingUnit": "وحدة مرور السويس"
+    "Status": "Expired"
   },
   {
     "LicenseNumber": "DL-100011",
@@ -105,9 +85,7 @@
     "Category": "Motorcycle",
     "IssueDate": "2021-01-05T00:00:00",
     "ExpiryDate": "2026-01-05T00:00:00",
-    "Status": "Active",
-    "Governorate": "الإسكندرية",
-    "LicensingUnit": "وحدة مرور سيدي جابر"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100012",
@@ -115,9 +93,7 @@
     "Category": "Private",
     "IssueDate": "2020-07-15T00:00:00",
     "ExpiryDate": "2025-07-15T00:00:00",
-    "Status": "Active",
-    "Governorate": "القاهرة",
-    "LicensingUnit": "وحدة مرور العاشر"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100013",
@@ -125,9 +101,7 @@
     "Category": "ProfessionalSecondDegree",
     "IssueDate": "2018-10-10T00:00:00",
     "ExpiryDate": "2023-10-10T00:00:00",
-    "Status": "Expired",
-    "Governorate": "المنيا",
-    "LicensingUnit": "وحدة مرور المنيا"
+    "Status": "Expired"
   },
   {
     "LicenseNumber": "DL-100014",
@@ -135,9 +109,7 @@
     "Category": "HeavyEquipment",
     "IssueDate": "2021-03-22T00:00:00",
     "ExpiryDate": "2026-03-22T00:00:00",
-    "Status": "Active",
-    "Governorate": "أسوان",
-    "LicensingUnit": "وحدة مرور أسوان"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100015",
@@ -145,9 +117,7 @@
     "Category": "Private",
     "IssueDate": "2020-08-30T00:00:00",
     "ExpiryDate": "2025-08-30T00:00:00",
-    "Status": "Active",
-    "Governorate": "الجيزة",
-    "LicensingUnit": "وحدة مرور الدقي"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100016",
@@ -155,9 +125,7 @@
     "Category": "ProfessionalThirdDegree",
     "IssueDate": "2019-05-12T00:00:00",
     "ExpiryDate": "2024-05-12T00:00:00",
-    "Status": "Expired",
-    "Governorate": "الإسكندرية",
-    "LicensingUnit": "وحدة مرور سيدي جابر"
+    "Status": "Expired"
   },
   {
     "LicenseNumber": "DL-100017",
@@ -165,9 +133,7 @@
     "Category": "Motorcycle",
     "IssueDate": "2020-09-01T00:00:00",
     "ExpiryDate": "2025-09-01T00:00:00",
-    "Status": "Active",
-    "Governorate": "السويس",
-    "LicensingUnit": "وحدة مرور السويس"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100018",
@@ -175,9 +141,7 @@
     "Category": "Private",
     "IssueDate": "2021-02-20T00:00:00",
     "ExpiryDate": "2026-02-20T00:00:00",
-    "Status": "Active",
-    "Governorate": "القليوبية",
-    "LicensingUnit": "وحدة مرور شبين القناطر"
+    "Status": "Active"
   },
   {
     "LicenseNumber": "DL-100019",
@@ -185,9 +149,7 @@
     "Category": "ProfessionalFirstDegree",
     "IssueDate": "2019-07-15T00:00:00",
     "ExpiryDate": "2024-07-15T00:00:00",
-    "Status": "Expired",
-    "Governorate": "المنيا",
-    "LicensingUnit": "وحدة مرور المنيا"
+    "Status": "Expired"
   },
   {
     "LicenseNumber": "DL-100020",
@@ -195,8 +157,14 @@
     "Category": "Private",
     "IssueDate": "2020-10-10T00:00:00",
     "ExpiryDate": "2025-10-10T00:00:00",
-    "Status": "Active",
-    "Governorate": "الفيوم",
-    "LicensingUnit": "وحدة مرور الفيوم"
+    "Status": "Active"
+  },
+  {
+    "LicenseNumber": "DL-200021",
+    "CitizenNationalId": "29902012345678",
+    "Category": "Private",
+    "IssueDate": "2025-01-01T00:00:00",
+    "ExpiryDate": "2010-04-01T00:00:00",
+    "Status": "Expired"
   }
 ]

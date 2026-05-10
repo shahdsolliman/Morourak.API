@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html class="light" dir="rtl" lang="ar">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>@ViewData["Title"] - Morourak Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#27AE60",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#e8f5e9",
+                        "on-primary-container": "#1b5e20",
+                        "secondary": "#1E2A4A",
+                        "on-secondary": "#ffffff",
+                        "surface": "#f8fbf1",
+                        "on-surface": "#191c1d",
+                        "outline-variant": "#bccabc",
+                        "background": "#f4fbf1"
+                    },
+                    "fontFamily": {
+                        "headline": ["Tajawal", "sans-serif"],
+                        "body": ["Cairo", "sans-serif"]
+                    },
+                    "borderRadius": {
+                        "xl": "1rem",
+                        "2xl": "1.5rem"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Cairo', sans-serif; }
+        h1, h2, h3, .font-tajawal { font-family: 'Tajawal', sans-serif; }
+        
+        .glass-sidebar {
+            background: rgba(30, 42, 74, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-item-active {
+            background: linear-gradient(90deg, rgba(39, 174, 96, 0.2) 0%, rgba(39, 174, 96, 0.1) 100%);
+            border-right: 4px solid #27AE60;
+            color: #27AE60;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <!-- SideNavBar -->
+        <aside class="fixed right-0 top-0 h-full w-72 z-50 glass-sidebar text-white flex flex-col shadow-2xl">
+            <div class="p-8 flex flex-col items-center gap-4">
+                <div class="relative">
+                    <div class="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/20 overflow-hidden rotate-3 hover:rotate-0 transition-transform duration-300">
+                        <img src="/images/morourak_logo.png" alt="Morourak Logo" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="absolute -bottom-1 -left-1 w-5 h-5 bg-white rounded-full flex items-center justify-center border-2 border-secondary">
+                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h1 class="font-headline text-xl font-bold tracking-tight text-white">نظام مرورك</h1>
+                    <p class="text-[10px] font-medium text-white/50 tracking-widest uppercase mt-1">بوابة الإدارة الداخلية</p>
+                </div>
+            </div>
+
+            <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+                <p class="px-4 text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-3">القائمة الرئيسية</p>
+                
+                <a asp-page="/Index" class="flex items-center gap-4 py-3 px-4 rounded-xl transition-all group @(ViewData["ActivePage"]?.ToString() == "Dashboard" ? "nav-item-active" : "text-white/70 hover:bg-white/5 hover:text-white")">
+                    <span class="material-symbols-outlined group-hover:scale-110 transition-transform">dashboard</span>
+                    <span class="font-headline font-medium">لوحة القيادة</span>
+                </a>
+
+                <!-- Admin Section -->
+                @if (User.IsInRole("ADMIN"))
+                {
+                    <div class="pt-4">
+                        <p class="px-4 text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-3">إدارة النظام</p>
+                        <a asp-page="/Admin/Users" class="flex items-center gap-4 py-3 px-4 rounded-xl transition-all group @(ViewData["ActivePage"]?.ToString() == "Users" ? "nav-item-active" : "text-white/70 hover:bg-white/5 hover:text-white")">
+                            <span class="material-symbols-outlined group-hover:scale-110 transition-transform">group</span>
+                            <span class="font-headline font-medium">إدارة المستخدمين</span>
+                        </a>
+                        <a asp-page="/Admin/Citizens" class="flex items-center gap-4 py-3 px-4 rounded-xl transition-all group @(ViewData["ActivePage"]?.ToString() == "Citizens" ? "nav-item-active" : "text-white/70 hover:bg-white/5 hover:text-white")">
+                            <span class="material-symbols-outlined group-hover:scale-110 transition-transform">person_pin</span>
+                            <span class="font-headline font-medium">إدارة المواطنين</span>
+                        </a>
+                        <a asp-page="/Admin/VehicleLicenses" class="flex items-center gap-4 py-3 px-4 rounded-xl transition-all group @(ViewData["ActivePage"]?.ToString() == "VehicleLicenses" ? "nav-item-active" : "text-white/70 hover:bg-white/5 hover:text-white")">
+                            <span class="material-symbols-outlined group-hover:scale-110 transition-transform">directions_car</span>
+                            <span class="font-headline font-medium">تراخيص المركبات</span>
+                        </a>
+                        <a asp-page="/Admin/DrivingLicenses" class="flex items-center gap-4 py-3 px-4 rounded-xl transition-all group @(ViewData["ActivePage"]?.ToString() == "DrivingLicenses" ? "nav-item-active" : "text-white/70 hover:bg-white/5 hover:text-white")">
+                            <span class="material-symbols-outlined group-hover:scale-110 transition-transform">badge</span>
+                            <span class="font-headline font-medium">تراخيص القيادة</span>
+                        </a>
+                    </div>
+                }
+
+                <!-- Staff Section -->
+                @if (User.IsInRole("DOCTOR") || User.IsInRole("EXAMINATOR") || User.IsInRole("INSPECTOR"))
+                {
+                    <div class="pt-4">
+                        <p class="px-4 text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-3">العمليات الميدانية</p>
+                        <a asp-page="/Staff/Appointments" class="flex items-center gap-4 py-3 px-4 rounded-xl transition-all group @(ViewData["ActivePage"]?.ToString() == "Appointments" ? "nav-item-active" : "text-white/70 hover:bg-white/5 hover:text-white")">
+                            <span class="material-symbols-outlined group-hover:scale-110 transition-transform">event_available</span>
+                            <span class="font-headline font-medium">قائمة المواعيد</span>
+                        </a>
+                    </div>
+                }
+            </nav>
+
+            <div class="p-6 mt-auto">
+                <form asp-page="/Account/Logout" method="post" id="logoutForm">
+                    <button type="submit" class="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-2xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-300 font-headline font-bold border border-red-500/20">
+                        <span class="material-symbols-outlined text-xl">logout</span>
+                        <span>تسجيل الخروج</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="mr-72 min-h-screen transition-all duration-300">
+            <header class="flex justify-between items-center w-full px-10 h-20 sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-primary/10">
+                <div class="flex flex-col">
+                    <h2 class="font-headline text-xl font-extrabold text-secondary">@ViewData["Title"]</h2>
+                    <p class="text-xs text-secondary/50 font-medium">أهلاً بك مجدداً، @User.Identity.Name</p>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <div class="hidden lg:flex items-center bg-background border border-primary/10 rounded-2xl px-4 py-2 w-72 focus-within:ring-2 ring-primary/20 transition-all">
+                        <span class="material-symbols-outlined text-secondary/40 text-lg">search</span>
+                        <input type="text" placeholder="بحث سريع..." class="bg-transparent border-none focus:ring-0 text-sm w-full font-medium" />
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button class="p-2.5 rounded-xl bg-background border border-primary/10 text-secondary hover:bg-primary hover:text-white transition-all relative">
+                            <span class="material-symbols-outlined text-xl">notifications</span>
+                            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+                        </button>
+                        
+                        <div class="h-8 w-[1px] bg-primary/10 mx-1"></div>
+
+                        <div class="flex items-center gap-3 bg-secondary p-1 pr-3 rounded-xl border border-white/10 shadow-md">
+                            <div class="text-right">
+                                <p class="text-[11px] font-bold text-white">@User.Identity.Name</p>
+                                <p class="text-[9px] text-primary font-bold uppercase tracking-wider">@(User.IsInRole("ADMIN") ? "مشرف النظام" : "طاقم العمل")</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-lg overflow-hidden border border-primary/30 bg-primary/10 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary">person</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-8">
+                @RenderBody()
+            </div>
+        </main>
+    }
+    else
+    {
+        @RenderBody()
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -11,8 +11,8 @@ public class DrivingLicenseResponseDto
     public string Category { get; set; }
     public string Governorate { get; set; }
     public string LicensingUnit { get; set; }
-    public DateOnly IssueDate { get; set; }
-    public DateOnly ExpiryDate { get; set; }
+    public string IssueDate { get; set; } = string.Empty;
+    public string ExpiryDate { get; set; } = string.Empty;
     public string Status { get; set; }
     public string CitizenName { get; set; }
     public DeliveryInfoDto Delivery { get; set; }

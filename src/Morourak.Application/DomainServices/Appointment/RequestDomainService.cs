@@ -18,20 +18,28 @@ public sealed class RequestDomainService : IRequestDomainService
     public async Task<ServiceRequest?> FindPrimaryServiceRequestAsync(
         string nationalId,
         AppointmentType appointmentType,
-        CancellationToken cancellationToken)
+        string? requestNumber = null,
+        CancellationToken cancellationToken = default)
     {
         var repo = _unitOfWork.Repository<ServiceRequest>();
 
-        var primaryServiceTypes = GetPrimaryServiceTypesForAppointment(appointmentType);
+        // 1. If explicit requestNumber provided, use it directly (security check: must belong to the citizen)
+        if (!string.IsNullOrEmpty(requestNumber))
+        {
+            return await repo.GetAsync(sr => 
+                sr.RequestNumber == requestNumber && 
+                sr.CitizenNationalId == nationalId &&
+                sr.Status != RequestStatus.Cancelled);
+        }
 
-        // Consider only active/non-cancelled requests.
+        // 2. Fallback to latest logic if no requestNumber provided
+        var primaryServiceTypes = GetPrimaryServiceTypesForAppointment(appointmentType);
         var relatedRequests = await repo.FindAsync(sr =>
             sr.CitizenNationalId == nationalId &&
             sr.ReferenceId > 0 &&
             primaryServiceTypes.Contains(sr.ServiceType) &&
             sr.Status != RequestStatus.Cancelled);
 
-        // Pick the latest request with the expected prefix for that service.
         return relatedRequests
             .Where(sr =>
                 sr.RequestNumber.StartsWith(

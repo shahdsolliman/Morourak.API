@@ -206,7 +206,9 @@ public class IdentityService : IIdentityService
             IsSuccess = true,
             Token = accessToken,
             RefreshToken = refreshToken,
-            Roles = roles.ToList()
+            Roles = roles.ToList(),
+            Username = user.UserName,
+            FullName = $"{user.FirstName} {user.LastName}".Trim()
         };
     }
 
@@ -262,5 +264,94 @@ public class IdentityService : IIdentityService
             phone = "0" + phone.Substring(3);
 
         return phone;
+    }
+
+    public async Task<AuthResponseDto> RequestChangeEmailAsync(string userId, string newEmail)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new AuthResponseDto { IsSuccess = false, Message = "المستخدم غير موجود.", ErrorCode = "USER_NOT_FOUND" };
+
+        if (await _userManager.Users.AnyAsync(u => u.Email == newEmail))
+            return new AuthResponseDto { IsSuccess = false, Message = "البريد الإلكتروني مسجل بالفعل لمستخدم آخر.", ErrorCode = "EMAIL_EXISTS" };
+
+        // Send OTP to the NEW email
+        await _otpService.GenerateAndSendAsync(newEmail, OtpType.ChangeEmail);
+
+        return new AuthResponseDto
+        {
+            IsSuccess = true,
+            Message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني الجديد."
+        };
+    }
+
+    public async Task<AuthResponseDto> ConfirmChangeEmailAsync(string userId, string newEmail, string code)
+    {
+        var isValid = await _otpService.ValidateAsync(newEmail, code);
+        if (!isValid)
+            return new AuthResponseDto { IsSuccess = false, Message = "رمز التحقق غير صحيح أو منتهي الصلاحية.", ErrorCode = "INVALID_OTP" };
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new AuthResponseDto { IsSuccess = false, Message = "المستخدم غير موجود.", ErrorCode = "USER_NOT_FOUND" };
+
+        var token = await _userManager.GenerateChangeEmailTokenAsync(user, newEmail);
+        var result = await _userManager.ChangeEmailAsync(user, newEmail, token);
+
+        if (!result.Succeeded)
+        {
+            var error = result.Errors.FirstOrDefault()?.Description ?? "فشل في تحديث البريد الإلكتروني.";
+            return new AuthResponseDto { IsSuccess = false, Message = error, ErrorCode = "CHANGE_EMAIL_FAILED" };
+        }
+
+        return new AuthResponseDto
+        {
+            IsSuccess = true,
+            Message = "تم تغيير البريد الإلكتروني بنجاح."
+        };
+    }
+
+    public async Task<AuthResponseDto> ForgotPasswordAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        
+        // Security: Don't reveal if user exists or not
+        if (user != null)
+        {
+            await _otpService.GenerateAndSendAsync(email, OtpType.ResetPassword);
+        }
+
+        return new AuthResponseDto
+        {
+            IsSuccess = true,
+            Message = "إذا كان هذا البريد مسجلاً لدينا، فقد أرسلنا رمز التحقق إليه."
+        };
+    }
+
+    public async Task<AuthResponseDto> ResetPasswordAsync(ResetPasswordDto request)
+    {
+        var isValid = await _otpService.ValidateAsync(request.Email, request.Code);
+        if (!isValid)
+            return new AuthResponseDto { IsSuccess = false, Message = "رمز التحقق غير صحيح أو منتهي الصلاحية.", ErrorCode = "INVALID_OTP" };
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return new AuthResponseDto { IsSuccess = false, Message = "المستخدم غير موجود.", ErrorCode = "USER_NOT_FOUND" };
+
+        // Generate reset token and reset password
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            var error = result.Errors.FirstOrDefault()?.Description ?? "فشل في إعادة تعيين كلمة المرور.";
+            return new AuthResponseDto { IsSuccess = false, Message = error, ErrorCode = "RESET_PASSWORD_FAILED" };
+        }
+
+        return new AuthResponseDto
+        {
+            IsSuccess = true,
+            Message = "تم إعادة تعيين كلمة المرور بنجاح."
+        };
     }
 }

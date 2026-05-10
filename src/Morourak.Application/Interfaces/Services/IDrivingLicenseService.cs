@@ -17,16 +17,20 @@ namespace Morourak.Application.Interfaces
             string nationalId,
             UploadDrivingLicenseDocumentsDto dto);
 
+        Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeLicenseAsync(
+            string requestNumber, 
+            string nationalId, 
+            DeliveryInfoDto delivery);
 
-        Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeLicenseAsync(string requestNumber, string nationalId, DeliveryInfoDto delivery);
+        Task<DrivingLicenseResponseDto> CompleteIssuanceAsync(string requestNumber);
 
         #endregion
 
         #region Renew License
 
         Task<RenewalApplicationDto> SubmitRenewalRequestAsync(
-    string nationalId,
-    SubmitRenewalRequestDto dto);
+            string nationalId,
+            SubmitRenewalRequestDto dto);
 
         Task<Morourak.Application.DTOs.ServiceRequestDto> FinalizeRenewalAsync(
             string requestNumber,
@@ -45,23 +49,20 @@ namespace Morourak.Application.Interfaces
 
         #endregion
 
-        #region Issuance
-
-        Task<DrivingLicenseResponseDto> CompleteIssuanceAsync(string requestNumber);
-
-        #endregion
-
         #region Queries
 
         Task<IEnumerable<DrivingLicenseDto>> GetAllLicensesByCitizenAsync(
             string nationalId);
 
+        Task<DrivingLicenseApplicationDto> GetApplicationByIdAsync(int applicationId, string nationalId);
+
         #endregion
 
-        Task<DrivingLicenseApplication> GetApplicationByIdAsync(int applicationId, string nationalId);
+        #region Examination Results
 
         // BUG 3 FIX: Exposed so ExaminatorController can submit driving exam results
         Task SubmitAppointmentResultAsync(int applicationId, AppointmentType type, bool passed, string? notes);
 
+        #endregion
     }
 }

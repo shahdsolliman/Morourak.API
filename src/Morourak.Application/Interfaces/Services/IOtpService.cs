@@ -3,7 +3,8 @@ namespace Morourak.Application.Interfaces.Services
     public enum OtpType
     {
         Register,
-        ResetPassword
+        ResetPassword,
+        ChangeEmail
     }
 
     public interface IOtpService

@@ -11,5 +11,10 @@ namespace Morourak.Application.Interfaces.Services
             bool passed,
             string? notes,
             string staffUserId);
+
+        Task UpdateStatusAsync(int id, AppointmentStatus status, string? notes, string staffUserId);
+
+        // ================= Assignment =================
+        Task AssignStaffAsync(int appointmentId, string staffId, string staffName);
     }
 }

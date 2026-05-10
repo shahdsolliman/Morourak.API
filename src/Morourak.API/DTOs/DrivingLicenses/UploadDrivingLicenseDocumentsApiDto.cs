@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Driving;
 
@@ -30,20 +30,14 @@ namespace Morourak.API.DTOs.DrivingLicenses
         public IFormFile IdCard { get; set; } = null!;
 
         /// <summary>
-        /// Scanned proof of residence file.
+        /// Scanned proof of residence file (optional).
         /// </summary>
-        public IFormFile ResidenceProof { get; set; } = null!;
+        public IFormFile? ResidenceProof { get; set; }
 
         /// <summary>
-        /// Selected governorate name.
+        /// Scanned medical certificate file (optional). 
+        /// If provided, medical examination booking is not required.
         /// </summary>
-        /// <example>Cairo</example>
-        public string Governorate { get; set; } = null!;
-
-        /// <summary>
-        /// Selected traffic unit name.
-        /// </summary>
-        /// <example>Nasr City Unit</example>
-        public string LicensingUnit { get; set; } = null!;
+        public IFormFile? MedicalCertificate { get; set; }
     }
 }

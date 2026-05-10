@@ -1,4 +1,4 @@
-﻿using Morourak.Domain.Common;
+using Morourak.Domain.Common;
 using Morourak.Domain.Enums.Appointments;
 
 namespace Morourak.Domain.Entities
@@ -24,6 +24,10 @@ namespace Morourak.Domain.Entities
         // Location: stored at booking time so it never relies on cache
         public int GovernorateId { get; set; }
         public int TrafficUnitId { get; set; }
+
+        // Assignment: link to the staff member (ApplicationUser ID)
+        public string? StaffId { get; set; }
+        public string? StaffName { get; set; }
 
         // Navigation properties
         public virtual Governorate? Governorate { get; set; }

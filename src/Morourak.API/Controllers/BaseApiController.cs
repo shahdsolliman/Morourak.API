@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Morourak.Application.Exceptions;
+using Morourak.Application.Common;
 using System.Security.Claims;
 
 namespace Morourak.API.Controllers;
@@ -33,6 +34,12 @@ public abstract class BaseApiController : ControllerBase
             return userId;
         }
     }
+
+    protected IActionResult Success<T>(T data, string? message = null)
+        => Ok(new ApiResponse<T> { IsSuccess = true, Details = data, Message = message });
+
+    protected IActionResult SuccessPaginated<T>(IEnumerable<T> data, int page, int pageSize, int total, string? message = null)
+        => Ok(new PagedApiResponse<T>(data, page, pageSize, total, message));
 
     protected async Task<byte[]> ToByteArrayAsync(IFormFile file)
     {

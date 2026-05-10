@@ -11,7 +11,8 @@ public sealed record CreateAppointmentCommand(
     DateOnly Date,
     TimeOnly Time,
     int GovernorateId,
-    int TrafficUnitId) : IRequest<BookingConfirmationDto>, IInvalidateCacheRequest
+    int TrafficUnitId,
+    string? RequestNumber = null) : IRequest<BookingConfirmationDto>, IInvalidateCacheRequest
 {
     public string[] CacheKeysToInvalidate => new[] { $"user:{NationalId}:appointments:*" };
 }

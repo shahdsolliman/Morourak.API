@@ -32,7 +32,7 @@ namespace Morourak.Application.Services
             // Notes are accepted for auditing/extension, even if not persisted yet.
             _ = notes;
 
-            var appointmentRepo = _unitOfWork.Repository<Appointment>();
+            var appointmentRepo = _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>();
             var now = DateTime.UtcNow;
 
             var appointment = (await appointmentRepo.FindAsync(a =>
@@ -95,6 +95,84 @@ namespace Morourak.Application.Services
             serviceRequest.LastUpdatedAt = now;
             serviceRequestRepo.Update(serviceRequest);
 
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async Task UpdateStatusAsync(int id, AppointmentStatus status, string? notes, string staffUserId)
+        {
+            var appointmentRepo = _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>();
+            var appointment = await appointmentRepo.GetByIdAsync(id);
+
+            if (appointment == null)
+                throw new AppEx.ValidationException("الموعد غير موجود.", "APPOINTMENT_NOT_FOUND");
+
+            if (string.IsNullOrEmpty(appointment.StaffId))
+            {
+                appointment.StaffId = staffUserId;
+                // Note: In a real system, we might fetch the staff name from IdentityService here.
+                // For now, we just assign the ID.
+            }
+
+            appointment.Status = status;
+            appointment.UpdatedAt = DateTime.UtcNow;
+            
+            appointmentRepo.Update(appointment);
+
+            // If status is Passed or Failed, we might need to update the related ServiceRequest
+            // We can reuse the logic from the other UpdateStatusAsync if needed
+            if (status == AppointmentStatus.Passed || status == AppointmentStatus.Failed)
+            {
+                var passed = status == AppointmentStatus.Passed;
+                var serviceRequestRepo = _unitOfWork.Repository<ServiceRequest>();
+                var serviceRequest = await serviceRequestRepo.GetAsync(sr => sr.RequestNumber == appointment.RequestNumber);
+                
+                if (serviceRequest != null)
+                {
+                    await UpdateApplicationAppointmentResultAsync(serviceRequest, appointment.Type, passed);
+                    
+                    var requiredTypes = await GetRequiredAppointmentTypesAsync(serviceRequest);
+                    var requestAppointments = await appointmentRepo.FindAsync(a => a.RequestNumber == appointment.RequestNumber);
+
+                    var allRequiredPassed = requiredTypes.All(requiredType =>
+                        requestAppointments.Any(a =>
+                            a.Type == requiredType &&
+                            a.Status == AppointmentStatus.Passed));
+
+                    var anyRequiredFailed = requiredTypes.Any(requiredType =>
+                        requestAppointments.Any(a =>
+                            a.Type == requiredType &&
+                            a.Status == AppointmentStatus.Failed));
+
+                    if (serviceRequest.Status == RequestStatus.Pending || 
+                        serviceRequest.Status == RequestStatus.InProgress)
+                    {
+                        serviceRequest.Status = allRequiredPassed
+                            ? RequestStatus.ReadyForProcessing
+                            : anyRequiredFailed
+                                ? RequestStatus.Failed
+                                : RequestStatus.Pending;
+                    }
+                    serviceRequest.LastUpdatedAt = DateTime.UtcNow;
+                    serviceRequestRepo.Update(serviceRequest);
+                }
+            }
+
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async Task AssignStaffAsync(int appointmentId, string staffId, string staffName)
+        {
+            var appointmentRepo = _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>();
+            var appointment = await appointmentRepo.GetByIdAsync(appointmentId);
+
+            if (appointment == null)
+                throw new AppEx.ValidationException("الموعد غير موجود.", "APPOINTMENT_NOT_FOUND");
+
+            appointment.StaffId = staffId;
+            appointment.StaffName = staffName;
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            appointmentRepo.Update(appointment);
             await _unitOfWork.CommitAsync();
         }
 
@@ -234,7 +312,7 @@ namespace Morourak.Application.Services
 
                 default:
                 {
-                    var appointments = await _unitOfWork.Repository<Appointment>()
+                    var appointments = await _unitOfWork.Repository<Morourak.Domain.Entities.Appointment>()
                         .FindAsync(a => a.RequestNumber == serviceRequest.RequestNumber);
 
                     return appointments

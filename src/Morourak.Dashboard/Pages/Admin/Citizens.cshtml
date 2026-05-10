@@ -1,0 +1,186 @@
+@page
+@model Morourak.Dashboard.Pages.Admin.CitizensModel
+@{
+    ViewData["Title"] = "سجل المواطنين";
+    ViewData["ActivePage"] = "Citizens";
+    var totalCitizens = Model.Citizens.Count();
+}
+
+<div class="animate-fade-in space-y-lg">
+    <!-- Header Section -->
+    <header class="flex items-center justify-between">
+        <div class="space-y-1">
+            <nav class="flex items-center gap-xs text-secondary/50 text-[12px] font-bold">
+                <a class="hover:text-primary" asp-page="/Index">الرئيسية</a>
+                <span class="material-symbols-outlined text-[14px]">chevron_left</span>
+                <span class="text-primary">سجل المواطنين</span>
+            </nav>
+            <h1 class="font-headline text-3xl font-extrabold text-secondary">سجل المواطنين</h1>
+            <p class="text-secondary/50 text-sm font-medium">إدارة بيانات المواطنين وتراخيصهم المسجلة في النظام</p>
+        </div>
+        <div class="flex items-center gap-md">
+            <button class="flex items-center gap-sm px-6 py-3 rounded-xl border border-primary text-primary hover:bg-primary/5 transition-all font-bold text-sm">
+                <span class="material-symbols-outlined text-xl">file_download</span>
+                تصدير البيانات
+            </button>
+            <button class="flex items-center gap-sm px-6 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all font-bold text-sm">
+                <span class="material-symbols-outlined text-xl">person_add</span>
+                إضافة مواطن جديد
+            </button>
+        </div>
+    </header>
+
+    <!-- Summary KPI Bento Grid -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+        <div class="bg-white p-6 rounded-2xl flex items-center justify-between border-r-4 border-r-primary shadow-sm border border-primary/10">
+            <div>
+                <p class="text-secondary/50 text-[12px] font-bold mb-1">إجمالي المواطنين</p>
+                <h3 class="font-headline text-2xl font-black text-secondary">@totalCitizens.ToString("N0")</h3>
+                <div class="flex items-center gap-xs text-primary text-[10px] mt-2 font-bold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-[14px]">trending_up</span>
+                    <span>محدث لحظياً</span>
+                </div>
+            </div>
+            <div class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-3xl">groups</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl flex items-center justify-between border-r-4 border-r-secondary shadow-sm border border-primary/10">
+            <div>
+                <p class="text-secondary/50 text-[12px] font-bold mb-1">المحافظات النشطة</p>
+                <h3 class="font-headline text-2xl font-black text-secondary">27</h3>
+                <p class="text-secondary/30 text-[10px] mt-2 font-bold">تغطية كاملة للجمهورية</p>
+            </div>
+            <div class="w-14 h-14 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
+                <span class="material-symbols-outlined text-3xl">map</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl flex items-center justify-between border-r-4 border-r-orange-500 shadow-sm border border-primary/10">
+            <div>
+                <p class="text-secondary/50 text-[12px] font-bold mb-1">وحدات المرور</p>
+                <h3 class="font-headline text-2xl font-black text-secondary">142</h3>
+                <div class="flex items-center gap-xs text-orange-600 text-[10px] mt-2 font-bold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-[14px]">pumping_station</span>
+                    <span>ربط إلكتروني متكامل</span>
+                </div>
+            </div>
+            <div class="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
+                <span class="material-symbols-outlined text-3xl">local_police</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Search & Filter Bar -->
+    <section class="bg-white p-6 rounded-2xl shadow-sm border border-primary/10 flex flex-col md:flex-row gap-lg items-end">
+        <div class="flex-1 space-y-2">
+            <label class="block text-xs font-bold text-secondary/60 pr-1 uppercase tracking-widest">البحث عن مواطن</label>
+            <div class="relative">
+                <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-secondary/40">search</span>
+                <input class="w-full pr-12 pl-4 py-3 bg-background border border-primary/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium" placeholder="ابحث بالاسم أو الرقم القومي..." type="text"/>
+            </div>
+        </div>
+        <div class="w-64 space-y-2">
+            <label class="block text-xs font-bold text-secondary/60 pr-1 uppercase tracking-widest">المحافظة</label>
+            <select class="w-full px-4 py-3 bg-background border border-primary/10 rounded-xl focus:ring-2 focus:ring-primary text-sm font-bold appearance-none">
+                <option>الكل</option>
+                <option>القاهرة</option>
+                <option>الجيزة</option>
+                <option>الإسكندرية</option>
+            </select>
+        </div>
+        <button class="bg-background p-3.5 rounded-xl border border-primary/5 hover:bg-primary/5 transition-all text-secondary/40">
+            <span class="material-symbols-outlined">filter_list</span>
+        </button>
+    </section>
+
+    <!-- Polished Data Table -->
+    <section class="bg-white rounded-2xl overflow-hidden shadow-sm border border-primary/10">
+        <table class="w-full text-right border-collapse">
+            <thead>
+                <tr class="bg-background border-b border-primary/10">
+                    <th class="px-lg py-4 text-xs font-black text-secondary/40 uppercase tracking-widest">المواطن</th>
+                    <th class="px-lg py-4 text-xs font-black text-secondary/40 uppercase tracking-widest">الرقم القومي</th>
+                    <th class="px-lg py-4 text-xs font-black text-secondary/40 uppercase tracking-widest">بيانات التواصل</th>
+                    <th class="px-lg py-4 text-xs font-black text-secondary/40 uppercase tracking-widest">الموقع والوحدة</th>
+                    <th class="px-lg py-4 text-xs font-black text-secondary/40 uppercase tracking-widest text-center">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-primary/5">
+                @foreach (dynamic item in Model.Citizens)
+                {
+                    var citizen = (System.Text.Json.JsonElement)item;
+                    
+                    // Robust case-insensitive helper to get property value safely
+                    string GetProp(string name, string fallback = "---") {
+                        try {
+                            System.Text.Json.JsonElement val;
+                            if (citizen.TryGetProperty(name, out val)) 
+                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
+                                
+                            string camel = char.ToLower(name[0]) + name.Substring(1);
+                            if (citizen.TryGetProperty(camel, out val)) 
+                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
+                        } catch { }
+                        return fallback;
+                    }
+
+                    var firstName = GetProp("FirstName", "غير معروف");
+                    var lastName = GetProp("LastName", "");
+                    var nationalId = GetProp("NationalId");
+                    var phone = GetProp("MobileNumber");
+                    var gov = GetProp("Governorate");
+                    var unit = GetProp("LicensingUnit");
+
+                    <tr class="hover:bg-primary/[0.02] transition-colors group">
+                        <td class="px-lg py-4">
+                            <div class="flex items-center gap-md">
+                                <div class="w-12 h-12 rounded-2xl bg-background flex items-center justify-center border border-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                                    <span class="material-symbols-outlined text-2xl">person</span>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-secondary">@firstName @(lastName == "---" ? "" : lastName)</p>
+                                    <p class="text-[10px] text-secondary/40 font-bold uppercase tracking-tighter">مواطن مسجل</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-lg py-4">
+                            <span class="font-mono text-sm tracking-widest bg-background px-3 py-1.5 rounded-lg border border-primary/5 text-secondary">@nationalId</span>
+                        </td>
+                        <td class="px-lg py-4">
+                            <div class="space-y-1">
+                                <p class="flex items-center gap-xs text-sm font-bold text-secondary">
+                                    <span class="material-symbols-outlined text-[16px] text-primary">call</span>
+                                    @phone
+                                </p>
+                            </div>
+                        </td>
+                        <td class="px-lg py-4">
+                            <p class="font-bold text-secondary text-sm">@gov</p>
+                            <p class="text-secondary/50 text-[11px] font-medium">@unit</p>
+                        </td>
+                        <td class="px-lg py-4">
+                            <div class="flex items-center justify-center gap-sm">
+                                <button class="p-2.5 rounded-xl hover:bg-primary/10 text-primary transition-all active:scale-95" title="عرض التفاصيل">
+                                    <span class="material-symbols-outlined text-xl">visibility</span>
+                                </button>
+                                <button class="p-2.5 rounded-xl hover:bg-secondary/10 text-secondary transition-all active:scale-95" title="تعديل البيانات">
+                                    <span class="material-symbols-outlined text-xl">edit</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="px-lg py-4 bg-background border-t border-primary/5 flex items-center justify-between">
+            <div class="text-secondary/50 text-xs font-bold">
+                عرض @totalCitizens من أصل @totalCitizens مواطن
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-primary text-white font-black shadow-md shadow-primary/20">1</button>
+            </div>
+        </div>
+    </section>
+</div>

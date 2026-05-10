@@ -1,4 +1,4 @@
-﻿using Morourak.Domain.Enums;
+using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Driving;
 
 namespace Morourak.Application.DTOs.DrivingLicenses
@@ -17,16 +17,6 @@ namespace Morourak.Application.DTOs.DrivingLicenses
         /// Requested license category.
         /// </summary>
         public string Category { get; set; } 
-
-        /// <summary>
-        /// Selected governorate for the application.
-        /// </summary>
-        public string Governorate { get; set; } = null!; 
-
-        /// <summary>
-        /// Selected traffic unit for the application.
-        /// </summary>
-        public string LicensingUnit { get; set; } = null!;
 
         /// <summary>
         /// Current status of the application (e.g., Pending, Approved).

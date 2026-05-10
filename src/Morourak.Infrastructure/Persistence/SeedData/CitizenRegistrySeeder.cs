@@ -45,7 +45,9 @@ namespace Morourak.Infrastructure.Persistence.SeedData
                     NationalId = c.NationalId,
                     MobileNumber = c.MobileNumber,
                     FirstName = c.FirstName,
-                    LastName = c.LastName
+                    LastName = c.LastName,
+                    Governorate = c.Governorate,
+                    LicensingUnit = c.LicensingUnit
                 })
                 .ToList();
 

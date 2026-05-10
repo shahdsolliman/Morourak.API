@@ -31,6 +31,25 @@ namespace Morourak.API.Extensions
                     ValidAudience = jwtSettings["Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(key) { KeyId = "MorourakSecretKey" }
                 };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = context =>
+                    {
+                        context.HandleResponse();
+                        context.Response.StatusCode = 401;
+                        context.Response.ContentType = "application/json";
+                        var result = System.Text.Json.JsonSerializer.Serialize(new { isSuccess = false, message = "غير مصرح بالدخول. يرجى تسجيل الدخول أولاً.", errorCode = "UNAUTHORIZED" });
+                        return context.Response.WriteAsync(result);
+                    },
+                    OnForbidden = context =>
+                    {
+                        context.Response.StatusCode = 403;
+                        context.Response.ContentType = "application/json";
+                        var result = System.Text.Json.JsonSerializer.Serialize(new { isSuccess = false, message = "ليس لديك الصلاحية للقيام بهذا الإجراء.", errorCode = "FORBIDDEN" });
+                        return context.Response.WriteAsync(result);
+                    }
+                };
             });
 
             return services;

@@ -11,6 +11,7 @@ using Morourak.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Morourak.Infrastructure.Settings;
+using AutoMapper;
 
 namespace Morourak.Infrastructure.Services;
 
@@ -24,6 +25,7 @@ public class PaymentService : IPaymentService
     private readonly IDrivingLicenseService _drivingService;
     private readonly IVehicleLicenseService _vehicleService;
     private readonly PaymentSettings _paymentSettings;
+    private readonly IMapper _mapper;
 
     public PaymentService(
         IUnitOfWork unitOfWork,
@@ -33,7 +35,8 @@ public class PaymentService : IPaymentService
         IVehicleLicenseService vehicleService,
         ILogger<PaymentService> logger,
         UserManager<ApplicationUser> userManager,
-        IOptions<PaymentSettings> paymentSettings
+        IOptions<PaymentSettings> paymentSettings,
+        IMapper mapper
        )
     {
         _unitOfWork = unitOfWork;
@@ -44,6 +47,7 @@ public class PaymentService : IPaymentService
         _logger = logger;
         _userManager = userManager;
         _paymentSettings = paymentSettings.Value;
+        _mapper = mapper;
     }
 
     public async Task<PaymobPaymentResponse> CreatePaymentAsync(PaymentCreateRequest dto)
@@ -52,36 +56,18 @@ public class PaymentService : IPaymentService
         if (string.IsNullOrEmpty(nationalId))
             throw new AppEx.UnauthorizedException("المستخدم غير مصرح له.");
 
-        // ── IDEMPOTENCY GUARD ─────────────────────────────────────────────────
-        // Before hitting Paymob, check whether a non-Failed Payment already
-        // exists for this service request. This protects against:
-        //   1. Flutter double-tap on the Pay button
-        //   2. Network retry that fires the request twice
-        // A Failed payment is allowed to be re-created (user may retry).
-        // ─────────────────────────────────────────────────────────────────────
         if (!string.IsNullOrEmpty(dto.ServiceRequestNumber))
         {
-            var existing = await _unitOfWork.Repository<Payment>().GetAsync(
-                p => p.ServiceRequestNumber  == dto.ServiceRequestNumber
+            // Only block if the payment is already SUCCESSFUL (Paid).
+            // If it's Pending or Failed, allow creating a new attempt to get a fresh token/URL.
+            var existingPaid = await _unitOfWork.Repository<Payment>().GetAsync(
+                p => p.ServiceRequest != null && p.ServiceRequest.RequestNumber == dto.ServiceRequestNumber
                   && p.CitizenNationalId     == nationalId
-                  && p.Status               != PaymentStatus.Failed);
+                  && p.Status               == PaymentStatus.Paid);
 
-            if (existing != null)
+            if (existingPaid != null)
             {
-                _logger.LogWarning(
-                    "IDEMPOTENCY_HIT: Payment {MerchantOrderId} already exists for ServiceRequest {ServiceRequestNumber}. Returning cached response.",
-                    existing.MerchantOrderId, dto.ServiceRequestNumber);
-
-                // Reconstruct the response from the stored record so the client
-                // gets the same data it would have received on first creation.
-                return new PaymobPaymentResponse
-                {
-                    PaymentId      = existing.Id,
-                    MerchantOrderId = existing.MerchantOrderId,
-                    PaymobOrderId  = existing.PaymobOrderId ?? string.Empty,
-                    PaymentToken   = string.Empty,  // token is short-lived; client uses PaymentUrl
-                    PaymentUrl     = $"https://accept.paymob.com/api/acceptance/iframes/0?payment_token=EXPIRED"
-                };
+                throw new AppEx.ValidationException("هذا الطلب تم دفعه بنجاح بالفعل.", "ALREADY_PAID");
             }
         }
 
@@ -90,13 +76,11 @@ public class PaymentService : IPaymentService
         if (totalAmount <= 0)
             throw new AppEx.ValidationException("المبلغ الإجمالي يجب أن يكون أكبر من صفر.", "INVALID_AMOUNT");
 
-        // Format: MOR-{yyyyMMdd}-{Guid:N:16} (Total 32 chars)
         var merchantOrderId = $"MOR-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid():N}".Substring(0, 32);
 
         _logger.LogInformation(
             "PAYMENT_CREATE_ATTEMPT: MerchantOrderId={MerchantOrderId}, NationalId={NationalId}, Amount={Amount} EGP",
             merchantOrderId, nationalId, totalAmount);
-
 
         var citizen = await _unitOfWork.Repository<CitizenRegistry>()
                 .GetAsync(c => c.NationalId == _currentUser.NationalId);
@@ -104,7 +88,7 @@ public class PaymentService : IPaymentService
         if (citizen == null)
             throw new AppEx.NotFoundException($"لم يتم العثور على المواطن بالرقم القومي {_currentUser.NationalId}.");
 
-        var user = await _userManager.FindByNameAsync(_currentUser.NationalId); // ApplicationUser
+        var user = await _userManager.FindByNameAsync(_currentUser.NationalId);
 
         var email = user?.Email ?? $"{citizen.NationalId}@morourak.gov.eg";
 
@@ -121,7 +105,6 @@ public class PaymentService : IPaymentService
             "NA"                      
         );
 
-        // 2. Create Payment record
         var payment = new Payment
         {
             MerchantOrderId = merchantOrderId,
@@ -129,24 +112,20 @@ public class PaymentService : IPaymentService
             Amount = totalAmount,
             Status = PaymentStatus.Pending,
             CitizenNationalId = nationalId,
-            ServiceRequestNumber = dto.ServiceRequestNumber,
             CreatedAt = DateTime.UtcNow,
-            // Do not set a temporary TransactionId here to avoid unique constraint conflicts
-            // if the payment is recreated or retried before finalization.
             TransactionId = null 
         };
 
-        // Add Service Request Item (Batch fetch later if multiple, but here it's single)
         if (!string.IsNullOrEmpty(dto.ServiceRequestNumber))
         {
             var request = await _unitOfWork.Repository<ServiceRequest>().GetAsync(r => r.RequestNumber == dto.ServiceRequestNumber);
             if (request != null)
             {
+                payment.ServiceRequestId = request.Id;
                 payment.PaymentItems.Add(new PaymentItem { Description = $"رسوم {request.ServiceType}", Amount = request.TotalAmount });
             }
         }
 
-        // Optimized Batch fetch for Violations
         if (dto.ViolationIds != null && dto.ViolationIds.Any())
         {
             var violations = await _unitOfWork.Repository<TrafficViolation>()
@@ -184,19 +163,10 @@ public class PaymentService : IPaymentService
         var citizen = await _unitOfWork.Repository<CitizenRegistry>()
             .GetAsync(c => c.NationalId == payment.CitizenNationalId);
 
-        return new PaymentReceiptDto
-        {
-            TransactionId = payment.TransactionId ?? "N/A",
-            MerchantOrderId = payment.MerchantOrderId,
-            TotalAmount = payment.Amount,
-            PaidAt = payment.PaidAt ?? DateTime.UtcNow,
-            CitizenName = citizen != null ? $"{citizen.FirstName} {citizen.LastName}" : "مواطن",
-            Items = payment.PaymentItems.Select(i => new ReceiptItemDto 
-            { 
-                Description = i.Description, 
-                Amount = i.Amount 
-            }).ToList()
-        };
+        var receipt = _mapper.Map<PaymentReceiptDto>(payment);
+        receipt.CitizenName = citizen != null ? $"{citizen.FirstName} {citizen.LastName}" : "مواطن";
+        
+        return receipt;
     }
 
     public async Task<bool> FinalizePaymentAsync(string paymobOrderId, string transactionId, bool success, string? merchantOrderId = null)
@@ -227,41 +197,33 @@ public class PaymentService : IPaymentService
 
             if (payment.Status == PaymentStatus.Paid)
             {
-                // ── IDEMPOTENCY: duplicate webhook ────────────────────────────────
-                // Paymob may deliver the same webhook more than once (at-least-once
-                // delivery). We must silently acknowledge it (return 200) but NEVER
-                // mutate state a second time. Log at Warning so this is easily
-                // queryable in production when investigating payment discrepancies.
-                // ─────────────────────────────────────────────────────────────────
                 _logger.LogWarning(
                     "DUPLICATE_WEBHOOK_IGNORED: Payment {MerchantOrderId} (TransactionId={TransactionId}) is already Paid. No state mutation performed.",
                     payment.MerchantOrderId, payment.TransactionId);
                 return true;
             }
 
-            // Idempotency guard: if a Failed payment is retried with the same transactionId
-            // (e.g., Paymob sends the webhook twice), skip re-setting TransactionId to avoid
-            // a unique constraint violation and just update the status.
             bool transactionAlreadySet = payment.TransactionId == transactionId
                 && !string.IsNullOrEmpty(transactionId);
 
             if (!transactionAlreadySet)
                 payment.TransactionId = transactionId;
 
-            // Use atomic transaction for finalization
             await _unitOfWork.BeginTransactionAsync();
             try
             {
+                // Clear tracking at the START to avoid conflicts with previous operations in the same scope
+                _unitOfWork.ClearTracking();
+
                 if (success)
                 {
                     payment.Status = PaymentStatus.Paid;
                     payment.PaidAt = DateTime.UtcNow;
 
-                    // Update Service Request
-                    if (!string.IsNullOrEmpty(payment.ServiceRequestNumber))
+                    if (payment.ServiceRequestId.HasValue)
                     {
                         var request = await _unitOfWork.Repository<ServiceRequest>()
-                            .GetAsync(x => x.RequestNumber == payment.ServiceRequestNumber);
+                            .GetByIdAsync(payment.ServiceRequestId.Value);
 
                         if (request != null && request.PaymentStatus != PaymentStatus.Paid)
                         {
@@ -274,18 +236,16 @@ public class PaymentService : IPaymentService
 
                             _unitOfWork.Repository<ServiceRequest>().Update(request);
 
-                            // License completion logic (Internal CommitAsync should be removed in these methods)
                             if (IsDrivingLicenseService(request.ServiceType))
                                 await _drivingService.CompleteIssuanceAsync(request.RequestNumber);
                             else if (IsVehicleLicenseService(request.ServiceType))
                                 await _vehicleService.CompleteIssuanceAsync(request.RequestNumber);
 
-                            request.Status = RequestStatus.Completed; // Move to Completed ONLY after everything succeeds
+                            request.Status = RequestStatus.Completed; 
                             _unitOfWork.Repository<ServiceRequest>().Update(request);
                         }
                     }
 
-                    // Update Violations
                     if (payment.PaymentViolations.Any())
                     {
                         var violationIds = payment.PaymentViolations.Select(pv => pv.TrafficViolationId).ToList();
@@ -316,11 +276,9 @@ public class PaymentService : IPaymentService
                 {
                     payment.Status = PaymentStatus.Failed;
                 }
+                payment.PaidAt = DateTime.UtcNow;
 
-                // Explicitly mark the payment as updated because GetAsync uses AsNoTracking()
                 _unitOfWork.Repository<Payment>().Update(payment);
-
-                // Commit all changes in one go
                 await _unitOfWork.CommitAsync();
                 await _unitOfWork.CommitTransactionAsync();
 
@@ -334,7 +292,7 @@ public class PaymentService : IPaymentService
             {
                 await _unitOfWork.RollbackTransactionAsync();
                 _logger.LogError(ex, "Critical error during payment finalization for MerchantOrderId: {MerchantOrderId}", payment.MerchantOrderId);
-                throw; // Re-throw to let the strategy retry or the controller handle it
+                throw; 
             }
         });
     }
@@ -354,7 +312,6 @@ public class PaymentService : IPaymentService
             var violations = await _unitOfWork.Repository<TrafficViolation>()
                 .FindAsync(v => violationIds.Contains(v.Id));
             
-            // Only include violations that still have an outstanding balance.
             total += violations
                 .Where(v => v.Status != ViolationStatus.Paid && v.FineAmount > v.PaidAmount)
                 .Sum(v => v.FineAmount - v.PaidAmount);
@@ -375,14 +332,12 @@ public class PaymentService : IPaymentService
             return PaymentStatus.Failed;
         }
 
-        // If it's already Paid or Failed, return immediately (Idempotent)
         if (payment.Status != PaymentStatus.Pending)
         {
             _logger.LogInformation("POLLING_STATUS_FINALIZED: MerchantOrderId={MerchantOrderId}, Status={Status}", merchantOrderId, payment.Status);
             return payment.Status;
         }
 
-        // It's still Pending in our DB, let's check with Paymob
         if (!string.IsNullOrEmpty(payment.PaymobOrderId))
         {
             try
@@ -393,7 +348,6 @@ public class PaymentService : IPaymentService
                 {
                     _logger.LogInformation("POLLING_SUCCESS: Payment {MerchantOrderId} confirmed as Paid by Paymob polling.", merchantOrderId);
                     
-                    // Finalize payment internally
                     await FinalizePaymentAsync(
                         payment.PaymobOrderId, 
                         paymobResult.TransactionId ?? "POLLING_TX", 

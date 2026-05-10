@@ -8,35 +8,66 @@ namespace Morourak.Application.DTOs.Appointments
     /// </summary>
     public class AppointmentDto
     {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("citizenNationalId")]
         public string CitizenNationalId { get; set; } = string.Empty;
+
+        [JsonPropertyName("applicationId")]
         public int ApplicationId { get; set; }
+
+        [JsonPropertyName("type")]
         public AppointmentType Type { get; set; }
+
+        [JsonPropertyName("typeName")]
         public string TypeName { get; set; } = string.Empty;
+
+        [JsonPropertyName("serviceName")]
         public string ServiceName { get; set; } = string.Empty;
+
+        [JsonPropertyName("date")]
         public DateOnly Date { get; set; }
+
+        [JsonPropertyName("dateFormatted")]
         public string DateFormatted { get; set; } = string.Empty;
+
+        [JsonPropertyName("startTime")]
         public TimeOnly StartTime { get; set; }
+
+        [JsonPropertyName("timeFormatted")]
         public string TimeFormatted { get; set; } = string.Empty;
+
+        [JsonPropertyName("endTime")]
         public TimeOnly? EndTime { get; set; }
-        public AppointmentStatus Status { get; set; }
+
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = string.Empty;
+
+        [JsonPropertyName("createdAt")]
         public string CreatedAt { get; set; } = string.Empty;
+
+        [JsonPropertyName("completedAt")]
         public string? CompletedAt { get; set; }
+
+        [JsonPropertyName("requestNumberRelated")]
         public string? RequestNumberRelated { get; set; }
+
+        [JsonPropertyName("assignedToUserId")]
         public string AssignedToUserId { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Internal governorate identifier.
-        /// </summary>
+        [JsonPropertyName("governorateId")]
         [JsonIgnore]
         public int GovernorateId { get; set; }
 
-        /// <summary>
-        /// Internal traffic unit identifier.
-        /// </summary>
+        [JsonPropertyName("trafficUnitId")]
         [JsonIgnore]
         public int TrafficUnitId { get; set; }
 
+        [JsonPropertyName("governorateName")]
         public string GovernorateName { get; set; } = string.Empty;
+
+        [JsonPropertyName("trafficUnitName")]
         public string TrafficUnitName { get; set; } = string.Empty;
     }
 }

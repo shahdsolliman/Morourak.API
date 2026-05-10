@@ -1,0 +1,318 @@
+@page
+@model Morourak.Dashboard.Pages.Admin.UsersManagementModel
+@{
+    ViewData["Title"] = "إدارة موظفي النظام";
+    ViewData["ActivePage"] = "Users";
+}
+
+<div class="animate-fade-in space-y-xl">
+    <!-- Alerts -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50" role="alert">
+            <span class="font-medium">تمت العملية بنجاح!</span> @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50" role="alert">
+            <span class="font-medium">خطأ!</span> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row justify-between items-end gap-lg mb-xl">
+        <div class="space-y-1">
+            <nav class="flex items-center gap-xs text-secondary/50 text-[12px] font-bold">
+                <a class="hover:text-primary" asp-page="/Index">الرئيسية</a>
+                <span class="material-symbols-outlined text-[14px]">chevron_left</span>
+                <span class="text-primary">إدارة المستخدمين</span>
+            </nav>
+            <h1 class="font-headline text-3xl font-black text-secondary">إدارة كافة مستخدمي النظام</h1>
+            <p class="text-secondary/50 text-sm font-medium max-w-2xl">قم بإدارة صلاحيات الموظفين، إضافة مستخدمين جدد، ومراقبة نشاط الطاقم الإداري والفني في النظام.</p>
+        </div>
+        <button onclick="openCreateModal()" class="flex items-center gap-sm bg-primary text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+            <span class="material-symbols-outlined">person_add</span>
+            <span>إضافة موظف جديد</span>
+        </button>
+    </div>
+
+    <!-- Dashboard Stats Brief (Bento-style) -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-lg mb-xl">
+        <div class="bg-white p-6 rounded-3xl border border-primary/10 shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
+            <div>
+                <p class="text-secondary/40 text-[11px] font-bold uppercase tracking-widest mb-1">إجمالي الموظفين</p>
+                <h4 class="text-3xl font-black text-primary">@Model.TotalUsersCount.ToString("N0")</h4>
+            </div>
+            <div class="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-3xl">group</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-primary/10 shadow-sm flex items-center justify-between group hover:border-tertiary/30 transition-all">
+            <div>
+                <p class="text-secondary/40 text-[11px] font-bold uppercase tracking-widest mb-1">الأطباء المعتمدون</p>
+                <h4 class="text-3xl font-black text-red-500">@Model.DoctorsCount.ToString("N0")</h4>
+            </div>
+            <div class="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500">
+                <span class="material-symbols-outlined text-3xl">medical_services</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-primary/10 shadow-sm flex items-center justify-between group hover:border-secondary/30 transition-all">
+            <div>
+                <p class="text-secondary/40 text-[11px] font-bold uppercase tracking-widest mb-1">الفاحصون الفنيون</p>
+                <h4 class="text-3xl font-black text-secondary">@Model.InspectorsCount.ToString("N0")</h4>
+            </div>
+            <div class="w-14 h-14 bg-secondary/10 rounded-2xl flex items-center justify-center text-secondary">
+                <span class="material-symbols-outlined text-3xl">engineering</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-primary/10 shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
+            <div>
+                <p class="text-secondary/40 text-[11px] font-bold uppercase tracking-widest mb-1">المواطنون المسجلون</p>
+                <div class="flex items-center gap-xs">
+                    <h4 class="text-3xl font-black text-primary">@Model.CitizensCount.ToString("N0")</h4>
+                </div>
+            </div>
+            <div class="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-3xl">person</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Data Table Section -->
+    <div class="bg-white rounded-[32px] overflow-hidden border border-primary/10 shadow-sm">
+        <div class="p-8 border-b border-primary/5 flex flex-col md:flex-row justify-between items-center gap-lg bg-white/50 backdrop-blur-sm">
+            <div class="relative flex-1 max-w-xl">
+                <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-secondary/40">search</span>
+                <input class="w-full bg-background border border-primary/5 rounded-2xl pr-12 py-3.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium transition-all" placeholder="بحث بالاسم، البريد الإلكتروني، أو رقم الموظف..." type="text"/>
+            </div>
+            <div class="flex items-center gap-md">
+                <button class="flex items-center gap-xs px-6 py-2.5 bg-background border border-primary/5 rounded-xl text-[11px] font-black text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all uppercase tracking-widest">
+                    <span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    <span>تصفية</span>
+                </button>
+                <button class="flex items-center gap-xs px-6 py-2.5 bg-background border border-primary/5 rounded-xl text-[11px] font-black text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all uppercase tracking-widest">
+                    <span class="material-symbols-outlined text-[18px]">download</span>
+                    <span>تصدير</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-right">
+                <thead>
+                    <tr class="bg-background border-b border-primary/10">
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">الموظف</th>
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">الدور الوظيفي</th>
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest text-center">الحالة</th>
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest">تاريخ الانضمام</th>
+                        <th class="px-8 py-4 text-[11px] font-black text-secondary/40 uppercase tracking-widest text-center">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-primary/5">
+                    @foreach (var user in Model.Users)
+                    {
+                        <tr class="hover:bg-primary/[0.01] transition-colors group">
+                            <td class="px-8 py-6">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black border-2 border-white shadow-sm group-hover:scale-110 transition-transform">
+                                        @(string.IsNullOrEmpty(user.Name) ? "U" : user.Name[0].ToString())
+                                    </div>
+                                    <div>
+                                        <p class="font-headline text-base font-black text-secondary">@user.Name</p>
+                                        <p class="text-[10px] font-bold text-secondary/40 uppercase">@user.Email</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-8 py-6">
+                                @{
+                                    var roleColor = user.Role switch {
+                                        "ADMIN" => "bg-primary-container/20 text-on-primary-fixed-variant border-primary-container/30",
+                                        "DOCTOR" => "bg-red-50 text-red-600 border-red-100",
+                                        "INSPECTOR" => "bg-secondary-container/30 text-on-secondary-fixed-variant border-secondary-container/40",
+                                        "EXAMINATOR" => "bg-orange-50 text-orange-600 border-orange-100",
+                                        "CITIZEN" => "bg-green-50 text-primary border-primary/20",
+                                        _ => "bg-background text-secondary/40 border-primary/5"
+                                    };
+                                }
+                                <span class="px-4 py-1 rounded-full @roleColor border font-black text-[10px] uppercase tracking-tighter">
+                                    @user.Role
+                                </span>
+                            </td>
+                            <td class="px-8 py-6">
+                                @if (user.IsActive)
+                                {
+                                    <div class="flex items-center justify-center gap-2 text-primary font-black text-[10px] uppercase">
+                                        <span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+                                        نشط
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="flex items-center justify-center gap-2 text-secondary/30 font-black text-[10px] uppercase">
+                                        <span class="w-1.5 h-1.5 bg-secondary/30 rounded-full"></span>
+                                        معطل
+                                    </div>
+                                }
+                            </td>
+                            <td class="px-8 py-6">
+                                <p class="text-xs font-bold text-secondary/60">@user.CreatedAt.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("ar-EG"))</p>
+                            </td>
+                            <td class="px-8 py-6">
+                                <div class="flex items-center justify-center gap-3">
+                                    <button onclick="openUpdateModal('@user.Id', '@user.FirstName', '@user.LastName', '@user.Email', @user.IsActive.ToString().ToLower())" class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all active:scale-95">
+                                        <span class="material-symbols-outlined text-xl">edit</span>
+                                    </button>
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@user.Id" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذه العملية.');">
+                                        <button type="submit" class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-secondary/40 hover:text-red-500 hover:bg-red-50 transition-all active:scale-95">
+                                            <span class="material-symbols-outlined text-xl">delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="px-8 py-6 bg-background border-t border-primary/10 flex items-center justify-between">
+            <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">عرض @Model.Users.Count من أصل @Model.TotalUsersCount موظف</p>
+            <div class="flex items-center gap-2">
+                <button class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-black shadow-lg shadow-primary/20">1</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div id="createModal" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-secondary/60 backdrop-blur-sm" onclick="closeCreateModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block overflow-hidden text-right align-bottom transition-all transform bg-white rounded-[32px] shadow-2xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-white/20">
+            <div class="px-8 pt-8 pb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-headline text-2xl font-black text-secondary">إضافة موظف جديد</h3>
+                    <button onclick="closeCreateModal()" class="text-secondary/40 hover:text-secondary transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <form method="post" asp-page-handler="Create">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">الاسم الأول</label>
+                                <input name="CreateDto.FirstName" type="text" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">الاسم الأخير</label>
+                                <input name="CreateDto.LastName" type="text" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">البريد الإلكتروني</label>
+                            <input name="CreateDto.Email" type="email" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">الدور الوظيفي</label>
+                            <select name="CreateDto.Role" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-bold text-secondary">
+                                <option value="INSPECTOR">مفتش فني</option>
+                                <option value="DOCTOR">طبيب معتمد</option>
+                                <option value="EXAMINATOR">فاحص قيادة</option>
+                                <option value="ADMIN">مسؤول نظام</option>
+                                <option value="CITIZEN">مواطن</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">كلمة المرور المؤقتة</label>
+                            <input name="CreateDto.Password" type="password" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium" />
+                        </div>
+                    </div>
+                    <div class="mt-8 flex gap-4">
+                        <button type="submit" class="flex-1 bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">تأكيد الإضافة</button>
+                        <button type="button" onclick="closeCreateModal()" class="flex-1 bg-background text-secondary/40 py-4 rounded-2xl font-bold hover:bg-secondary/5 transition-all">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update User Modal -->
+<div id="updateModal" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-secondary/60 backdrop-blur-sm" onclick="closeUpdateModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block overflow-hidden text-right align-bottom transition-all transform bg-white rounded-[32px] shadow-2xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-white/20">
+            <div class="px-8 pt-8 pb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-headline text-2xl font-black text-secondary">تعديل بيانات الموظف</h3>
+                    <button onclick="closeUpdateModal()" class="text-secondary/40 hover:text-secondary transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <form id="updateForm" method="post" asp-page-handler="Update">
+                    <input type="hidden" id="updateUserId" name="id" />
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">الاسم الأول</label>
+                                <input id="updateFirstName" name="UpdateDto.FirstName" type="text" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">الاسم الأخير</label>
+                                <input id="updateLastName" name="UpdateDto.LastName" type="text" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">البريد الإلكتروني</label>
+                            <input id="updateEmail" name="UpdateDto.Email" type="email" required class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-medium" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-secondary/40 uppercase tracking-widest mb-2">الحالة</label>
+                            <select id="updateIsActive" name="UpdateDto.IsActive" class="w-full bg-background border border-primary/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-bold text-secondary">
+                                <option value="true">نشط</option>
+                                <option value="false">معطل</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-8 flex gap-4">
+                        <button type="submit" class="flex-1 bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">حفظ التغييرات</button>
+                        <button type="button" onclick="closeUpdateModal()" class="flex-1 bg-background text-secondary/40 py-4 rounded-2xl font-bold hover:bg-secondary/5 transition-all">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openCreateModal() {
+            document.getElementById('createModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function openUpdateModal(id, firstName, lastName, email, isActive) {
+            document.getElementById('updateUserId').value = id;
+            document.getElementById('updateFirstName').value = firstName;
+            document.getElementById('updateLastName').value = lastName;
+            document.getElementById('updateEmail').value = email;
+            document.getElementById('updateIsActive').value = isActive.toString().toLowerCase();
+            
+            // Set form action with ID if needed (or just use name="id" hidden field)
+            document.getElementById('updateModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeUpdateModal() {
+            document.getElementById('updateModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    </script>
+}

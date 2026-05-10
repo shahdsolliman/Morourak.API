@@ -24,7 +24,9 @@ public class PayMobService : IPayMobService
         
         if (string.IsNullOrEmpty(this._httpClient.BaseAddress?.ToString()))
         {
-            this._httpClient.BaseAddress = new Uri(_settings.BaseUrl);
+            var baseUrl = _settings.BaseUrl.Trim();
+            if (!baseUrl.EndsWith("/")) baseUrl += "/";
+            this._httpClient.BaseAddress = new Uri(baseUrl);
         }
     }
 
@@ -71,15 +73,20 @@ public class PayMobService : IPayMobService
 
     private async Task<string> GetAuthTokenAsync()
     {
+        var apiKey = _settings.ApiKey?.Trim();
+        if (string.IsNullOrEmpty(apiKey))
+            throw new Exception("Paymob API Key is missing in configuration.");
+
         var response = await _httpClient.PostAsJsonAsync("auth/tokens", new
         {
-            api_key = _settings.ApiKey
+            api_key = apiKey
         });
 
         if (!response.IsSuccessStatusCode)
         {
             var err = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Authentication failed: {err}");
+            var url = _httpClient.BaseAddress + "auth/tokens";
+            throw new Exception($"Authentication failed at {url}. Status: {response.StatusCode}. Details: {err}");
         }
 
         var result = await response.Content.ReadFromJsonAsync<JsonElement>();

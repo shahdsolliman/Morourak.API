@@ -89,14 +89,18 @@ namespace Morourak.Infrastructure.Identity
 
                 await _persistenceContext.SaveChangesAsync();
 
-                // Get user email to send code
-                var user = IsEmail(identifier)
-                    ? await _userManager.FindByEmailAsync(identifier)
-                    : await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == identifier);
-
-                if (user != null)
+                if (IsEmail(identifier))
                 {
-                    await SendOtpAsync(user.Email!, code, type);
+                    await SendOtpAsync(identifier, code, type);
+                }
+                else
+                {
+                    // Get user email to send code
+                    var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == identifier);
+                    if (user != null)
+                    {
+                        await SendOtpAsync(user.Email!, code, type);
+                    }
                 }
             }
 
@@ -168,7 +172,9 @@ namespace Morourak.Infrastructure.Identity
         {
             var subject = type == OtpType.Register
                 ? "Morourak Registration Verification Code"
-                : "Morourak Password Reset Code";
+                : type == OtpType.ResetPassword
+                    ? "Morourak Password Reset Code"
+                    : "Morourak Change Email Verification Code";
 
             var body = $"""
 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F4F6F8; padding: 50px 0; text-align: center;">

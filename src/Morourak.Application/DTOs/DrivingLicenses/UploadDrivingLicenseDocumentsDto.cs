@@ -1,4 +1,4 @@
-﻿using Morourak.Domain.Enums;
+using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Driving;
 
 namespace Morourak.Application.DTOs.DrivingLicenses
@@ -26,7 +26,7 @@ namespace Morourak.Application.DTOs.DrivingLicenses
         /// <summary>
         /// Scanned residence proof (as byte array).
         /// </summary>
-        public byte[] ResidenceProof { get; set; } = null!;
+        public byte[]? ResidenceProof { get; set; }
 
         /// <summary>
         /// Requested driving license category.
@@ -34,18 +34,13 @@ namespace Morourak.Application.DTOs.DrivingLicenses
         public DrivingLicenseCategory Category { get; set; }
 
         /// <summary>
-        /// Selected governorate.
-        /// </summary>
-        public string Governorate { get; set; } = null!;
-
-        /// <summary>
-        /// Selected traffic unit.
-        /// </summary>
-        public string LicensingUnit { get; set; } = null!;
-
-        /// <summary>
         /// Initial status of the application.
         /// </summary>
         public LicenseStatus Status { get; set; }
+
+        /// <summary>
+        /// Scanned medical certificate (optional, byte array).
+        /// </summary>
+        public byte[]? MedicalCertificate { get; set; }
     }
 }

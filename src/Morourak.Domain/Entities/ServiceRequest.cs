@@ -1,4 +1,4 @@
-﻿using Morourak.Domain.Common;
+using Morourak.Domain.Common;
 using Morourak.Domain.Enums.Request;
 using Morourak.Domain.Enums.Common;
 
@@ -34,4 +34,6 @@ public class ServiceRequest: BaseEntity<int>
     public decimal BaseFee { get; set; }
     public decimal DeliveryFee { get; set; }
     public decimal TotalAmount { get; set; }
+    
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }

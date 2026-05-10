@@ -26,13 +26,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> Get()
         {
             var types = await _service.GetVehicleTypesAsync();
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = types
-            });
+            return Success(types);
         }
     }
 }

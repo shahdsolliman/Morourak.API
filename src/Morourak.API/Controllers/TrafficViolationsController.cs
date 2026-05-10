@@ -32,13 +32,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetDrivingLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Driving);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result);
         }
 
         #endregion
@@ -53,13 +47,7 @@ namespace Morourak.API.Controllers
         public async Task<IActionResult> GetVehicleLicenseViolations(string licenseNumber)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, LicenseType.Vehicle);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result);
         }
 
         #endregion
@@ -76,13 +64,7 @@ namespace Morourak.API.Controllers
             [FromQuery, BindRequired] LicenseType licenseType)
         {
             var result = await _service.GetViolationsByLicenseNumberAsync(licenseNumber, licenseType);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result);
         }
 
         #endregion

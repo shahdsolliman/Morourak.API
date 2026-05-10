@@ -11,8 +11,8 @@ namespace Morourak.Application.DTOs
         public string CitizenNationalId { get; set; } = default!;
         public string ServiceType { get; set; } = null!;
         public string Status { get; set; } = null!;
-        public DateTime SubmittedAt { get; set; }
-        public DateTime? LastUpdatedAt { get; set; }
+        public string SubmittedAt { get; set; } = string.Empty;
+        public string? LastUpdatedAt { get; set; }
         public int ReferenceId { get; set; }
         public ServiceRequestFeesDto Fees { get; set; } = new();
         public ServiceRequestDeliveryDto Delivery { get; set; } = new();
@@ -37,6 +37,6 @@ namespace Morourak.Application.DTOs
         public string Status { get; set; } = default!;
         public string? TransactionId { get; set; }
         public decimal? Amount { get; set; }
-        public DateTime? Timestamp { get; set; }
+        public string? Timestamp { get; set; }
     }
 }

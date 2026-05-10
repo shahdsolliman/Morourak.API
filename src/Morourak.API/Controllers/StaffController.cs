@@ -34,30 +34,41 @@ namespace Morourak.API.Controllers
         }
 
         /// <summary>
-        /// Retrieves the list of appointments assigned to the logged-in staff member based on their role.
+        /// Retrieves the list of appointments assigned to the logged-in staff member based on their role and an optional date.
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get([FromQuery] string? date)
         {
+            DateOnly? parsedDate = null;
+            if (!string.IsNullOrEmpty(date) && DateOnly.TryParse(date, out var d))
+            {
+                parsedDate = d;
+            }
+
             var role = User.FindFirstValue(ClaimTypes.Role);
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(role) || !RoleTypeMap.ContainsKey(role))
-                throw new AppEx.ValidationException(
-                    "غير مصرح لك بالوصول لهذه البيانات.",
-                    "AUTHZ_ERROR"
-                );
+ 
+            if (string.IsNullOrEmpty(role))
+                throw new AppEx.ValidationException("غير مصرح لك بالوصول لهذه البيانات.", "AUTHZ_ERROR");
+ 
             role = role.ToUpperInvariant();
+ 
+            if (!RoleTypeMap.ContainsKey(role))
+                throw new AppEx.ValidationException("غير مصرح لك بالوصول لهذه البيانات.", "AUTHZ_ERROR");
+ 
+            var appointments = await _queryService.GetByRoleAsync(role, userId, parsedDate);
+ 
+            return Success(appointments);
+        }
 
-            var appointments = await _queryService.GetByRoleAsync(role, userId);
+        [HttpGet("appointment/{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var appointment = await _queryService.GetByIdAsync(id);
+            if (appointment == null)
+                return NotFound(new { Message = "الموعد غير موجود." });
 
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = appointments
-            });
+            return Success(appointment);
         }
 
         /// <summary>
@@ -88,12 +99,24 @@ namespace Morourak.API.Controllers
                 staffUserId
             );
 
-            return Ok(new
+            return Success(new { RequestNumber = dto.RequestNumber }, dto.Passed ? "تم تسجيل نجاح الفحص." : "تم تسجيل رسوب الفحص.");
+        }
+
+        /// <summary>
+        /// Retrieves the current staff member's profile information.
+        /// </summary>
+        [HttpGet("profile")]
+        public IActionResult GetProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var fullName = User.FindFirstValue(ClaimTypes.Name);
+            var role = User.FindFirstValue(ClaimTypes.Role);
+
+            return Success(new
             {
-                isSuccess = true,
-                message = dto.Passed ? "تم تسجيل نجاح الفحص." : "تم تسجيل رسوب الفحص.",
-                errorCode = (string?)null,
-                details = new { RequestNumber = dto.RequestNumber }
+                Id = userId,
+                FullName = fullName,
+                Role = role
             });
         }
     }

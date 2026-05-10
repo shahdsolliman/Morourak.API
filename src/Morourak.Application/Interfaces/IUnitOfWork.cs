@@ -13,5 +13,7 @@ namespace Morourak.Application.Interfaces
         Task RollbackTransactionAsync();
 
         Task<T> ExecuteWithStrategyAsync<T>(Func<Task<T>> action);
+        
+        void ClearTracking();
     }
 }

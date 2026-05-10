@@ -1,20 +1,31 @@
+using System.Text.Json.Serialization;
+
 namespace Morourak.Application.Common;
 
 public class ApiResponse<T>
 {
-    public bool Success { get; set; }
+    [JsonPropertyName("isSuccess")]
+    public bool IsSuccess { get; set; }
+
+    [JsonPropertyName("message")]
     public string? Message { get; set; }
+
+    [JsonPropertyName("errorCode")]
     public string? ErrorCode { get; set; }
-    public T? Data { get; set; }
+
+    [JsonPropertyName("details")]
+    public T? Details { get; set; }
+
+    [JsonPropertyName("errors")]
     public List<string>? Errors { get; set; }
 
     public static ApiResponse<T> SuccessResult(T data, string? message = null)
     {
         return new ApiResponse<T>
         {
-            Success = true,
+            IsSuccess = true,
             Message = message,
-            Data = data
+            Details = data
         };
     }
 
@@ -22,7 +33,7 @@ public class ApiResponse<T>
     {
         return new ApiResponse<T>
         {
-            Success = false,
+            IsSuccess = false,
             Message = message,
             ErrorCode = null,
             Errors = errors
@@ -33,7 +44,7 @@ public class ApiResponse<T>
     {
         return new ApiResponse<T>
         {
-            Success = false,
+            IsSuccess = false,
             Message = message,
             ErrorCode = errorCode,
             Errors = errors
@@ -41,20 +52,34 @@ public class ApiResponse<T>
     }
 }
 
-public class PagedResponse<T> : ApiResponse<T>
+public class PagedApiResponse<T> : ApiResponse<IEnumerable<T>>
 {
-    public int PageNumber { get; set; }
+    [JsonPropertyName("page")]
+    public int Page { get; set; }
+
+    [JsonPropertyName("pageSize")]
     public int PageSize { get; set; }
+
+    [JsonPropertyName("totalPages")]
     public int TotalPages { get; set; }
+
+    [JsonPropertyName("totalRecords")]
     public int TotalRecords { get; set; }
 
-    public PagedResponse(T data, int pageNumber, int pageSize, int totalRecords)
+    [JsonConstructor]
+    public PagedApiResponse()
     {
-        Data = data;
-        PageNumber = pageNumber;
+        Details = Enumerable.Empty<T>();
+    }
+
+    public PagedApiResponse(IEnumerable<T> data, int pageNumber, int pageSize, int totalRecords, string? message = null, bool isSuccess = true)
+    {
+        Details = data;
+        Page = pageNumber;
         PageSize = pageSize;
         TotalRecords = totalRecords;
-        TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
-        Success = true;
+        TotalPages = pageSize > 0 ? (int)Math.Ceiling(totalRecords / (double)pageSize) : 0;
+        IsSuccess = isSuccess;
+        Message = message;
     }
 }

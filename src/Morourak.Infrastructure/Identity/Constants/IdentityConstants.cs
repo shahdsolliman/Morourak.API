@@ -1,4 +1,4 @@
-﻿namespace Morourak.Infrastructure.Identity.Constants;
+namespace Morourak.Infrastructure.Identity.Constants;
 
 public static class AppIdentityConstants
 {
@@ -11,5 +11,6 @@ public static class AppIdentityConstants
         public const string Examinator = "EXAMINATOR";
         public const string Admin = "ADMIN";
         public const string Doctor = "DOCTOR";
+        public const string Tester = "TESTER";
     }
 }

@@ -5,6 +5,7 @@ using Morourak.Application.Interfaces.DomainServices;
 using Morourak.Domain.Entities;
 using AppointmentEntity = Morourak.Domain.Entities.Appointment;
 using Morourak.Domain.Enums.Appointments;
+using Morourak.Domain.Extensions;
 
 namespace Morourak.Application.DomainServices.Appointment;
 
@@ -32,7 +33,8 @@ public sealed class AppointmentDomainService : IAppointmentDomainService
         TimeOnly time,
         int governorateId,
         int trafficUnitId,
-        CancellationToken cancellationToken)
+        string? requestNumber = null,
+        CancellationToken cancellationToken = default)
     {
         ValidateWorkingHours(time);
 
@@ -70,12 +72,58 @@ public sealed class AppointmentDomainService : IAppointmentDomainService
         var serviceRequest = await _requestDomainService.FindPrimaryServiceRequestAsync(
             nationalId,
             appointmentType,
+            requestNumber,
             cancellationToken);
 
         if (serviceRequest == null)
             throw new ValidationException(
                 "لا يوجد طلب خدمة نشط لهذا المواطن.",
                 "APPLICATION_NOT_FOUND");
+
+        // Check if there is already a scheduled appointment of the same type for this request
+        var alreadyScheduled = await appointmentRepo.GetAsync(a =>
+            a.RequestNumber == serviceRequest.RequestNumber &&
+            a.Type == appointmentType &&
+            a.Status == AppointmentStatus.Scheduled);
+
+        if (alreadyScheduled != null)
+            throw new ValidationException(
+                $"لديك بالفعل موعد {appointmentType.GetDisplayName()} مجدول لهذا الطلب بتاريخ {alreadyScheduled.Date.ToString("d/M/yyyy")}.",
+                "APPOINTMENT_ALREADY_SCHEDULED");
+
+        if (serviceRequest.Status == Morourak.Domain.Enums.Request.RequestStatus.Completed ||
+            serviceRequest.Status == Morourak.Domain.Enums.Request.RequestStatus.ReadyForProcessing ||
+            serviceRequest.Status == Morourak.Domain.Enums.Request.RequestStatus.AwaitingPayment)
+        {
+            throw new ValidationException(
+                "لا يمكن حجز موعد لهذا الطلب لأنه تم اجتياز الاختبارات بالفعل أو اكتمل الطلب.",
+                "INVALID_REQUEST_STATUS_FOR_BOOKING");
+        }
+
+        // Medical Certificate XOR Logic
+        if (appointmentType == AppointmentType.Medical)
+        {
+            if (serviceRequest.ServiceType == Morourak.Domain.Enums.Request.ServiceType.DrivingLicenseIssue)
+            {
+                var application = await _unitOfWork.Repository<DrivingLicenseApplication>().GetAsync(a => a.Id == serviceRequest.ReferenceId);
+                if (application != null && application.MedicalExaminationPassed && !string.IsNullOrEmpty(application.MedicalCertificatePath))
+                {
+                    throw new ValidationException(
+                        "لقد قمت بالفعل برفع شهادة طبية سارية. لا حاجة لحجز موعد للكشف الطبي.",
+                        "MEDICAL_CERT_ALREADY_UPLOADED");
+                }
+            }
+            else if (serviceRequest.ServiceType == Morourak.Domain.Enums.Request.ServiceType.DrivingLicenseRenewal)
+            {
+                var renewal = await _unitOfWork.Repository<RenewalApplication>().GetAsync(a => a.Id == serviceRequest.ReferenceId);
+                if (renewal != null && renewal.MedicalExaminationPassed)
+                {
+                    throw new ValidationException(
+                        "تَم بالفعل اجتياز الكشف الطبي أو رفع شهادة سارية لهذا الطلب.",
+                        "MEDICAL_STEP_COMPLETED");
+                }
+            }
+        }
 
         var assignedToUserId = ResolveAssignedToUserId(appointmentType);
 
@@ -157,4 +205,3 @@ public sealed class AppointmentDomainService : IAppointmentDomainService
         return unit;
     }
 }
-

@@ -318,7 +318,7 @@ public sealed class IntegrationEnumBindingTests : IClassFixture<IntegrationEnumB
         public Task<ServiceRequestDto> FinalizeRenewalAsync(string requestNumber, string nationalId, DeliveryInfoDto delivery) => throw new NotImplementedException();
         public Task<DrivingLicenseResponseDto> CompleteIssuanceAsync(string requestNumber) => throw new NotImplementedException();
         public Task<IEnumerable<DrivingLicenseDto>> GetAllLicensesByCitizenAsync(string nationalId) => throw new NotImplementedException();
-        public Task<DrivingLicenseApplication> GetApplicationByIdAsync(int applicationId, string nationalId) => throw new NotImplementedException();
+        public Task<DrivingLicenseApplicationDto> GetApplicationByIdAsync(int applicationId, string nationalId) => throw new NotImplementedException();
         public Task SubmitAppointmentResultAsync(int applicationId, AppointmentType type, bool passed, string? notes) => throw new NotImplementedException();
     }
 

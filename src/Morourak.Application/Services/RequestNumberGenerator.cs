@@ -19,22 +19,26 @@ namespace Morourak.Application.Services
             var (prefix, startNumber) = GetPrefixAndStart(serviceType);
             var repository = _unitOfWork.Repository<ServiceRequest>();
 
-            var requestsWithPrefix = await repository.FindAsync(r => r.RequestNumber.StartsWith(prefix + "-"));
+            var year = DateTime.UtcNow.Year;
+            var fullPrefix = $"{prefix}-{year}";
+
+            var requestsWithPrefix = await repository
+                .FindAsync(r => r.RequestNumber.StartsWith(fullPrefix + "-"));
 
             var nextNumber = requestsWithPrefix
-                .Select(r => TryParseSuffix(r.RequestNumber, prefix))
+                .Select(r => TryParseSuffix(r.RequestNumber, fullPrefix))
                 .Where(n => n.HasValue)
                 .Select(n => n!.Value)
                 .DefaultIfEmpty(startNumber - 1)
                 .Max() + 1;
 
-            var generated = $"{prefix}-{nextNumber}";
+            var generated = $"{fullPrefix}-{nextNumber}";
 
-            // Defensive collision check against malformed or concurrent inserts already in DB.
+            // Defensive collision check (handles concurrency edge cases)
             while ((await repository.FindAsync(r => r.RequestNumber == generated)).Any())
             {
                 nextNumber++;
-                generated = $"{prefix}-{nextNumber}";
+                generated = $"{fullPrefix}-{nextNumber}";
             }
 
             return generated;
@@ -56,12 +60,12 @@ namespace Morourak.Application.Services
             };
         }
 
-        private static int? TryParseSuffix(string requestNumber, string prefix)
+        private static int? TryParseSuffix(string requestNumber, string fullPrefix)
         {
-            if (!requestNumber.StartsWith(prefix + "-"))
+            if (!requestNumber.StartsWith(fullPrefix + "-"))
                 return null;
 
-            var suffix = requestNumber[(prefix.Length + 1)..];
+            var suffix = requestNumber[(fullPrefix.Length + 1)..];
             return int.TryParse(suffix, out var parsed) ? parsed : null;
         }
     }

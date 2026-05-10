@@ -4,7 +4,7 @@ namespace Morourak.Application.Interfaces.Services;
 
 public interface IAdminSeedDataService
 {
-    Task<IEnumerable<CitizenRegistry>> GetAllCitizensAsync();
-    Task<IEnumerable<VehicleLicense>> GetAllVehicleLicensesAsync();
-    Task<IEnumerable<DrivingLicense>> GetAllDrivingLicensesAsync();
+    Task<IEnumerable<object>> GetAllCitizensAsync();
+    Task<IEnumerable<object>> GetAllVehicleLicensesAsync();
+    Task<IEnumerable<object>> GetAllDrivingLicensesAsync();
 }

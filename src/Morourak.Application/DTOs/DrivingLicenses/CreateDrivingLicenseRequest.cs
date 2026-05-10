@@ -1,4 +1,4 @@
-﻿using Morourak.Domain.Enums.Driving;
+using Morourak.Domain.Enums.Driving;
 
 namespace Morourak.Application.DTOs.Licenses
 {
@@ -7,10 +7,6 @@ namespace Morourak.Application.DTOs.Licenses
         public string NationalId { get; set; } = null!;
 
         public DrivingLicenseCategory Category { get; set; }
-
-        public string LicensingUnit { get; set; } = null!;
-
-        public string Governorate { get; set; } = null!;
 
         public int ExaminationId { get; set; }
 

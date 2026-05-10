@@ -42,20 +42,13 @@ namespace Morourak.API.Controllers
                 PersonalPhoto = await ToByteArrayAsync(apiDto.PersonalPhoto),
                 EducationalCertificate = await ToByteArrayAsync(apiDto.EducationalCertificate),
                 IdCard = await ToByteArrayAsync(apiDto.IdCard),
-                ResidenceProof = await ToByteArrayAsync(apiDto.ResidenceProof),
+                ResidenceProof = apiDto.ResidenceProof != null ? await ToByteArrayAsync(apiDto.ResidenceProof) : null,
                 Category = apiDto.Category,
-                Governorate = apiDto.Governorate,
-                LicensingUnit = apiDto.LicensingUnit
+                MedicalCertificate = apiDto.MedicalCertificate != null ? await ToByteArrayAsync(apiDto.MedicalCertificate) : null
             };
 
             var result = await _service.UploadInitialDocumentsAsync(nationalId, dto);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم رفع المستندات بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم رفع المستندات بنجاح");
         }
 
         // ================= FINALIZE LICENSE =================
@@ -68,13 +61,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var result = await _service.FinalizeLicenseAsync(requestNumber, nationalId, delivery);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم إصدار الرخصة بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم إصدار الرخصة بنجاح");
         }
 
         // ================= RENEW LICENSE =================
@@ -88,17 +75,12 @@ namespace Morourak.API.Controllers
             var nationalId = NationalId;
             var dto = new SubmitRenewalRequestDto
             {
+                LicenseNumber = apiDto.LicenseNumber,
                 NewCategory = apiDto.NewCategory,
             };
 
             var result = await _service.SubmitRenewalRequestAsync(nationalId, dto);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم تقديم طلب التجديد بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم تقديم طلب التجديد بنجاح");
         }
 
         /// <summary>
@@ -109,13 +91,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var result = await _service.FinalizeRenewalAsync(requestNumber, nationalId, delivery);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم تجديد الرخصة بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم تجديد الرخصة بنجاح");
         }
 
         // ================= GET MY LICENSES =================
@@ -128,13 +104,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var licenses = await _service.GetAllLicensesByCitizenAsync(nationalId);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = licenses
-            });
+            return Success(licenses);
         }
 
         // ================= ISSUE REPLACEMENT =================
@@ -153,13 +123,7 @@ namespace Morourak.API.Controllers
                 apiDto.Delivery
             );
 
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم استخراج بدل الرخصة بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم استخراج بدل الرخصة بنجاح");
         }
     }
 }

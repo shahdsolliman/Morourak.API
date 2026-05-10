@@ -24,6 +24,7 @@ namespace Morourak.Infrastructure.Persistence
         public DbSet<VehicleLicense> VehicleLicenses { get; set; } = null!;
         public DbSet<VehicleTypeEntity> VehicleTypes { get; set; } = null!;
         public DbSet<VehicleLicenseApplication> VehicleLicenseApplications { get; set; } = null!;
+        public DbSet<DrivingLicenseApplication> DrivingLicenseApplications { get; set; } = null!;
         public DbSet<Appointment> ExaminationAppointments { get; set; } = null!;
         public DbSet<OtpVerification> OtpVerifications { get; set; } = null!;
         public DbSet<PendingRegistration> PendingRegistrations { get; set; } = null!;
@@ -33,6 +34,7 @@ namespace Morourak.Infrastructure.Persistence
         public DbSet<TrafficViolation> TrafficViolations { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<PaymentViolation> PaymentViolations { get; set; }
+        public DbSet<InsuranceCompany> InsuranceCompanies { get; set; } = null!;
 
         /// <summary>
         /// جداول المحافظات ووحدات المرور — تُستخدم كبيانات مرجعية لقوائم الاختيار.

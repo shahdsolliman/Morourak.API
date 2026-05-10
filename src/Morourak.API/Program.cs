@@ -82,7 +82,10 @@ namespace Morourak.API
             // ===============================
             builder.Services.AddMediatR(typeof(CreateAppointmentCommandHandler).Assembly);
 
-            builder.Services.AddAutoMapper(typeof(AppointmentProfile).Assembly);
+            builder.Services.AddAutoMapper(
+                typeof(Morourak.Application.Mapping.GeneralMappingProfile).Assembly,
+                typeof(Morourak.Infrastructure.Services.PaymentService).Assembly
+            );
 
             builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(FluentValidationBehavior<,>));
 
@@ -131,6 +134,9 @@ namespace Morourak.API
                 options.EnableForHttps = true;
             });
 
+            // ========== Localization ==========
+            builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
             // CORS Policy
             builder.Services.AddCors(options =>
             {
@@ -153,6 +159,14 @@ namespace Morourak.API
             // ===============================
             // Middleware
             // ===============================
+            var supportedCultures = new[] { "ar-EG", "en-US" };
+            var localizationOptions = new RequestLocalizationOptions()
+                .SetDefaultCulture(supportedCultures[0])
+                .AddSupportedCultures(supportedCultures)
+                .AddSupportedUICultures(supportedCultures);
+
+            app.UseRequestLocalization(localizationOptions);
+
             app.UseResponseCompression();
 
             // Security Headers

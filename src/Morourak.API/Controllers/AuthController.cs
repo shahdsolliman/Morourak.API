@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Morourak.API.DTOs.User;
 using Morourak.Application.DTOs.Auth;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Infrastructure.Identity;
 using System.Security.Claims;
+using Morourak.Domain.Enums;
 
 namespace Morourak.API.Controllers
 {
@@ -49,12 +51,7 @@ namespace Morourak.API.Controllers
                     errorCode = result.ErrorCode,
                 });
 
-            return Ok(new
-            {
-                isSuccess = true,
-                message = result.Message,
-                details = (object?)null
-            });
+            return Success((object?)null, result.Message);
         }
 
         // ================= VERIFY REGISTRATION OTP =================
@@ -77,12 +74,7 @@ namespace Morourak.API.Controllers
                 });
             }
  
-            return Ok(new
-            {
-                isSuccess = true,
-                message = result.Message,
-                details = (object?)null
-            });
+            return Success((object?)null, result.Message);
         }
  
         // ================= LOGIN =================
@@ -103,12 +95,7 @@ namespace Morourak.API.Controllers
                     errorCode = result.ErrorCode,
                 });
  
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم تسجيل الدخول بنجاح",
-                details = result
-            });
+            return Success(result, "تم تسجيل الدخول بنجاح");
         }
  
         // ================= REFRESH TOKEN =================
@@ -129,77 +116,112 @@ namespace Morourak.API.Controllers
                     errorCode = result.ErrorCode,
                 });
  
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم تحديث التوكين بنجاح",
-                details = result
-            });
+            return Success(result, "تم تحديث التوكين بنجاح");
         }
  
-        // ================= FORGOT PASSWORD (FROM TOKEN) =================
+        // ================= FORGOT PASSWORD (ANONYMOUS) =================
  
         /// <summary>
-        /// Requests a password reset OTP for the currently logged-in user.
+        /// Requests a password reset OTP for a user who is not logged in.
         /// </summary>
-        [Authorize]
+        [AllowAnonymous]
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword()
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
         {
-            var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return Unauthorized();
- 
-            await _otpService.GenerateAndSendAsync(email, OtpType.ResetPassword);
- 
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم إرسال رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
-                details = (object?)null
-            });
+            var result = await _identityService.ForgotPasswordAsync(request.Email);
+            return Success((object?)null, result.Message);
         }
  
-        // ================= RESET PASSWORD (FROM TOKEN) =================
+        // ================= RESET PASSWORD (ANONYMOUS) =================
  
         /// <summary>
-        /// Resets the password for the current user using an OTP verification.
+        /// Resets the password for a user using an OTP verification.
         /// </summary>
-        [Authorize]
+        [AllowAnonymous]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
         {
-            var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email == null) return Unauthorized();
+            var result = await _identityService.ResetPasswordAsync(request);
+            
+            if (!result.IsSuccess)
+                return BadRequest(new
+                {
+                    isSuccess = false,
+                    message = result.Message,
+                    errorCode = result.ErrorCode,
+                });
+ 
+            return Success((object?)null, result.Message);
+        }
 
-            var user = await _userManager.FindByEmailAsync(email);
-            if (user == null) return Unauthorized();
- 
-            var isValid = await _otpService.ValidateAsync(email, request.Code);
-            if (!isValid)
+        // ================= REQUEST CHANGE EMAIL =================
+
+        /// <summary>
+        /// Requests an email change by sending an OTP to the new email.
+        /// </summary>
+        [Authorize]
+        [HttpPost("change-email/request")]
+        public async Task<IActionResult> RequestChangeEmail([FromBody] ChangeEmailRequestDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var result = await _identityService.RequestChangeEmailAsync(userId, request.NewEmail);
+
+            if (!result.IsSuccess)
                 return BadRequest(new
                 {
                     isSuccess = false,
-                    message = "رمز التحقق غير صحيح.",
-                    errorCode = "INVALID_OTP",
+                    message = result.Message,
+                    errorCode = result.ErrorCode,
                 });
- 
-            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
- 
-            if (!result.Succeeded)
+
+            return Success((object?)null, result.Message);
+        }
+
+        // ================= CONFIRM CHANGE EMAIL =================
+
+        /// <summary>
+        /// Confirms the email change using the OTP sent to the new email.
+        /// </summary>
+        [Authorize]
+        [HttpPost("change-email/confirm")]
+        public async Task<IActionResult> ConfirmChangeEmail([FromBody] ConfirmChangeEmailDto request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var result = await _identityService.ConfirmChangeEmailAsync(userId, request.NewEmail, request.Code);
+
+            if (!result.IsSuccess)
                 return BadRequest(new
                 {
                     isSuccess = false,
-                    message = "فشل في إعادة تعيين كلمة المرور.",
-                    errorCode = "RESET_FAILED",
+                    message = result.Message,
+                    errorCode = result.ErrorCode,
                 });
- 
-            return Ok(new
+
+            return Success((object?)null, result.Message);
+        }
+
+        [Authorize]
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = new CitizenProfileDto
             {
-                isSuccess = true,
-                message = "تم إعادة تعيين كلمة المرور بنجاح.",
-                details = (object?)null
-            });
+                FullName = $"{user.FirstName} {user.LastName}",
+                NationalId = user.NationalId,
+                PhoneNumber = user.PhoneNumber,
+                Email = user.Email
+            };
+
+            return Success(result);
         }
     }
 }

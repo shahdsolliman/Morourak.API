@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Morourak.Application.Interfaces;
 using Morourak.Application.Exceptions;
+using Morourak.Domain.Entities;
 using Morourak.Application.DTOs.Delivery;
 using Morourak.API.DTOs.VehicleLicenses;
 using Morourak.Domain.Enums.Common;
@@ -17,10 +18,12 @@ namespace Morourak.API.Controllers
     public class VehicleLicenseController : BaseApiController
     {
         private readonly IVehicleLicenseService _service;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public VehicleLicenseController(IVehicleLicenseService service)
+        public VehicleLicenseController(IVehicleLicenseService service, IUnitOfWork unitOfWork)
         {
             _service = service;
+            _unitOfWork = unitOfWork;
         }
 
 
@@ -43,18 +46,27 @@ namespace Morourak.API.Controllers
                 OwnershipProof = await ToByteArrayAsync(apiDto.OwnershipProof),
                 VehicleDataCertificate = await ToByteArrayAsync(apiDto.VehicleDataCertificate),
                 IdCard = await ToByteArrayAsync(apiDto.IdCard),
-                InsuranceCertificate = await ToByteArrayAsync(apiDto.InsuranceCertificate),
+                InsuranceCertificate = apiDto.InsuranceCertificate != null ? await ToByteArrayAsync(apiDto.InsuranceCertificate) : null,
+                InsuranceCompanyId = await ResolveInsuranceCompanyId(apiDto.InsuranceCompanyId),
                 CustomClearance = apiDto.CustomClearance != null ? await ToByteArrayAsync(apiDto.CustomClearance) : null
             };
 
             var result = await _service.UploadInitialDocumentsAsync(nationalId, dto);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم رفع المستندات بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم رفع المستندات بنجاح");
+        }
+
+        private async Task<int?> ResolveInsuranceCompanyId(object? idOrName)
+        {
+            if (idOrName == null) return null;
+
+            string input = idOrName.ToString() ?? "";
+            if (int.TryParse(input, out int id))
+                return id;
+
+            var company = await _unitOfWork.Repository<InsuranceCompany>()
+                .GetAsync(c => c.NameAr == input || c.Name == input);
+
+            return company?.Id;
         }
 
         // ================= FINALIZE LICENSE =================
@@ -68,13 +80,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var result = await _service.FinalizeLicenseAsync(requestNumber, nationalId, delivery);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم إصدار الرخصة بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم إصدار الرخصة بنجاح");
         }
 
         /// <summary>
@@ -86,13 +92,7 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var result = await _service.FinalizeRenewalAsync(requestNumber, nationalId, delivery);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم تجديد الرخصة بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم تجديد الرخصة بنجاح");
         }
 
         // ================= REPLACEMENT & RENEWAL =================
@@ -101,21 +101,18 @@ namespace Morourak.API.Controllers
         /// Requests a replacement for a lost or damaged vehicle license.
         /// </summary>
         [Authorize(Roles = "CITIZEN")]
-        [HttpPost("replacement/{licenseNumber}")]
+        [HttpPost("issue-replacement/{licenseNumber}")]
         public async Task<IActionResult> IssueReplacement(
             string licenseNumber,
-            [FromQuery, BindRequired] ReplacementType type,
-            [FromBody] DeliveryInfoDto delivery)
+            [FromBody] IssueReplacementVehicleLicenseApiDto apiDto)
         {
             var nationalId = NationalId;
-            var result = await _service.IssueReplacementAsync(nationalId, licenseNumber, type, delivery);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم استخراج بدل الرخصة بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            var result = await _service.IssueReplacementAsync(
+                nationalId, 
+                licenseNumber, 
+                apiDto.ReplacementType, 
+                apiDto.Delivery);
+            return Success(result, "تم استخراج بدل الرخصة بنجاح");
         }
 
         /// <summary>
@@ -133,13 +130,7 @@ namespace Morourak.API.Controllers
             };
 
             var result = await _service.SubmitRenewalRequestAsync(nationalId, dto);
-            return Ok(new
-            {
-                isSuccess = true,
-                message = "تم تقديم طلب التجديد بنجاح",
-                errorCode = (string?)null,
-                details = result
-            });
+            return Success(result, "تم تقديم طلب التجديد بنجاح");
         }
 
         // ================= GET MY LICENSES =================
@@ -153,13 +144,28 @@ namespace Morourak.API.Controllers
         {
             var nationalId = NationalId;
             var licenses = await _service.GetAllLicensesByCitizenAsync(nationalId);
-            return Ok(new
+            return Success(licenses);
+        }
+
+        /// <summary>
+        /// Retrieves the list of predefined insurance companies and their fees.
+        /// </summary>
+        [HttpGet("insurance-companies")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetInsuranceCompanies()
+        {
+            var companies = await _unitOfWork.Repository<InsuranceCompany>().GetAllAsync();
+            var result = companies.Select(c => new
             {
-                isSuccess = true,
-                message = (string?)null,
-                errorCode = (string?)null,
-                details = licenses
+                c.Id,
+                c.Name,
+                c.NameAr,
+                c.Fee,
+                c.Description,
+                c.DescriptionAr,
+                c.LogoPath
             });
+            return Success(result);
         }
     }
 }

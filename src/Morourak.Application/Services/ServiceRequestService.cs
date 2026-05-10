@@ -4,10 +4,12 @@ using Morourak.Application.Interfaces;
 using Morourak.Application.Interfaces.Services;
 using Morourak.Domain.Entities;
 using Morourak.Domain.Enums.Request;
+using Morourak.Domain.Enums.Common;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Morourak.Domain.Extensions;
+using AutoMapper;
 using AppEx = Morourak.Application.Exceptions;
 
 namespace Morourak.Application.Services;
@@ -17,48 +19,25 @@ public class ServiceRequestService : IServiceRequestService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRequestNumberGenerator _generator;
     private readonly ICurrentUserService _currentUser;
+    private readonly IMapper _mapper;
 
     public ServiceRequestService(
         IUnitOfWork unitOfWork,
         IRequestNumberGenerator generator,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _generator = generator;
         _currentUser = currentUser;
+        _mapper = mapper;
     }
 
     private ServiceRequestDto ToDto(ServiceRequest request)
     {
-        return new ServiceRequestDto
-        {
-            RequestNumber = request.RequestNumber,
-            CitizenNationalId = request.CitizenNationalId,
-            ServiceType = request.ServiceType.GetDisplayName(),
-            Status = request.Status.GetDisplayName(),
-            SubmittedAt = request.SubmittedAt,
-            LastUpdatedAt = request.LastUpdatedAt,
-            ReferenceId = request.ReferenceId,
-            Fees = new ServiceRequestFeesDto
-            {
-                BaseFee = request.BaseFee,
-                DeliveryFee = request.DeliveryFee,
-                TotalAmount = request.TotalAmount
-            },
-            Delivery = new ServiceRequestDeliveryDto
-            {
-                Method = request.DeliveryMethod?.GetDisplayName(),
-                Address = request.DeliveryAddressDetail
-            },
-            Payment = new ServiceRequestPaymentDto
-            {
-                Status = request.PaymentStatus.GetDisplayName(),
-                TransactionId = request.PaymentTransactionId,
-                Amount = request.PaymentAmount,
-                Timestamp = request.PaymentTimestamp
-            }
-        };
+        return _mapper.Map<ServiceRequestDto>(request);
     }
+
     public async Task<IReadOnlyList<ServiceRequestDto>> GetCitizenRequestsAsync()
     {
         var nationalId = _currentUser.NationalId
@@ -95,10 +74,10 @@ public class ServiceRequestService : IServiceRequestService
     }
 
     public async Task<ServiceRequest> CreateAsync(
-    ServiceType serviceType,
-    int referenceId,
-    RequestStatus status,
-    string citizenNationalId)
+        ServiceType serviceType,
+        int referenceId,
+        RequestStatus status,
+        string citizenNationalId)
     {
         if (string.IsNullOrWhiteSpace(citizenNationalId))
             citizenNationalId = _currentUser.NationalId
@@ -117,12 +96,13 @@ public class ServiceRequestService : IServiceRequestService
         };
 
         await _unitOfWork.Repository<ServiceRequest>().AddAsync(request);
-        await _unitOfWork.CommitAsync();
-
+        // We do NOT commit here. We let the caller decide or commit after full processing.
+        // But for internal consistency with old logic, some callers might expect it.
+        // However, to keep it clean, we move commit to service boundary.
+        
         return request;
     }
 
-    // This method is now primarily used by PaymentService.FinalizePaymentAsync
     public async Task<ServiceRequestDto> MarkAsPaidAsync(string requestNumber, string transactionId, decimal amount)
     {
         var repo = _unitOfWork.Repository<ServiceRequest>();
@@ -146,34 +126,57 @@ public class ServiceRequestService : IServiceRequestService
         return ToDto(request);
     }
 
-    public async Task<ServiceRequestDto> SetDeliveryAndFeesAsync(string requestNumber, Morourak.Domain.Enums.Common.DeliveryMethod method, string? address)
+    public async Task<ServiceRequestDto> SetDeliveryAndFeesAsync(string requestNumber, DeliveryMethod method, string? address)
     {
-        var repo = _unitOfWork.Repository<ServiceRequest>();
-        var request = await repo.GetAsync(x => x.RequestNumber == requestNumber)
+        var request = await _unitOfWork.Repository<ServiceRequest>()
+            .GetAsync(x => x.RequestNumber == requestNumber)
             ?? throw new AppEx.ValidationException("طلب الخدمة غير موجود.", "REQUEST_NOT_FOUND");
 
-        // Set Base Fee based on service type
+        return await SetDeliveryAndFeesAsync(request, method, address);
+    }
+
+    public async Task<ServiceRequestDto> SetDeliveryAndFeesAsync(ServiceRequest request, DeliveryMethod method, string? address)
+    {
+        // 1. Persistence Guard: The upgraded GenericRepository.Update will 
+        // handle identity unification if this entity is already tracked.
+
+        // 2. Set Base Fee based on service type
         request.BaseFee = request.ServiceType switch
         {
             ServiceType.DrivingLicenseIssue or ServiceType.DrivingLicenseRenewal or 
             ServiceType.DrivingLicenseReplacementLost or ServiceType.DrivingLicenseReplacementDamaged => FeeConstants.LicenseIssuanceFee,
-            // Add other service types as needed
             _ => FeeConstants.LicenseIssuanceFee 
         };
 
         request.DeliveryMethod = method;
         request.DeliveryAddressDetail = address;
-        request.DeliveryFee = (method == Morourak.Domain.Enums.Common.DeliveryMethod.HomeDelivery) ? FeeConstants.DeliveryFee : 0;
-        request.TotalAmount = request.BaseFee + request.DeliveryFee;
+        request.DeliveryFee = (method == DeliveryMethod.HomeDelivery) ? FeeConstants.DeliveryFee : 0;
         
-        // Transition to AwaitingPayment only if currently Pending
+        decimal insuranceFee = 0;
+        if (request.ServiceType == ServiceType.VehicleLicenseIssue)
+        {
+            var application = await _unitOfWork.Repository<VehicleLicenseApplication>().GetByIdAsync(request.ReferenceId);
+            if (application != null && application.InsuranceCompanyId.HasValue)
+            {
+                var company = await _unitOfWork.Repository<InsuranceCompany>().GetByIdAsync(application.InsuranceCompanyId.Value);
+                if (company != null)
+                {
+                    insuranceFee = company.Fee;
+                }
+            }
+        }
+
+        request.TotalAmount = request.BaseFee + request.DeliveryFee + insuranceFee;
+        
         if (request.Status == RequestStatus.Pending)
         {
             request.Status = RequestStatus.AwaitingPayment;
         }
         request.LastUpdatedAt = DateTime.UtcNow;
-
-        repo.Update(request);
+        
+        // Explicitly mark as modified because GenericRepository uses AsNoTracking by default.
+        _unitOfWork.Repository<ServiceRequest>().Update(request);
+        
         await _unitOfWork.CommitAsync();
 
         return ToDto(request);

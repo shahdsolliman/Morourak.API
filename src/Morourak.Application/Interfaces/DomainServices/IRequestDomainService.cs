@@ -8,6 +8,7 @@ public interface IRequestDomainService
     Task<ServiceRequest?> FindPrimaryServiceRequestAsync(
         string nationalId,
         AppointmentType appointmentType,
-        CancellationToken cancellationToken);
+        string? requestNumber = null,
+        CancellationToken cancellationToken = default);
 }
 

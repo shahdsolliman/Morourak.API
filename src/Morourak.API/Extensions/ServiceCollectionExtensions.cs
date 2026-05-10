@@ -17,231 +17,190 @@ using Microsoft.Extensions.Logging;
 using Morourak.Application.Common.Behaviours;
 using MediatR;
 using StackExchange.Redis;
+using Morourak.Application.Configurations;
 
 namespace Morourak.API.Extensions
 {
     public static class ServiceCollectionExtensions
     {
-        private static string ResolveConnectionString(
-            IConfiguration configuration,
-            IWebHostEnvironment environment,
-            string name,
-            ILogger? logger = null)
-        {
-            var value = configuration.GetConnectionString(name);
-            string? source = "appsettings.json";
-
-            // If configuration has a value that starts with ENV_, treat the rest as the env var name.
-            string? envVarName = null;
-            if (!string.IsNullOrWhiteSpace(value) &&
-                value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
-            {
-                envVarName = value.Substring("ENV_".Length);
-                source = $"Environment Variable ({envVarName})";
-            }
-
-            // Optional naming convention fallback (e.g. PERSISTENCE_CONNECTION_STRING)
-            if (string.IsNullOrWhiteSpace(envVarName))
-            {
-                envVarName = name.ToUpperInvariant() switch
-                {
-                    "IDENTITYCONNECTION" => "IDENTITY_CONNECTION_STRING",
-                    "PERSISTENCECONNECTION" => "PERSISTENCE_CONNECTION_STRING",
-                    _ => null
-                };
-            }
-
-            if (!string.IsNullOrWhiteSpace(envVarName))
-            {
-                var fromEnv = Environment.GetEnvironmentVariable(envVarName);
-                if (!string.IsNullOrWhiteSpace(fromEnv))
-                {
-                    source = $"Environment Variable ({envVarName})";
-                    value = fromEnv;
-                }
-            }
-
-            // In Development, allow falling back to appsettings if it's not an ENV_ placeholder.
-            if (environment.IsDevelopment())
-            {
-                if (!string.IsNullOrWhiteSpace(value) &&
-                    !value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Log the resolution details (masking password)
-                    var logValue = MaskConnectionString(value);
-                    logger?.LogInformation("Resolved connection string '{Name}' from {Source}: {Value}", name, source, logValue);
-                    return value!;
-                }
-
-                throw new InvalidOperationException(
-                    $"Connection string '{name}' is not configured. " +
-                    $"In Development you must set a real value for '{name}' in 'appsettings.Development.json'.");
-            }
-
-            // In non‑development environments, we require environment variables.
-            if (string.IsNullOrWhiteSpace(value) || value.StartsWith("ENV_", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(
-                    $"Connection string '{name}' is not configured for environment '{environment.EnvironmentName}'. " +
-                    $"Expected environment variable '{envVarName ?? "[ENV_VAR_NAME]"}'.");
-            }
-
-            return value;
-        }
-
-        private static string MaskConnectionString(string connectionString)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString)) return string.Empty;
-            
-            var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < parts.Length; i++)
-            {
-                if (parts[i].Contains("Password", StringComparison.OrdinalIgnoreCase) || 
-                    parts[i].Contains("Pwd", StringComparison.OrdinalIgnoreCase))
-                {
-                    parts[i] = "Password=********";
-                }
-            }
-            return string.Join(";", parts);
-        }
-
         public static IServiceCollection AddApplicationServices(
             this IServiceCollection services,
             IConfiguration configuration,
             IWebHostEnvironment env)
         {
-            // Distributed cache (uses in-memory implementation by default; can be swapped for Redis).
-            services.AddDistributedMemoryCache();
-            // Pre-validate connection strings to maintain fail-fast behavior
-            ResolveConnectionString(configuration, env, "IdentityConnection");
-            ResolveConnectionString(configuration, env, "PersistenceConnection");
+            services.AddDatabase(configuration, env);
+            services.AddIdentityServices();
+            services.AddApplicationServicesCore(configuration);
+            services.AddLicenseServices(configuration);
+            services.AddCaching(configuration);
+            services.AddExternalIntegrations(configuration);
+            // services.AddJwtAuthentication(configuration); // Removed: Already called in Program.cs
 
-            // Identity Database
-            services.AddDbContext<IdentityDbContext>((sp, options) =>
+            return services;
+        }
+
+        public static IServiceCollection AddDatabase(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            IWebHostEnvironment env)
+        {
+            var identityConn = ResolveConnectionString(configuration, env, "IdentityConnection");
+            var persistenceConn = ResolveConnectionString(configuration, env, "PersistenceConnection");
+
+            if (!string.IsNullOrEmpty(identityConn))
             {
-                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseConfiguration");
-                options.UseSqlServer(
-                    ResolveConnectionString(configuration, env, "IdentityConnection", logger),
-                    sqlOptions => sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorNumbersToAdd: null));
-            });
-
-            // Persistence Database
-            services.AddDbContext<PersistenceDbContext>((sp, options) =>
-            {
-                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseConfiguration");
-                options.UseSqlServer(
-                    ResolveConnectionString(configuration, env, "PersistenceConnection", logger),
-                    sqlOptions => sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorNumbersToAdd: null));
-
-                if (env.IsDevelopment())
+                services.AddDbContext<IdentityDbContext>((sp, options) =>
                 {
-                    options.EnableSensitiveDataLogging();
-                    options.LogTo(Console.WriteLine, LogLevel.Information);
-                }
-            });
+                    options.UseSqlServer(identityConn, sql => 
+                        sql.EnableRetryOnFailure()
+                           .MigrationsHistoryTable("__IdentityMigrationsHistory"));
+                });
+            }
 
-            // Identity Configuration
+            if (!string.IsNullOrEmpty(persistenceConn))
+            {
+                services.AddDbContext<PersistenceDbContext>((sp, options) =>
+                {
+                    options.UseSqlServer(persistenceConn, sql => 
+                        sql.EnableRetryOnFailure()
+                           .MigrationsHistoryTable("__PersistenceMigrationsHistory"));
+                    
+                    if (env.IsDevelopment())
+                    {
+                        options.EnableSensitiveDataLogging();
+                    }
+                });
+            }
+
+            return services;
+        }
+
+        public static IServiceCollection AddIdentityServices(this IServiceCollection services)
+        {
             services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 8;
-
                 options.User.RequireUniqueEmail = true;
             })
             .AddEntityFrameworkStores<IdentityDbContext>()
             .AddDefaultTokenProviders();
 
-            // Authentication
-            services.AddAuthentication();
+            return services;
+        }
 
-            // Application Services
+        public static IServiceCollection AddApplicationServicesCore(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<ICitizenRegistryService, CitizenRegistryService>();
             services.AddScoped<ICitizenService, CitizenService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
             services.AddScoped<IAppointmentQueryService, AppointmentQueryService>();
-            // Appointment CQRS domain services
             services.AddScoped<IAppointmentDomainService, AppointmentDomainService>();
             services.AddScoped<IRequestDomainService, RequestDomainService>();
             services.AddScoped<IOtpService, OtpService>();
-            services.AddScoped<IMailService, MailService>();  
-            services.AddScoped<IVehicleLicenseService, VehicleLicenseService>();
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IMailService, MailService>();
             services.AddScoped<IServiceRequestService, ServiceRequestService>();
             services.AddScoped<IRequestNumberGenerator, RequestNumberGenerator>();
-            services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
-            services.AddScoped<IDrivingLicenseService, DrivingLicenseService>();
             services.AddScoped<IApplicationValidationService, ApplicationValidationService>();
             services.AddScoped<ITrafficViolationService, TrafficViolationService>();
             services.AddScoped<IPaymentService, PaymentService>();
-            services.AddScoped<IAdminUserService, Morourak.Infrastructure.Services.AdminUserService>();
             services.AddScoped<IGovernorateService, GovernorateService>();
             services.AddScoped<IIdentityService, IdentityService>();
             services.AddScoped<IAdminSeedDataService, AdminSeedDataService>();
+            services.AddScoped<IVehicleLicenseService, VehicleLicenseService>();
+            services.AddScoped<IAdminUserService, AdminUserService>();
+
+            services.AddHttpContextAccessor();
             
-            // Settings & Configurations
-            services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
-            services.Configure<PayMobSettings>(configuration.GetSection("PayMob"));
-            services.Configure<PaymentSettings>(configuration.GetSection("PaymentSettings"));
-            services.AddHttpClient<IPayMobService, Morourak.Infrastructure.Services.PayMobService>();
-
-            // Redis Caching with Resilience
-            var redisConnectionString = configuration.GetSection("RedisSettings:ConnectionString").Value;
-            var redisSettings = configuration.GetSection("RedisSettings").Get<RedisSettings>() ?? new RedisSettings();
-            services.Configure<RedisSettings>(configuration.GetSection("RedisSettings"));
-
-            if (!string.IsNullOrWhiteSpace(redisConnectionString))
-            {
-                try
-                {
-                    // Use a lazy/try connection approach to prevent blocking app startup
-                    services.AddSingleton<IConnectionMultiplexer>(sp => 
-                    {
-                        try
-                        {
-                            return ConnectionMultiplexer.Connect(redisConnectionString);
-                        }
-                        catch (Exception ex)
-                        {
-                            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("RedisConfiguration");
-                            logger.LogWarning(ex, "Redis connection failed. Caching will be disabled.");
-                            return null!; // Will be handled in RedisCacheService
-                        }
-                    });
-
-                    services.AddStackExchangeRedisCache(options =>
-                    {
-                        options.Configuration = redisConnectionString;
-                        options.InstanceName = "Morourak_";
-                    });
-                }
-                catch (Exception ex)
-                {
-                    // Fallback to memory cache if Redis fails to register
-                    services.AddDistributedMemoryCache();
-                }
-            }
-            else
-            {
-                services.AddDistributedMemoryCache();
-            }
-
-            services.AddScoped<ICacheService, RedisCacheService>();
-
-            // MediatR Pipeline Behaviors for Caching
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(InvalidationBehavior<,>));
 
             return services;
+        }
+
+        public static IServiceCollection AddLicenseServices(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddScoped<ILicenseValidationService, LicenseValidationService>();
+            services.AddScoped<IDrivingLicenseIssuanceService, DrivingLicenseIssuanceService>();
+            services.AddScoped<IDrivingLicenseRenewalService, DrivingLicenseRenewalService>();
+            services.AddScoped<IDrivingLicenseReplacementService, DrivingLicenseReplacementService>();
+            services.AddScoped<IDrivingLicenseQueryService, DrivingLicenseQueryService>();
+            services.AddScoped<IDrivingLicenseResultService, DrivingLicenseResultService>();
+            
+            // Facade service
+            services.AddScoped<IDrivingLicenseService, DrivingLicenseService>();
+
+            // Config for durations
+            services.Configure<LicenseSettings>(configuration.GetSection(LicenseSettings.SectionName));
+
+            return services;
+        }
+
+        public static IServiceCollection AddCaching(this IServiceCollection services, IConfiguration configuration)
+        {
+            var redisSection = configuration.GetSection("RedisSettings");
+            services.Configure<RedisSettings>(redisSection);
+
+            var redisSettings = redisSection.Get<RedisSettings>();
+            if (redisSettings != null && !string.IsNullOrWhiteSpace(redisSettings.ConnectionString))
+            {
+                // Register IConnectionMultiplexer with a SAFE factory that won't throw during resolution
+                services.AddSingleton<IConnectionMultiplexer>(sp =>
+                {
+                    try
+                    {
+                        var options = ConfigurationOptions.Parse(redisSettings.ConnectionString);
+                        options.AbortOnConnectFail = false; // Important: Prevents crashing if server down on start
+                        options.ConnectRetry = 1;
+                        options.ConnectTimeout = 2000;
+                        return ConnectionMultiplexer.Connect(options);
+                    }
+                    catch (Exception ex)
+                    {
+                        var logger = sp.GetRequiredService<ILogger<RedisSettings>>();
+                        logger.LogError(ex, "CRITICAL: Redis Connection Failed. Using disconnected multiplexer.");
+                        // Return a disconnected multiplexer instead of throwing
+                        return null!; // Even returning null is better than throwing, but let's be safer
+                    }
+                });
+
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisSettings.ConnectionString;
+                    options.InstanceName = "Morourak_";
+                });
+
+                services.AddScoped<ICacheService, RedisCacheService>();
+            }
+            else
+            {
+                services.AddDistributedMemoryCache();
+                services.AddScoped<ICacheService, NoOpCacheService>();
+            }
+
+            return services;
+        }
+
+        public static IServiceCollection AddExternalIntegrations(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+            services.Configure<PayMobSettings>(configuration.GetSection("PayMob"));
+            services.Configure<PaymentSettings>(configuration.GetSection("PaymentSettings"));
+
+            services.AddHttpClient<IPayMobService, PayMobService>();
+            
+            return services;
+        }
+
+        private static string ResolveConnectionString(IConfiguration configuration, IWebHostEnvironment environment, string name)
+        {
+            var value = configuration.GetConnectionString(name);
+            if (environment.IsDevelopment() && string.IsNullOrEmpty(value))
+            {
+                throw new InvalidOperationException($"Connection string {name} is missing.");
+            }
+            return value ?? string.Empty;
         }
     }
 }

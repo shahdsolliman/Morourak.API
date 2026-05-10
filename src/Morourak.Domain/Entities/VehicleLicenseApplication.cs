@@ -1,4 +1,4 @@
-﻿using Morourak.Domain.Common;
+using Morourak.Domain.Common;
 using Morourak.Domain.Enums;
 using Morourak.Domain.Enums.Vehicles;
 
@@ -60,6 +60,8 @@ namespace Morourak.Domain.Entities
         public string? VehicleDataCertificatePath { get; set; }
         public string? IdCardPath { get; set; }
         public string? InsuranceCertificatePath { get; set; }
+        public int? InsuranceCompanyId { get; set; }
+        public InsuranceCompany? InsuranceCompany { get; set; }
         public string? CustomClearancePath { get; set; }
 
         #endregion
