@@ -45,12 +45,7 @@
             </div>
             <div class="mt-8">
                 <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">تراخيص نشطة</p>
-                <h3 class="text-3xl font-black text-primary">@Model.Licenses.Count(i => {
-                    var l = (System.Text.Json.JsonElement)i;
-                    if (l.TryGetProperty("expiryDate", out var ed) || l.TryGetProperty("ExpiryDate", out ed))
-                        return DateTime.Parse(ed.GetString()) > DateTime.Now;
-                    return false;
-                })</h3>
+                <h3 class="text-3xl font-black text-primary">@Model.Licenses.Count(l => l.ExpiryDate > DateTime.Now)</h3>
             </div>
         </div>
     </section>
@@ -74,30 +69,12 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-primary/5">
-                @foreach (dynamic item in Model.Licenses)
+                @foreach (var license in Model.Licenses)
                 {
-                    var license = (System.Text.Json.JsonElement)item;
-
-                    // Robust case-insensitive helper to get property value safely
-                    string GetProp(string name, string fallback = "---") {
-                        try {
-                            System.Text.Json.JsonElement val;
-                            if (license.TryGetProperty(name, out val)) 
-                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
-                                
-                            string camel = char.ToLower(name[0]) + name.Substring(1);
-                            if (license.TryGetProperty(camel, out val)) 
-                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
-                        } catch { }
-                        return fallback;
-                    }
-
-                    var licenseNumber = GetProp("LicenseNumber");
-                    var nationalId = GetProp("CitizenNationalId");
-                    var issueProp = GetProp("IssueDate");
-                    var issueDate = issueProp != "---" ? DateTime.Parse(issueProp) : DateTime.MinValue;
-                    var expiryProp = GetProp("ExpiryDate");
-                    var expiryDate = expiryProp != "---" ? DateTime.Parse(expiryProp) : DateTime.MinValue;
+                    var licenseNumber = string.IsNullOrWhiteSpace(license.LicenseNumber) ? "---" : license.LicenseNumber;
+                    var nationalId = string.IsNullOrWhiteSpace(license.CitizenNationalId) ? "---" : license.CitizenNationalId;
+                    var issueDate = license.IssueDate;
+                    var expiryDate = license.ExpiryDate;
                     var isExpired = expiryDate < DateTime.Now;
 
                     <tr class="hover:bg-primary/[0.01] transition-colors group">

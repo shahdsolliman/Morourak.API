@@ -50,12 +50,7 @@
             </div>
             <div class="mt-8 relative z-10">
                 <p class="text-secondary/50 text-[11px] font-bold uppercase tracking-widest">منتهية الصلاحية</p>
-                <h3 class="text-3xl font-black text-red-500">@Model.Licenses.Count(i => {
-                    var l = (System.Text.Json.JsonElement)i;
-                    if (l.TryGetProperty("expiryDate", out var ed) || l.TryGetProperty("ExpiryDate", out ed))
-                        return DateTime.Parse(ed.GetString()) < DateTime.Now;
-                    return false;
-                })</h3>
+                <h3 class="text-3xl font-black text-red-500">@Model.Licenses.Count(l => l.ExpiryDate < DateTime.Now)</h3>
             </div>
         </div>
         <div class="col-span-4 bg-white p-6 rounded-[24px] border border-primary/10 shadow-sm flex flex-col justify-between">
@@ -102,32 +97,13 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-primary/5">
-                @foreach (dynamic item in Model.Licenses)
+                @foreach (var license in Model.Licenses)
                 {
-                    var license = (System.Text.Json.JsonElement)item;
-
-                    // Robust case-insensitive helper to get property value safely
-                    string GetProp(string name, string fallback = "---") {
-                        try {
-                            System.Text.Json.JsonElement val;
-                            if (license.TryGetProperty(name, out val)) 
-                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
-                                
-                            string camel = char.ToLower(name[0]) + name.Substring(1);
-                            if (license.TryGetProperty(camel, out val)) 
-                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
-                        } catch { }
-                        return fallback;
-                    }
-
-                    var plateNumber = GetProp("PlateNumber");
-                    var brand = GetProp("Brand");
-                    var vehicleModel = GetProp("Model");
-                    var color = GetProp("Color");
-                    var type = GetProp("VehicleType");
-                    var ownerId = GetProp("CitizenNationalId");
-                    var expiryProp = GetProp("ExpiryDate");
-                    var expiryDate = expiryProp != "---" ? DateTime.Parse(expiryProp) : DateTime.MinValue;
+                    var plateNumber = string.IsNullOrWhiteSpace(license.PlateNumber) ? "---" : license.PlateNumber;
+                    var type = string.IsNullOrWhiteSpace(license.VehicleType) ? "---" : license.VehicleType;
+                    var ownerId = string.IsNullOrWhiteSpace(license.CitizenNationalId) ? "---" : license.CitizenNationalId;
+                    var ownerName = string.IsNullOrWhiteSpace(license.CitizenName) ? "---" : license.CitizenName;
+                    var expiryDate = license.ExpiryDate;
                     var isExpired = expiryDate < DateTime.Now;
                     var isSoon = !isExpired && expiryDate < DateTime.Now.AddMonths(3);
 
@@ -144,8 +120,8 @@
                                     <span class="material-symbols-outlined">directions_car</span>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-secondary text-sm">@brand @vehicleModel</p>
-                                    <p class="text-[10px] font-bold text-secondary/40 uppercase">@type - @color</p>
+                                    <p class="font-bold text-secondary text-sm">@type</p>
+                                    <p class="text-[10px] font-bold text-secondary/40 uppercase">@ownerName</p>
                                 </div>
                             </div>
                         </td>

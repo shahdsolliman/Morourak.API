@@ -106,31 +106,18 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-primary/5">
-                @foreach (dynamic item in Model.Citizens)
+                @foreach (var citizen in Model.Citizens)
                 {
-                    var citizen = (System.Text.Json.JsonElement)item;
-                    
-                    // Robust case-insensitive helper to get property value safely
-                    string GetProp(string name, string fallback = "---") {
-                        try {
-                            System.Text.Json.JsonElement val;
-                            if (citizen.TryGetProperty(name, out val)) 
-                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
-                                
-                            string camel = char.ToLower(name[0]) + name.Substring(1);
-                            if (citizen.TryGetProperty(camel, out val)) 
-                                return val.ValueKind == System.Text.Json.JsonValueKind.String ? (val.GetString() ?? fallback) : val.ToString();
-                        } catch { }
-                        return fallback;
-                    }
+                    var firstName = string.IsNullOrWhiteSpace(citizen.FirstName) ? "---" : citizen.FirstName;
+                    var lastName = citizen.LastName ?? string.Empty;
+                    var nationalId = citizen.NationalId ?? "---";
+                    var phone = citizen.MobileNumber ?? "---";
+                    var gov = citizen.Governorate ?? "---";
+                    var unit = citizen.LicensingUnit ?? "---";
 
+                    @*
                     var firstName = GetProp("FirstName", "غير معروف");
-                    var lastName = GetProp("LastName", "");
-                    var nationalId = GetProp("NationalId");
-                    var phone = GetProp("MobileNumber");
-                    var gov = GetProp("Governorate");
-                    var unit = GetProp("LicensingUnit");
-
+                    *@
                     <tr class="hover:bg-primary/[0.02] transition-colors group">
                         <td class="px-lg py-4">
                             <div class="flex items-center gap-md">

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Morourak.Dashboard.Services;
+using Morourak.Application.DTOs.Admin;
 using System.Linq;
 
 namespace Morourak.Dashboard.Pages.Admin
@@ -15,7 +16,7 @@ namespace Morourak.Dashboard.Pages.Admin
             _seedDataService = seedDataService;
         }
 
-        public IEnumerable<object> Licenses { get; set; } = Enumerable.Empty<object>();
+        public IEnumerable<DrivingLicenseDto> Licenses { get; set; } = Enumerable.Empty<DrivingLicenseDto>();
 
         public async Task OnGetAsync()
         {
